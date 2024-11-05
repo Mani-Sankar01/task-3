@@ -1,3 +1,4 @@
+import { AddReadingButton } from "@/components/AddReadingButton";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -16,7 +17,10 @@ export default async function Home() {
 
   return (
     <div>
-      <h2>Hiii</h2>
+      <h2>
+        Hiii
+        <AddReadingButton />
+      </h2>
     </div>
   );
 }
