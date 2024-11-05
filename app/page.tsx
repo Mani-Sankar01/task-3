@@ -1,4 +1,5 @@
 import { AddReadingButton } from "@/components/AddReadingButton";
+import FilterableTable from "@/components/filterable-table";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -21,6 +22,7 @@ export default async function Home() {
         Hiii
         {JSON.stringify(readings)}
         <AddReadingButton />
+        <FilterableTable />
       </h2>
     </div>
   );
