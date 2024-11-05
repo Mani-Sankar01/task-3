@@ -31,7 +31,7 @@ export async function addRandomMeterReading() {
     await prisma.meterReading.create({
       data: randomReading,
     });
-    revalidatePath("/task");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Failed to create meter reading:", error);

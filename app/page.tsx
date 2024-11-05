@@ -19,6 +19,7 @@ export default async function Home() {
     <div>
       <h2>
         Hiii
+        {JSON.stringify(readings)}
         <AddReadingButton />
       </h2>
     </div>
