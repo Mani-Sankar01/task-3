@@ -31,7 +31,7 @@ export default async function Home() {
     <div>
       <h2>
         Hiii
-        {JSON.stringify(formattedReadings)}
+        {/* {JSON.stringify(formattedReadings)} */}
         <AddReadingButton />
         {/* <FilterableTable /> */}
         <FilterableTable2 initialData={formattedReadings} />

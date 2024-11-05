@@ -201,6 +201,8 @@ export default function FilterableTable2({
     },
   });
 
+  React.useEffect(() => {}, [initialData]);
+
   return (
     <div className="p-4 border m-4 rounded">
       <div className="flex items-center py-4">
