@@ -6,6 +6,7 @@ import {
   MailIcon,
   CreditCardIcon,
   FileTextIcon,
+  MessageCircle,
 } from "lucide-react";
 
 import { PrismaClient } from "@prisma/client";
@@ -72,7 +73,14 @@ export default async function Page({
           <CardContent className="space-y-2">
             <div className="flex items-center">
               <PhoneIcon className="mr-2 h-4 w-4" />
-              <span>{memberIdDetails?.contactNumber}</span>
+              <a href={`tel:${memberIdDetails?.contactNumber}`}>
+                {" "}
+                <span>{memberIdDetails?.contactNumber}</span>
+              </a>
+            </div>{" "}
+            <div className="flex items-center">
+              <MessageCircle className="mr-2 h-4 w-4" />
+              <span>{`8520852020`}</span>
             </div>
             <div className="flex items-center">
               <MailIcon className="mr-2 h-4 w-4" />

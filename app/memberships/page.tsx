@@ -1,3 +1,4 @@
+import MembershipsTable from "@/components/memberships-table";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -6,11 +7,35 @@ const prisma = new PrismaClient();
 export const dynamic = "force-dynamic";
 
 const page = async () => {
-  const memberships = await prisma.membership.findMany();
+  const memberships = await prisma.membership.findMany({
+    orderBy: {
+      id: "asc",
+    },
+    select: {
+      id: true,
+      meterNumber: true,
+      industryName: true,
+      email: true,
+      membershipStartDate: true,
+      status: true,
+      monthlyFee: true,
+    },
+  });
+
+  const formattedReadings = memberships.map((reading) => ({
+    ...reading,
+    // Format date as YYYY-MM-DD
+
+    status: reading.status.toLocaleLowerCase() as
+      | "live"
+      | "inactive"
+      | "cancelled",
+  }));
   return (
     <div>
       <h1>Details of All:</h1>
       {JSON.stringify(memberships)}
+      <MembershipsTable initialData={formattedReadings} />
     </div>
   );
 };
