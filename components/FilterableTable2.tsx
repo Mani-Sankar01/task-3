@@ -47,7 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@radix-ui/react-checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface MeterReading {
   id: string;
@@ -89,6 +89,10 @@ export const columns: ColumnDef<MeterReading>[] = [
   {
     accessorKey: "meterId",
     header: "Meter ID",
+    cell: ({ row }) => {
+      const meterId = row.getValue("meterId") as string;
+      return <a href={`/${meterId.toLocaleLowerCase()}`}>{meterId}</a>;
+    },
   },
   {
     accessorKey: "name",

@@ -2,6 +2,9 @@
   "name": "task-3",
   "version": "0.1.0",
   "private": true,
+  "prisma": {
+    "seed": "node prisma/seed.ts"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -20,6 +23,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.454.0",
     "next": "14.2.16",
+    "next-auth": "^4.24.10",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.5.4",

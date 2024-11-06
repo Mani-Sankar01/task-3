@@ -19,7 +19,7 @@ export function AddReadingButton() {
   };
 
   return (
-    <Button onClick={handleClick} disabled={isLoading} className="mb-4">
+    <Button onClick={handleClick} disabled={isLoading} className="">
       {isLoading ? "Adding..." : "Add Random Reading"}
     </Button>
   );

@@ -1,5 +1,4 @@
 import { AddReadingButton } from "@/components/AddReadingButton";
-import FilterableTable from "@/components/filterable-table";
 import FilterableTable2 from "@/components/FilterableTable2";
 import { PrismaClient } from "@prisma/client";
 
@@ -11,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const readings = await prisma.meterReading.findMany({
     orderBy: {
-      date: "desc",
+      date: "asc",
     },
   });
 
@@ -25,17 +24,16 @@ export default async function Home() {
       | "failed",
   }));
 
-  console.log(readings);
+  // console.log(readings);
 
   return (
     <div>
-      <h2>
-        Hiii
-        {/* {JSON.stringify(formattedReadings)} */}
+      <div className="flex justify-center gap-x-2  mt-2 ">
+        <h2 className="text-2xl"> Click the button to add a new data </h2>
         <AddReadingButton />
-        {/* <FilterableTable /> */}
-        <FilterableTable2 initialData={formattedReadings} />
-      </h2>
+      </div>
+
+      <FilterableTable2 initialData={formattedReadings} />
     </div>
   );
 }

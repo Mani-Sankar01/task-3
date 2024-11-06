@@ -31,3 +31,98 @@ enum Status {
   CANCELLED
   FAILED
 }
+
+
+model Membership {
+  id                Int       @id @default(autoincrement())
+  meterNumber       String    @unique
+  industryName      String
+  address           String
+  contactNumber     String
+  email             String?
+  aadharNumber      String?
+  panNumber         String?
+  gstinNumber       String?
+  membershipStartDate DateTime
+  membershipDueDate DateTime
+  monthlyFee        Float
+  lastPaymentDate   DateTime?
+  status            String    @default("Active")
+  notes             String?
+  
+  Payments          Payment[]
+  Employees         Employee[]
+  GstFilings        GstFiling[]
+  Vehicles          Vehicle[]
+  Meetings          Meeting[] @relation("MembershipMeetings")
+}
+
+model Payment {
+  id                Int       @id @default(autoincrement())
+  membershipId      Int
+  amount            Float
+  paymentDate       DateTime
+  dueDate           DateTime
+  status            String    @default("Pending")
+  transactionType   String    // Membership Fee or Lorry Fee
+  notes             String?
+  
+  Membership        Membership @relation(fields: [membershipId], references: [id])
+}
+
+model Meeting {
+  id                Int       @id @default(autoincrement())
+  meetingDate       DateTime
+  location          String
+  agenda            String
+  allMembers        Boolean   @default(false)
+  selectedMembers   Json?
+  notificationSent  Boolean   @default(false)
+  
+  Memberships       Membership[] @relation("MembershipMeetings")
+}
+
+model GstFiling {
+  id                Int       @id @default(autoincrement())
+  membershipId      Int
+  filingDate        DateTime
+  amount            Float
+  filingPeriod      String
+  notes             String?
+  
+  Membership        Membership @relation(fields: [membershipId], references: [id])
+}
+
+model Employee {
+  id                Int       @id @default(autoincrement())
+  membershipId      Int
+  name              String
+  role              String
+  contactNumber     String
+  aadharNumber      String?
+  joiningDate       DateTime
+  status            String    @default("Active")
+  
+  Membership        Membership @relation(fields: [membershipId], references: [id])
+}
+
+model Product {
+  id                Int       @id @default(autoincrement())
+  name              String
+  category          String
+  description       String?
+  pricePerUnit      Float
+  stockQuantity     Int
+}
+
+model Vehicle {
+  id                Int       @id @default(autoincrement())
+  membershipId      Int
+  vehicleNumber     String
+  visitDate         DateTime
+  feesCollected     Float
+  dueAmount         Float
+  lastPaymentDate   DateTime?
+  
+  Membership        Membership @relation(fields: [membershipId], references: [id])
+}
