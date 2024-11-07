@@ -77,7 +77,7 @@ interface MembershipsTableType {
   meterNumber: string;
   industryName: string;
   email: string | null;
-  membershipStartDate: Date;
+  membershipDueDate: Date;
   status: "live" | "inactive" | "cancelled";
   monthlyFee: number;
 }
@@ -134,10 +134,10 @@ export const columns: ColumnDef<MembershipsTableType>[] = [
     header: "Email",
   },
   {
-    accessorKey: "membershipStartDate",
-    header: "Membership Start Date",
+    accessorKey: "membershipDueDate",
+    header: "Membership Due Date",
     cell: ({ row }) => {
-      const dat = row.getValue("membershipStartDate") as Date;
+      const dat = row.getValue("membershipDueDate") as Date;
       return <span>{dat.toDateString()}</span>;
     },
   },
@@ -148,13 +148,14 @@ export const columns: ColumnDef<MembershipsTableType>[] = [
       const status = row.getValue("status") as string;
       return (
         <Badge
-          className={
+          variant={
             status === "live"
-              ? "border-purple-400 bg-white text-purple-600"
+              ? "default"
               : status === "inactive"
-              ? "border-gray-400 bg-white text-gray-600"
-              : "border-red-400 bg-white text-red-600"
+              ? "secondary"
+              : "destructive"
           }
+          className="capitalize"
         >
           {status}
         </Badge>

@@ -16,7 +16,7 @@ const page = async () => {
       meterNumber: true,
       industryName: true,
       email: true,
-      membershipStartDate: true,
+      membershipDueDate: true,
       status: true,
       monthlyFee: true,
     },
@@ -33,8 +33,6 @@ const page = async () => {
   }));
   return (
     <div>
-      <h1>Details of All:</h1>
-      {JSON.stringify(memberships)}
       <MembershipsTable initialData={formattedReadings} />
     </div>
   );
