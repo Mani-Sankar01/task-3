@@ -87,6 +87,9 @@ export const authOptions: NextAuthOptions = {
       return baseUrl;
     },
   },
+  pages: {
+    signIn: "/login", // Custom login page
+  },
 };
 
 const handler = NextAuth(authOptions);
