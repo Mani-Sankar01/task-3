@@ -50,9 +50,11 @@ export default function Login() {
         toast({
           title: "Login Successful",
           description: "Redirecting you to your dashboard...",
+          variant: "sucess",
         });
 
         // Redirect the user based on their role after successful login
+
         const role = result?.user?.role;
         if (role === "admin") {
           router.push("/admin");
