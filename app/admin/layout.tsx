@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 import {
   BellIcon,
@@ -44,6 +45,9 @@ import {
   SidebarProvider,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import AuthButton from "@/components/AuthButton";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const data = {
   versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
@@ -178,6 +182,7 @@ export default function Layout({
   );
 
   const pathname = usePathname();
+  const { toast } = useToast();
 
   return (
     <SidebarProvider>
@@ -267,6 +272,24 @@ export default function Layout({
               </SidebarGroup>
             </Collapsible>
           ))}
+
+          <div className="p-2 w-full">
+            <Button
+              variant={"default"}
+              size={"lg"}
+              className="w-full"
+              onClick={() => {
+                toast({
+                  title: "Logout Successful",
+                  description: "Redirecting you to login.",
+                  variant: "destructive",
+                });
+                signOut();
+              }}
+            >
+              Logout
+            </Button>
+          </div>
         </SidebarContent>
         <SidebarRail />
       </Sidebar>
