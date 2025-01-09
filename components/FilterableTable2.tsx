@@ -87,6 +87,10 @@ export const columns: ColumnDef<MeterReading>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "id",
+    header: "Sl",
+  },
+  {
     accessorKey: "meterId",
     header: "Meter ID",
     cell: ({ row }) => {
@@ -164,7 +168,9 @@ export const columns: ColumnDef<MeterReading>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(reading.id)}
+              onClick={() =>
+                navigator.clipboard.writeText(reading.id.toString())
+              }
             >
               Copy reading ID
             </DropdownMenuItem>
@@ -188,6 +194,8 @@ export default function FilterableTable2({
   const [rowSelection, setRowSelection] = React.useState({});
   const [data] = React.useState<MeterReading[]>(initialData);
 
+  const [globalFilter, setGlobalFilter] = React.useState("");
+
   const table = useReactTable({
     data,
     columns,
@@ -198,11 +206,20 @@ export default function FilterableTable2({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
+    globalFilterFn: (row, columnId, filterValue) => {
+      const value = row.getValue(columnId);
+      return (
+        value != null &&
+        value.toString().toLowerCase().includes(filterValue.toLowerCase())
+      );
+    },
     state: {
       sorting,
       columnFilters,
+      globalFilter,
       rowSelection,
     },
+    onGlobalFilterChange: setGlobalFilter,
   });
 
   React.useEffect(() => {}, [initialData]);
@@ -210,6 +227,13 @@ export default function FilterableTable2({
   return (
     <div className="p-4 border m-4 rounded">
       <div className="flex items-center py-4">
+        <Input
+          placeholder="Search by meter, name...."
+          value={globalFilter ?? ""}
+          onChange={(event) => setGlobalFilter(event.target.value)}
+          className="max-w-sm mr-4"
+        />
+
         <Input
           placeholder="Filter by meter ID..."
           value={(table.getColumn("meterId")?.getFilterValue() as string) ?? ""}
