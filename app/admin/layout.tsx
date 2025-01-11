@@ -58,43 +58,43 @@ const data = {
       items: [
         {
           title: "Dashboard",
-          url: "/dashboard",
+          url: "/admin",
           icon: SquareKanban,
         },
         {
           title: "Transactions",
-          url: "/dashboard/transactions",
+          url: "/admin/transactions",
           icon: IndianRupee,
         },
         {
           title: "Analytics",
-          url: "/dashboard/analytics",
+          url: "/admin/admin/analytics",
           icon: ChartColumn,
         },
         {
           title: "Notifications",
-          url: "/dashboard/notifications",
+          url: "/admin/notifications",
           icon: BellIcon,
         },
       ],
     },
     {
       title: "Memberships",
-      url: "/dashboard/Memberships",
+      url: "/Memberships",
       items: [
         {
           title: "All Members",
-          url: "/dashboard/memberships",
+          url: "/admin/memberships",
           icon: UsersIcon,
         },
         {
           title: "Fees",
-          url: "/Vehicle/Fees",
+          url: "/admin/memberships/Fees",
           icon: IndianRupee,
         },
         {
           title: "Add Member",
-          url: "/dashboard/members/add",
+          url: "/admin/memberships/add",
           icon: PlusSquare,
         },
       ],

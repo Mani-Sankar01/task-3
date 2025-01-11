@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, ArrowUpDown, Settings2 } from "lucide-react";
+import {
+  MoreHorizontal,
+  ArrowUpDown,
+  Settings2,
+  PlusCircle,
+} from "lucide-react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -48,6 +53,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import Link from "next/link";
 
 interface MeterReading {
   id: string;
@@ -55,7 +61,7 @@ interface MeterReading {
   name: string;
   email: string;
   date: string;
-  status: "active" | "inactive" | "cancelled" | "failed";
+  status: "live" | "inactive" | "cancelled";
   price: number;
 }
 
@@ -95,7 +101,11 @@ export const columns: ColumnDef<MeterReading>[] = [
     header: "Meter ID",
     cell: ({ row }) => {
       const meterId = row.getValue("meterId") as string;
-      return <a href={`/${meterId.toLocaleLowerCase()}`}>{meterId}</a>;
+      return (
+        <a href={`/admin/memberships/${meterId.toLocaleLowerCase()}`}>
+          {meterId}
+        </a>
+      );
     },
   },
   {
@@ -115,19 +125,7 @@ export const columns: ColumnDef<MeterReading>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
-      return (
-        <Badge
-          className={
-            status === "active"
-              ? "border-purple-400 bg-white text-purple-600"
-              : status === "inactive"
-              ? "border-gray-400 bg-white text-gray-600"
-              : "border-red-400 bg-white text-red-600"
-          }
-        >
-          {status}
-        </Badge>
-      );
+      return <Badge>{status}</Badge>;
     },
   },
   {
@@ -167,16 +165,20 @@ export const columns: ColumnDef<MeterReading>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem>
+              <Link href={`/admin/memberships/${reading.meterId}`}>
+                View details
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem>Edit reading</DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() =>
-                navigator.clipboard.writeText(reading.id.toString())
+                navigator.clipboard.writeText(reading.meterId.toString())
               }
             >
-              Copy reading ID
+              Copy Meter Number
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View details</DropdownMenuItem>
-            <DropdownMenuItem>Edit reading</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -225,49 +227,55 @@ export default function FilterableTable2({
   React.useEffect(() => {}, [initialData]);
 
   return (
-    <div className="p-4 border m-4 rounded">
-      <div className="flex items-center py-4">
+    <div className="p-4 border rounded">
+      <div className="flex justify-between items-center py-4">
         <Input
-          placeholder="Search by meter, name...."
+          placeholder="Search by Meter ID, Name, Email...."
           value={globalFilter ?? ""}
           onChange={(event) => setGlobalFilter(event.target.value)}
           className="max-w-sm mr-4"
         />
 
-        <Input
+        {/* <Input
           placeholder="Filter by meter ID..."
           value={(table.getColumn("meterId")?.getFilterValue() as string) ?? ""}
           onChange={(event) =>
             table.getColumn("meterId")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              <Settings2 className="h-4 w-4" /> View
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) =>
-                      column.toggleVisibility(!!value)
-                    }
-                  >
-                    {column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        /> */}
+        <div className=" flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="ml-auto">
+                <Settings2 className="h-4 w-4" /> View
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuCheckboxItem
+                      key={column.id}
+                      className="capitalize"
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                    >
+                      {column.id}
+                    </DropdownMenuCheckboxItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button variant="default" className="ml-auto">
+            <PlusCircle className="h-4 w-4" /> Add membership
+          </Button>
+        </div>
       </div>
       <div className="rounded-md border">
         <Table>

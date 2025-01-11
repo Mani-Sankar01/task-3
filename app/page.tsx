@@ -7,6 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { read } from "fs";
 
 const prisma = new PrismaClient();
 
@@ -20,11 +21,86 @@ export default async function Home() {
     redirect("/api/auth/signin"); // Redirects to login page if not authenticated
   }
 
-  const readings = await prisma.meterReading.findMany({
-    orderBy: {
-      date: "asc",
+  if (session.user?.role === "twwaManager") {
+    redirect("/twwa");
+  }
+  if (session.user?.role === "tsmwaManager") {
+    redirect("/tsmwa");
+  }
+
+  // const readings = await prisma.meterReading.findMany({
+  //   orderBy: {
+  //     date: "asc",
+  //   },
+  // });
+
+  const readings = [
+    {
+      id: "1",
+      meterId: "MET459",
+      name: "Charlie Davis",
+      email: "user1730813275123@example.com",
+      date: new Date(),
+      status: "FAILED",
+      price: 351,
     },
-  });
+    {
+      id: "2",
+      meterId: "MET794",
+      name: "John Doe",
+      email: "user1730813350120@example.com",
+      date: new Date(),
+      status: "ACTIVE",
+      price: 965,
+    },
+    {
+      id: "3",
+      meterId: "MET845",
+      name: "John Doe",
+      email: "user1730813353495@example.com",
+      date: new Date(),
+      status: "ACTIVE",
+      price: 129,
+    },
+    {
+      id: "4",
+      meterId: "MET024",
+      name: "Alice Brown",
+      email: "user1730816428256@example.com",
+      date: new Date(),
+      status: "INACTIVE",
+      price: 232,
+    },
+    {
+      id: "5",
+      meterId: "MET382",
+      name: "Bob Johnson",
+      email: "user1730818830359@example.com",
+      date: new Date(),
+      status: "FAILED",
+      price: 242,
+    },
+    {
+      id: "6",
+      meterId: "MET783",
+      name: "Jane Smith",
+      email: "user1730823161952@example.com",
+      date: new Date(),
+      status: "CANCELLED",
+      price: 841,
+    },
+    {
+      id: "7",
+      meterId: "MET362",
+      name: "Bob Johnson",
+      email: "user1731923150817@example.com",
+      date: new Date(),
+      status: "ACTIVE",
+      price: 252,
+    },
+  ];
+
+  console.log(readings);
 
   const formattedReadings = readings.map((reading) => ({
     ...reading,
@@ -35,13 +111,6 @@ export default async function Home() {
       | "cancelled"
       | "failed",
   }));
-
-  if (session.user?.role === "twwaManager") {
-    redirect("/twwa");
-  }
-  if (session.user?.role === "tsmwaManager") {
-    redirect("/tsmwa");
-  }
 
   return (
     <div>
