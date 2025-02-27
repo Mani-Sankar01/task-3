@@ -34,11 +34,9 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMemberById, addMember, updateMember } from "@/data/members";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
-  const router = useRouter();
   const memberId = (await params).id;
   const member = getMemberById(memberId);
 
@@ -62,9 +60,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                   </CardTitle>
                   <Badge>Active</Badge>
                 </div>
-                <CardDescription>
-                  Member since {member?.joinDate}
-                </CardDescription>
+                <CardDescription>Member since January 2024</CardDescription>
               </div>
               <Link href={`/admin/memberships/add?id=${memberId}&edit=true`}>
                 <Button>Edit Profile</Button>

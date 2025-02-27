@@ -145,14 +145,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const page = async ({
-  params,
-}: {
-  params: Promise<{ id: string; edit: string }>;
-}) => {
+const page = () => {
   const router = useRouter();
-  const memberId = (await params).id;
-  const isEditMode = (await params).edit === "true";
+  const searchParams = useSearchParams();
+  const memberId = searchParams.get("id");
+  const isEditMode = searchParams.get("edit") === "true";
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -376,7 +373,7 @@ const page = async ({
       <Header
         breadcrumbs={
           isEditMode
-            ? [{ label: "Edit Memberships" }]
+            ? [{ label: "Add Memberships" }]
             : [{ label: "Add Memberships" }]
         }
       />
