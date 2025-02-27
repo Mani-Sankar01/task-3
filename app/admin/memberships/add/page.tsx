@@ -145,11 +145,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const page = () => {
+const page = async ({
+  params,
+}: {
+  params: Promise<{ id: string; edit: string }>;
+}) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const memberId = searchParams.get("id");
-  const isEditMode = searchParams.get("edit") === "true";
+  const memberId = (await params).id;
+  const isEditMode = (await params).edit === "true";
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
