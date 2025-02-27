@@ -4,10 +4,10 @@ import React from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { string, z } from "zod";
 import { Check, ChevronRight, Loader2, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -145,11 +145,16 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const AddMember = ({ meterId, editMode }) => {
+const AddMember = ({
+  meterId,
+  editMode,
+}: {
+  meterId: string;
+  editMode: boolean;
+}) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const memberId = searchParams.get("id");
-  const isEditMode = searchParams.get("edit") === "true";
+  const memberId = meterId;
+  const isEditMode = editMode;
 
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -373,7 +378,7 @@ const AddMember = ({ meterId, editMode }) => {
       <Header
         breadcrumbs={
           isEditMode
-            ? [{ label: "Add Memberships" }]
+            ? [{ label: "Edit Memberships" }]
             : [{ label: "Add Memberships" }]
         }
       />

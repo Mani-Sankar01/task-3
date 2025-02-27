@@ -1,7 +1,8 @@
+import AddMember from "@/components/addMember";
 import React from "react";
 
 const page = () => {
-  return <div>hi</div>;
+  return <AddMember editMode={false} meterId="" />;
 };
 
 export default page;

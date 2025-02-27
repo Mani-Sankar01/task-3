@@ -1,4 +1,3 @@
-"use client";
 
 import Header from "@/components/header";
 import { SidebarInset } from "@/components/ui/sidebar";
@@ -62,7 +61,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                 </div>
                 <CardDescription>Member since January 2024</CardDescription>
               </div>
-              <Link href={`/admin/memberships/add?id=${memberId}&edit=true`}>
+              <Link href={`/admin/memberships/${memberId}/edit`}>
                 <Button>Edit Profile</Button>
               </Link>
             </CardHeader>
