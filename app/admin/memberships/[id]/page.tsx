@@ -33,9 +33,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getMemberById, addMember, updateMember } from "@/data/members";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const router = useRouter();
   const memberId = (await params).id;
+  const member = getMemberById(memberId);
+
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: memberId }]} />
@@ -45,16 +51,24 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
             <CardHeader className="flex flex-row items-center gap-4">
               <Avatar className="h-16 w-16">
                 <AvatarImage src="/placeholder.svg" alt="Member avatar" />
-                <AvatarFallback>JD</AvatarFallback>
+                <AvatarFallback>
+                  {member?.memberDetails.applicantName.charAt(0)}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-2xl">John Doe</CardTitle>
+                  <CardTitle className="text-2xl">
+                    {member?.memberDetails.applicantName}
+                  </CardTitle>
                   <Badge>Active</Badge>
                 </div>
-                <CardDescription>Member since January 2024</CardDescription>
+                <CardDescription>
+                  Member since {member?.joinDate}
+                </CardDescription>
               </div>
-              <Button>Edit Profile</Button>
+              <Link href={`/admin/memberships/add?id=${memberId}&edit=true`}>
+                <Button>Edit Profile</Button>
+              </Link>
             </CardHeader>
           </Card>
         </div>

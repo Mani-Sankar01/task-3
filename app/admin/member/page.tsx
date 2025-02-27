@@ -113,12 +113,17 @@ const page = () => {
 
   // Navigate to member details
   const viewMemberDetails = (memberId: string) => {
-    router.push(`/admin/memberships/${memberId}`);
+    router.push(`/membership-details?id=${memberId}`);
+  };
+
+  // Navigate to add new member
+  const addNewMember = () => {
+    router.push("/add-member");
   };
 
   // Navigate to edit member
   const editMember = (memberId: string) => {
-    router.push(`/admin/memberships/add?id=${memberId}&edit=true`);
+    router.push(`/add-member?id=${memberId}&edit=true`);
   };
 
   // Delete a member
@@ -152,7 +157,7 @@ const page = () => {
                 Manage all organization memberships
               </CardDescription>
             </div>
-            <Link href={"/admin/memberships/add"}>
+            <Link href={"/admin/add-member"}>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Add Member
               </Button>
@@ -231,11 +236,9 @@ const page = () => {
                       <TableRow
                         key={member.id}
                         className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => viewMemberDetails(member.id)}
                       >
-                        <TableCell
-                          className="font-medium"
-                          onClick={() => viewMemberDetails(member.id)}
-                        >
+                        <TableCell className="font-medium">
                           {member.id}
                         </TableCell>
                         <TableCell>
@@ -273,17 +276,21 @@ const page = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem>
-                                <Link href={`/admin/memberships/${member.id}`}>
-                                  View Details
-                                </Link>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  viewMemberDetails(member.id);
+                                }}
+                              >
+                                View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link
-                                  href={`/admin/memberships/add?id=${member.id}&edit=true`}
-                                >
-                                  Edit Member
-                                </Link>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  editMember(member.id);
+                                }}
+                              >
+                                Edit Member
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
