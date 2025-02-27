@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState, useEffect } from "react";
@@ -357,46 +357,60 @@ const page = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <SidebarInset>
-        <Header breadcrumbs={[{ label: "Add Memberships" }]} />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
-          <p className="mt-4 text-muted-foreground">Loading member data...</p>
-        </div>
-      </SidebarInset>
-    );
-  }
+  //   if (isLoading) {
+  //     return (
+  //       <SidebarInset>
+  //         <Header breadcrumbs={[{ label: "Add Memberships" }]} />
+  //         <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
+  //           <p className="mt-4 text-muted-foreground">Loading member data...</p>
+  //         </div>
+  //       </SidebarInset>
+  //     );
+  //   }
 
   return (
-    <SidebarInset>
-      <Header
-        breadcrumbs={
-          isEditMode
-            ? [{ label: "Add Memberships" }]
-            : [{ label: "Add Memberships" }]
-        }
-      />
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
+    <Suspense
+      fallback={
         <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">
-              {isEditMode ? "Edit Member Details" : "Add New Member"}
-            </CardTitle>
-            <CardDescription>
-              {isEditMode
-                ? "Update member information by completing all required fields"
-                : "Complete all steps to register a new member"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Step Indicator */}
-            <div className="mb-8">
-              <div className="flex justify-between">
-                {Array.from({ length: totalSteps }).map((_, index) => (
-                  <div key={index} className="flex flex-col items-center">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 
+          <CardContent className="pt-6">
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">Loading...</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      }
+    >
+      <SidebarInset>
+        <Header
+          breadcrumbs={
+            isEditMode
+              ? [{ label: "Add Memberships" }]
+              : [{ label: "Add Memberships" }]
+          }
+        />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl">
+                {isEditMode ? "Edit Member Details" : "Add New Member"}
+              </CardTitle>
+              <CardDescription>
+                {isEditMode
+                  ? "Update member information by completing all required fields"
+                  : "Complete all steps to register a new member"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Step Indicator */}
+              <div className="mb-8">
+                <div className="flex justify-between">
+                  {Array.from({ length: totalSteps }).map((_, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 
                       ${
                         currentStep > index + 1
                           ? "bg-primary border-primary text-primary-foreground"
@@ -404,87 +418,92 @@ const page = () => {
                           ? "border-primary text-primary"
                           : "border-muted text-muted-foreground"
                       }`}
-                    >
-                      {currentStep > index + 1 ? (
-                        <Check className="h-5 w-5" />
-                      ) : (
-                        <span>{index + 1}</span>
-                      )}
-                    </div>
-                    <span
-                      className={`text-xs mt-1 text-center max-w-[80px] 
+                      >
+                        {currentStep > index + 1 ? (
+                          <Check className="h-5 w-5" />
+                        ) : (
+                          <span>{index + 1}</span>
+                        )}
+                      </div>
+                      <span
+                        className={`text-xs mt-1 text-center max-w-[80px] 
                     ${
                       currentStep >= index + 1
                         ? "text-primary"
                         : "text-muted-foreground"
                     }`}
-                    >
-                      {index === 0 && "Personal & Business"}
-                      {index === 1 && "Operation Details"}
-                      {index === 2 && "Compliance & Legal"}
-                      {index === 3 && "Membership & Docs"}
-                      {index === 4 && "Proposer & Declaration"}
-                    </span>
-                  </div>
-                ))}
+                      >
+                        {index === 0 && "Personal & Business"}
+                        {index === 1 && "Operation Details"}
+                        {index === 2 && "Compliance & Legal"}
+                        {index === 3 && "Membership & Docs"}
+                        {index === 4 && "Proposer & Declaration"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="relative mt-2">
+                  <div className="absolute top-0 left-0 h-1 bg-muted w-full"></div>
+                  <div
+                    className="absolute top-0 left-0 h-1 bg-primary transition-all"
+                    style={{
+                      width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
+                    }}
+                  ></div>
+                </div>
               </div>
-              <div className="relative mt-2">
-                <div className="absolute top-0 left-0 h-1 bg-muted w-full"></div>
-                <div
-                  className="absolute top-0 left-0 h-1 bg-primary transition-all"
-                  style={{
-                    width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%`,
-                  }}
-                ></div>
-              </div>
-            </div>
 
-            {/* Form Steps */}
-            <FormProvider {...methods}>
-              <form onSubmit={methods.handleSubmit(onSubmit)}>
-                {currentStep === 1 && <Step1PersonalBusiness />}
-                {currentStep === 2 && <Step2OperationDetails />}
-                {currentStep === 3 && <Step3ComplianceLegal />}
-                {currentStep === 4 && <Step4MembershipDocs />}
-                {currentStep === 5 && <Step5ProposerDeclaration />}
-              </form>
-            </FormProvider>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={prevStep}
-              disabled={currentStep === 1 || isSubmitting}
-            >
-              Previous
-            </Button>
-
-            {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep} disabled={isSubmitting}>
-                Next <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
+              {/* Form Steps */}
+              <FormProvider {...methods}>
+                <form onSubmit={methods.handleSubmit(onSubmit)}>
+                  {currentStep === 1 && <Step1PersonalBusiness />}
+                  {currentStep === 2 && <Step2OperationDetails />}
+                  {currentStep === 3 && <Step3ComplianceLegal />}
+                  {currentStep === 4 && <Step4MembershipDocs />}
+                  {currentStep === 5 && <Step5ProposerDeclaration />}
+                </form>
+              </FormProvider>
+            </CardContent>
+            <CardFooter className="flex justify-between">
               <Button
-                onClick={methods.handleSubmit(onSubmit)}
-                disabled={isSubmitting}
+                type="button"
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1 || isSubmitting}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEditMode ? "Updating" : "Submitting"}
-                  </>
-                ) : isEditMode ? (
-                  "Update Member"
-                ) : (
-                  "Submit Application"
-                )}
+                Previous
               </Button>
-            )}
-          </CardFooter>
-        </Card>
-      </div>
-    </SidebarInset>
+
+              {currentStep < totalSteps ? (
+                <Button
+                  type="button"
+                  onClick={nextStep}
+                  disabled={isSubmitting}
+                >
+                  Next <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={methods.handleSubmit(onSubmit)}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isEditMode ? "Updating" : "Submitting"}
+                    </>
+                  ) : isEditMode ? (
+                    "Update Member"
+                  ) : (
+                    "Submit Application"
+                  )}
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </div>
+      </SidebarInset>
+    </Suspense>
   );
 };
 
