@@ -11,12 +11,14 @@ import {
   Check,
   ChevronRight,
   ChevronsUpDown,
+  CircleAlert,
   Dices,
   GalleryVerticalEnd,
   IndianRupee,
   ListTodoIcon,
   PlusSquare,
   SquareKanban,
+  UserIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -50,7 +52,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 const data = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
+  versions: ["Admin", "TSMWA", "TQMA"],
   navMain: [
     {
       title: "Platform",
@@ -88,34 +90,24 @@ const data = {
           icon: UsersIcon,
         },
         {
-          title: "Fees",
+          title: "Membership Fees",
           url: "/admin/memberships/Fees",
           icon: IndianRupee,
-        },
-        {
-          title: "Add Member",
-          url: "/admin/memberships/add",
-          icon: PlusSquare,
         },
       ],
     },
 
-    {
-      title: "Products",
-      url: "/dashboard/products",
-      items: [
-        {
-          title: "All Products",
-          url: "/dashboard/products",
-          icon: Dices,
-        },
-        {
-          title: "Add Product",
-          url: "/products/add",
-          icon: PlusSquare,
-        },
-      ],
-    },
+    // {
+    //   title: "Products",
+    //   url: "/dashboard/products",
+    //   items: [
+    //     {
+    //       title: "All Products",
+    //       url: "/dashboard/products",
+    //       icon: Dices,
+    //     },
+    //   ],
+    // },
     {
       title: "GST Filling",
       url: "#",
@@ -138,7 +130,7 @@ const data = {
       items: [
         {
           title: "All Meetings",
-          url: "/meetings",
+          url: "/admin/meetings",
           icon: CalendarDays,
         },
         {
@@ -154,18 +146,13 @@ const data = {
       items: [
         {
           title: "All Vehicle",
-          url: "/Vehicle",
+          url: "/admin/vehicle",
           icon: CalendarDays,
         },
         {
           title: "Fees",
-          url: "/Vehicle/Fees",
+          url: "/admin/vehicle/Fees",
           icon: IndianRupee,
-        },
-        {
-          title: "Add Vehicle",
-          url: "/Vehicle/add",
-          icon: PlusSquare,
         },
       ],
     },
@@ -197,11 +184,11 @@ export default function Layout({
                     className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   >
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground">
-                      <GalleryVerticalEnd className="size-4" />
+                      <UserIcon className="size-4" />
                     </div>
                     <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="font-semibold">Documentation</span>
-                      <span className="">v{selectedVersion}</span>
+                      <span className="font-semibold">Mani Sankar</span>
+                      <span className="">{selectedVersion}</span>
                     </div>
                     <ChevronsUpDown className="ml-auto" />
                   </SidebarMenuButton>
@@ -215,7 +202,7 @@ export default function Layout({
                       key={version}
                       onSelect={() => setSelectedVersion(version)}
                     >
-                      v{version}{" "}
+                      {version}{" "}
                       {version === selectedVersion && (
                         <Check className="ml-auto" />
                       )}

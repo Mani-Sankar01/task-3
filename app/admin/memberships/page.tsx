@@ -280,7 +280,7 @@ const page = () => {
                               </DropdownMenuItem>
                               <DropdownMenuItem>
                                 <Link
-                                  href={`/admin/memberships/add?id=${member.id}&edit=true`}
+                                  href={`/admin/memberships/${member.id}/edit`}
                                 >
                                   Edit Member
                                 </Link>

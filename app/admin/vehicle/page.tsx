@@ -33,32 +33,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getAllMembers, type Member, deleteMember } from "@/data/members";
+import { getAllVehicles, type Vehicle } from "@/data/vehicles";
 import Link from "next/link";
 
 const page = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof Member | null>(null);
+  const [sortField, setSortField] = useState<keyof Vehicle | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [members, setMembers] = useState(() => getAllMembers());
+  const [vehicle, setVehivles] = useState(() => getAllVehicles());
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Number of items to show per page
 
   // Filter members based on search term
-  const filteredMembers = members.filter(
-    (member) =>
-      member.memberDetails.applicantName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      member.firmDetails.firmName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      member.id.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredVehicles = vehicle.filter(
+    (vehicle) =>
+      vehicle.plateNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.route.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      vehicle.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Sort members if a sort field is selected
-  const sortedMembers = [...filteredMembers].sort((a, b) => {
+  const sortedVehicle = [...filteredVehicles].sort((a, b) => {
     if (!sortField) return 0;
 
     let valueA, valueB;
@@ -66,18 +62,6 @@ const page = () => {
     if (sortField === "id") {
       valueA = a.id;
       valueB = b.id;
-    } else if (sortField === "memberDetails") {
-      valueA = a.memberDetails.applicantName;
-      valueB = b.memberDetails.applicantName;
-    } else if (sortField === "firmDetails") {
-      valueA = a.firmDetails.firmName;
-      valueB = b.firmDetails.firmName;
-    } else if (sortField === "status") {
-      valueA = a.status;
-      valueB = b.status;
-    } else if (sortField === "joinDate") {
-      valueA = new Date(a.joinDate).getTime();
-      valueB = new Date(b.joinDate).getTime();
     } else {
       return 0;
     }
@@ -92,16 +76,16 @@ const page = () => {
   });
 
   // Paginate the sorted members
-  const paginatedMembers = sortedMembers.slice(
+  const paginatedMembers = sortedVehicle.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
   // Calculate total pages
-  const totalPages = Math.ceil(sortedMembers.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedVehicle.length / itemsPerPage);
 
   // Handle sorting
-  const handleSort = (field: keyof Member) => {
+  const handleSort = (field: keyof Vehicle) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -111,21 +95,6 @@ const page = () => {
     setCurrentPage(1); // Reset to first page when sorting changes
   };
 
-  // Navigate to member details
-  const viewMemberDetails = (memberId: string) => {
-    router.push(`/membership-details?id=${memberId}`);
-  };
-
-  // Navigate to add new member
-  const addNewMember = () => {
-    router.push("/add-member");
-  };
-
-  // Navigate to edit member
-  const editMember = (memberId: string) => {
-    router.push(`/add-member?id=${memberId}&edit=true`);
-  };
-
   // Delete a member
   const handleDeleteMember = (memberId: string) => {
     if (
@@ -133,13 +102,12 @@ const page = () => {
         "Are you sure you want to delete this member? This action cannot be undone."
       )
     ) {
-      deleteMember(memberId);
-      setMembers(getAllMembers());
+      setVehivles(getAllVehicles());
 
       // If we're on a page that would now be empty, go back one page
       if (
         currentPage > 1 &&
-        (currentPage - 1) * itemsPerPage >= sortedMembers.length - 1
+        (currentPage - 1) * itemsPerPage >= sortedVehicle.length - 1
       ) {
         setCurrentPage(currentPage - 1);
       }
@@ -147,19 +115,17 @@ const page = () => {
   };
   return (
     <SidebarInset>
-      <Header breadcrumbs={[{ label: "All Memberships" }]} />
+      <Header breadcrumbs={[{ label: "All Vehicles" }]} />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
             <div>
-              <CardTitle className="text-2xl">Memberships</CardTitle>
-              <CardDescription>
-                Manage all organization memberships
-              </CardDescription>
+              <CardTitle className="text-2xl">All Vehicles</CardTitle>
+              <CardDescription>Manage all vehicles details</CardDescription>
             </div>
-            <Link href={"/admin/add-member"}>
+            <Link href={"/admin/memberships/add"}>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Member
+                <Plus className="mr-2 h-4 w-4" /> Add Vehicle
               </Button>
             </Link>
           </CardHeader>
@@ -168,7 +134,7 @@ const page = () => {
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, firm or ID..."
+                  placeholder="Search by number, route or ID..."
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => {
@@ -193,12 +159,22 @@ const page = () => {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
+
                     <TableHead>
                       <Button
                         variant="ghost"
                         className="flex items-center p-0 h-auto font-medium"
                       >
-                        Member Name
+                        Vehicle No
+                      </Button>
+                    </TableHead>
+
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center p-0 h-auto font-medium"
+                      >
+                        Driver
                       </Button>
                     </TableHead>
                     <TableHead>
@@ -206,7 +182,15 @@ const page = () => {
                         variant="ghost"
                         className="flex items-center p-0 h-auto font-medium"
                       >
-                        Firm Name
+                        Contact
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        className="flex items-center p-0 h-auto font-medium"
+                      >
+                        Route
                       </Button>
                     </TableHead>
                     <TableHead className="hidden md:table-cell">
@@ -220,7 +204,6 @@ const page = () => {
                     <TableHead className="hidden md:table-cell">
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort("joinDate")}
                         className="flex items-center p-0 h-auto font-medium"
                       >
                         Join Date
@@ -232,35 +215,37 @@ const page = () => {
                 </TableHeader>
                 <TableBody>
                   {paginatedMembers.length > 0 ? (
-                    paginatedMembers.map((member) => (
+                    paginatedMembers.map((vehicle) => (
                       <TableRow
-                        key={member.id}
+                        key={vehicle.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => viewMemberDetails(member.id)}
                       >
                         <TableCell className="font-medium">
-                          {member.id}
+                          {vehicle.id}
                         </TableCell>
-                        <TableCell>
-                          {member.memberDetails.applicantName}
-                        </TableCell>
-                        <TableCell>{member.firmDetails.firmName}</TableCell>
+
+                        <TableCell>{vehicle.plateNumber}</TableCell>
+                        <TableCell>{vehicle.driver}</TableCell>
+                        <TableCell>{vehicle.contactNumber}</TableCell>
+                        <TableCell>{vehicle.route}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge
                             variant={
-                              member.status === "active"
+                              vehicle.status === "active"
                                 ? "default"
-                                : member.status === "pending"
+                                : vehicle.status === "pending"
                                 ? "secondary"
                                 : "destructive"
                             }
                           >
-                            {member.status.charAt(0).toUpperCase() +
-                              member.status.slice(1)}
+                            {vehicle.status.charAt(0).toUpperCase() +
+                              vehicle.status.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {new Date(member.joinDate).toLocaleDateString()}
+                          {new Date(
+                            vehicle.registrationDate
+                          ).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -276,30 +261,31 @@ const page = () => {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  viewMemberDetails(member.id);
-                                }}
-                              >
-                                View Details
+                              <DropdownMenuItem>
+                                <Link href={`/admin/memberships/${vehicle.id}`}>
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Link href={`/admin/memberships/${vehicle.id}`}>
+                                  Add Trip
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Link
+                                  href={`/admin/memberships/add?id=${vehicle.id}&edit=true`}
+                                >
+                                  Edit Vehicle
+                                </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem
+                                className="text-destructive focus:text-destructive cursor-pointer"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  editMember(member.id);
+                                  handleDeleteMember(vehicle.id);
                                 }}
                               >
-                                Edit Member
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteMember(member.id);
-                                }}
-                              >
-                                Delete Member
+                                Delete Vehicle
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -309,7 +295,7 @@ const page = () => {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={6} className="h-24 text-center">
-                        No members found.
+                        No Vehicle found.
                       </TableCell>
                     </TableRow>
                   )}
@@ -319,7 +305,7 @@ const page = () => {
 
             <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
-                Showing {paginatedMembers.length} of {sortedMembers.length}{" "}
+                Showing {paginatedMembers.length} of {sortedVehicle.length}{" "}
                 members
               </p>
               <div className="flex items-center space-x-2">

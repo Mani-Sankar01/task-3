@@ -86,7 +86,7 @@ const formSchema = z.object({
         z.object({
           name: z.string(),
           aadharNumber: z.string(),
-          photo: z.any().nullable(),
+          photo: z.string().nullable().default(null),
         })
       )
       .default([]),
@@ -326,7 +326,7 @@ const AddMember = ({
   };
 
   // Helper function to determine which fields to validate for each step
-  const getFieldsToValidateForStep = (step: number) => {
+  const getFieldsToValidateForStep = (step: number): (keyof FormValues)[] => {
     switch (step) {
       case 1:
         return [
