@@ -19,6 +19,9 @@ import {
   PlusSquare,
   SquareKanban,
   UserIcon,
+  UserRoundCogIcon,
+  UserRoundX,
+  Users2,
   UsersIcon,
 } from "lucide-react";
 
@@ -153,6 +156,17 @@ const data = {
           title: "Fees",
           url: "/admin/vehicle/Fees",
           icon: IndianRupee,
+        },
+      ],
+    },
+    {
+      title: "Labours",
+      url: "#",
+      items: [
+        {
+          title: "All Labours",
+          url: "/admin/labours",
+          icon: Users2,
         },
       ],
     },

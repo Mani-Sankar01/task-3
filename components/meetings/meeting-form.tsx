@@ -558,7 +558,7 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
                               control={form.control}
                               name={`followUps.${index}.time`}
                               render={({ field }) => (
-                                <FormItem>
+                                <FormItem className="flex flex-col">
                                   <FormLabel>Follow-up Time</FormLabel>
                                   <FormControl>
                                     <Input type="time" {...field} />
@@ -571,9 +571,9 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
 
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="destructive"
                             size="sm"
-                            className="mt-8"
+                            className="mt-4"
                             onClick={() => {
                               const followUps =
                                 form.getValues("followUps") || [];
