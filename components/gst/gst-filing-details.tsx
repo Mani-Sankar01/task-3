@@ -69,12 +69,7 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
   return (
     <div className="container">
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Button variant="outline" onClick={handleBack} className="mr-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-          <h1 className="text-2xl font-bold">GST Filing Details</h1>
-        </div>
+        <h1 className="text-2xl font-bold">GST Filing Details</h1>
         <Button onClick={handleEdit}>
           <Edit className="mr-2 h-4 w-4" /> Edit Filing
         </Button>
@@ -152,44 +147,6 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
                     {new Date(filing.updatedAt).toLocaleDateString()}
                   </span>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
-            <CardDescription>
-              GST filing summary for this member
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="bg-muted p-4 rounded-md">
-                <h3 className="font-medium mb-2">Total Filings</h3>
-                <p className="text-2xl font-bold">{statistics.totalFilings}</p>
-                <p className="text-sm text-muted-foreground">
-                  {statistics.filledFilings} filled, {statistics.pendingFilings}{" "}
-                  pending, {statistics.dueFilings} due
-                </p>
-              </div>
-              <div className="bg-muted p-4 rounded-md">
-                <h3 className="font-medium mb-2">Total Taxable Amount</h3>
-                <p className="text-2xl font-bold">
-                  ₹{statistics.totalTaxableAmount.toLocaleString()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Across all filings
-                </p>
-              </div>
-              <div className="bg-muted p-4 rounded-md">
-                <h3 className="font-medium mb-2">Total GST Paid</h3>
-                <p className="text-2xl font-bold">
-                  ₹{statistics.totalTaxAmount.toLocaleString()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  18% of taxable amount
-                </p>
               </div>
             </div>
           </CardContent>

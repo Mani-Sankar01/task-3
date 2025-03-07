@@ -406,27 +406,29 @@ export default function GstFilingForm({
                           />
                         </div>
 
-                        <div className="flex justify-between">
-                          <FormField
-                            control={form.control}
-                            name={`gstItems.${index}.taxableAmount`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Taxable Amount (₹)</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="Enter taxable amount"
-                                    {...field}
-                                    onChange={(e) =>
-                                      field.onChange(Number(e.target.value))
-                                    }
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
+                        <div className="flex gap-4 justify-between items-center">
+                          <div className="flex-1">
+                            <FormField
+                              control={form.control}
+                              name={`gstItems.${index}.taxableAmount`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Taxable Amount (₹)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="Enter taxable amount"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(Number(e.target.value))
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
                           {fields.length > 1 && (
                             <Button
                               type="button"

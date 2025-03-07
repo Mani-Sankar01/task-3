@@ -55,6 +55,7 @@ import {
   type GstFilingStatus,
 } from "@/data/gst-filings";
 import { getMemberOptions } from "@/data/gst-filings";
+import Link from "next/link";
 
 export default function GstFilingsList() {
   const router = useRouter();
@@ -250,9 +251,11 @@ export default function GstFilingsList() {
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button onClick={addNewFiling}>
-              <Plus className="mr-2 h-4 w-4" /> Add GST Filing
-            </Button>
+            <Link href={"/admin/gst-filings/add"}>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Add GST Filing
+              </Button>
+            </Link>
             <Button variant="outline" onClick={resetFilters}>
               Reset Filters
             </Button>
