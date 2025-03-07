@@ -8,6 +8,16 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { read } from "fs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Link from "next/link";
+import { BarChart3, Layers, Users } from "lucide-react";
 
 const prisma = new PrismaClient();
 
@@ -28,110 +38,79 @@ export default async function Home() {
     redirect("/tsmwa");
   }
 
-  // const readings = await prisma.meterReading.findMany({
-  //   orderBy: {
-  //     date: "asc",
-  //   },
-  // });
-
-  const readings = [
-    {
-      id: "1",
-      meterId: "MET459",
-      name: "Charlie Davis",
-      email: "user1730813275123@example.com",
-      date: new Date(),
-      status: "FAILED",
-      price: 351,
-    },
-    {
-      id: "2",
-      meterId: "MET794",
-      name: "John Doe",
-      email: "user1730813350120@example.com",
-      date: new Date(),
-      status: "ACTIVE",
-      price: 965,
-    },
-    {
-      id: "3",
-      meterId: "MET845",
-      name: "John Doe",
-      email: "user1730813353495@example.com",
-      date: new Date(),
-      status: "ACTIVE",
-      price: 129,
-    },
-    {
-      id: "4",
-      meterId: "MET024",
-      name: "Alice Brown",
-      email: "user1730816428256@example.com",
-      date: new Date(),
-      status: "INACTIVE",
-      price: 232,
-    },
-    {
-      id: "5",
-      meterId: "MET382",
-      name: "Bob Johnson",
-      email: "user1730818830359@example.com",
-      date: new Date(),
-      status: "FAILED",
-      price: 242,
-    },
-    {
-      id: "6",
-      meterId: "MET783",
-      name: "Jane Smith",
-      email: "user1730823161952@example.com",
-      date: new Date(),
-      status: "CANCELLED",
-      price: 841,
-    },
-    {
-      id: "7",
-      meterId: "MET362",
-      name: "Bob Johnson",
-      email: "user1731923150817@example.com",
-      date: new Date(),
-      status: "ACTIVE",
-      price: 252,
-    },
-  ];
-
-  console.log(readings);
-
-  const formattedReadings = readings.map((reading) => ({
-    ...reading,
-    date: reading.date.toISOString().split("T")[0], // Format date as YYYY-MM-DD
-    status: reading.status.toLowerCase() as
-      | "active"
-      | "inactive"
-      | "cancelled"
-      | "failed",
-  }));
-
   return (
-    <div>
-      <div>
-        <a href="/admin">
-          <Button>Admin</Button>
-        </a>
-        <a href="/twwa">
-          <Button>Twwa</Button>
-        </a>
-        <a href="/tsmwa">
-          <Button>TSMWA</Button>
-        </a>
-      </div>
-      <div className="flex justify-center gap-x-2  mt-2 ">
-        <h2 className="text-2xl"> Click the button to add a new data </h2>
-        <AddReadingButton />
-        <AuthButton />
+    <div className="container mx-auto py-10 px-4">
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Select Your Dashboard
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Choose one of the following options to continue
+        </p>
       </div>
 
-      <FilterableTable2 initialData={formattedReadings} />
+      <div className="flex flex-wrap justify-center gap-6">
+        {/* Admin Dashboard Card */}
+        <Link href="/admin" className="block w-[300px]">
+          <Card className="h-full transition-all hover:shadow-lg hover:border-primary">
+            <CardHeader className="text-center pb-2">
+              <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <BarChart3 className="h-10 w-10 text-primary" />
+              </div>
+              <CardTitle>Admin Dashboard</CardTitle>
+              <CardDescription>
+                Manage users, content and settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p>
+                Complete administrative control with analytics, user management,
+                and system configuration.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* TSMWA Card */}
+        <Link href="/tsmwa" className="block w-[300px]">
+          <Card className="h-full transition-all hover:shadow-lg hover:border-primary">
+            <CardHeader className="text-center pb-2">
+              <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Layers className="h-10 w-10 text-primary" />
+              </div>
+              <CardTitle>TSMWA</CardTitle>
+              <CardDescription>
+                Technical System Management Web Application
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p>
+                Access technical controls, system configurations, and advanced
+                management features.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* TWWA Card */}
+        <Link href="/twwa" className="block w-[300px]">
+          <Card className="h-full transition-all hover:shadow-lg hover:border-primary">
+            <CardHeader className="text-center pb-2">
+              <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Users className="h-10 w-10 text-primary" />
+              </div>
+              <CardTitle>TWWA</CardTitle>
+              <CardDescription>Team Workspace Web Application</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <p>
+                Collaborate with your team, manage projects, and track progress
+                in a unified workspace.
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }
