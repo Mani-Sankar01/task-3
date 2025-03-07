@@ -1,16 +1,21 @@
-
+"use client";
 import Header from "@/components/header";
 import { SidebarInset } from "@/components/ui/sidebar";
 import React from "react";
 import {
   CalendarDays,
   CreditCard,
+  DeleteIcon,
+  Edit2,
   FileText,
   History,
   LayoutDashboard,
   CopyrightIcon as License,
   WashingMachineIcon as Machinery,
+  MoreHorizontal,
   PackageIcon as Product,
+  Trash2,
+  UsersIcon,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,10 +39,24 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getMemberById, addMember, updateMember } from "@/data/members";
 import Link from "next/link";
+import {
+  getGstFilingsByMembershipId,
+  getGstFilingStatistics,
+} from "@/data/gst-filings";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@radix-ui/react-dropdown-menu";
 
 const page = async ({ params }: { params: Promise<{ id: string }> }) => {
   const memberId = (await params).id;
   const member = getMemberById(memberId);
+  const gstFilling = getGstFilingsByMembershipId(memberId);
+  const statistics = getGstFilingStatistics(memberId);
 
   return (
     <SidebarInset>
@@ -74,16 +93,13 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                 <LayoutDashboard className="h-4 w-4" />
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center gap-2">
-                <History className="h-4 w-4" />
-                History
-              </TabsTrigger>
+
               <TabsTrigger
                 value="transactions"
                 className="flex items-center gap-2"
               >
                 <CreditCard className="h-4 w-4" />
-                Transactions
+                Membership Fees
               </TabsTrigger>
               <TabsTrigger value="gst" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
@@ -103,6 +119,10 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
               <TabsTrigger value="products" className="flex items-center gap-2">
                 <Product className="h-4 w-4" />
                 Products
+              </TabsTrigger>
+              <TabsTrigger value="labors" className="flex items-center gap-2">
+                <UsersIcon className="h-4 w-4" />
+                Labors
               </TabsTrigger>
             </TabsList>
 
@@ -224,19 +244,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                           date: "2024-01-10",
                           description: "Monthly Membership Fee",
                           amount: "$199.00",
-                          status: "Completed",
-                        },
-                        {
-                          date: "2024-01-05",
-                          description: "License Renewal",
-                          amount: "$299.00",
-                          status: "Completed",
-                        },
-                        {
-                          date: "2023-12-28",
-                          description: "Late Fee",
-                          amount: "$25.00",
-                          status: "Pending",
+                          status: "Paid",
                         },
                       ].map((transaction, index) => (
                         <TableRow key={index}>
@@ -246,7 +254,7 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                           <TableCell>
                             <Badge
                               variant={
-                                transaction.status === "Completed"
+                                transaction.status === "Paid"
                                   ? "default"
                                   : "secondary"
                               }
@@ -263,7 +271,48 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
             </TabsContent>
 
             <TabsContent value="gst">
-              <Card>
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle>Summary</CardTitle>
+                  <CardDescription>
+                    GST filing summary for this member
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="bg-muted p-4 rounded-md">
+                      <h3 className="font-medium mb-2">Total Filings</h3>
+                      <p className="text-2xl font-bold">
+                        {statistics.totalFilings}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {statistics.filledFilings} filled,{" "}
+                        {statistics.pendingFilings} pending,{" "}
+                        {statistics.dueFilings} due
+                      </p>
+                    </div>
+                    <div className="bg-muted p-4 rounded-md">
+                      <h3 className="font-medium mb-2">Total Taxable Amount</h3>
+                      <p className="text-2xl font-bold">
+                        ₹{statistics.totalTaxableAmount.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Across all filings
+                      </p>
+                    </div>
+                    <div className="bg-muted p-4 rounded-md">
+                      <h3 className="font-medium mb-2">Total GST Paid</h3>
+                      <p className="text-2xl font-bold">
+                        ₹{statistics.totalTaxAmount.toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        18% of taxable amount
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="mt-4">
                 <CardHeader>
                   <CardTitle>GST Fillings</CardTitle>
                   <CardDescription>
@@ -274,48 +323,50 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>GST ID</TableHead>
                         <TableHead>Period</TableHead>
                         <TableHead>Filing Date</TableHead>
+                        <TableHead>Due Date</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead>Total Amount</TableHead>
+                        <TableHead>Total Tax Amount</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {[
-                        {
-                          period: "Q4 2023",
-                          date: "2024-01-15",
-                          status: "Pending",
-                          amount: "$1,234.56",
-                        },
-                        {
-                          period: "Q3 2023",
-                          date: "2023-10-15",
-                          status: "Completed",
-                          amount: "$987.65",
-                        },
-                        {
-                          period: "Q2 2023",
-                          date: "2023-07-15",
-                          status: "Completed",
-                          amount: "$876.54",
-                        },
-                      ].map((filing, index) => (
+                      {gstFilling.map((filing, index) => (
                         <TableRow key={index}>
-                          <TableCell>{filing.period}</TableCell>
-                          <TableCell>{filing.date}</TableCell>
+                          <TableCell>{filing.id}</TableCell>
+                          <TableCell>{filing.filingPeriod}</TableCell>
+                          <TableCell>{filing.filingDate}</TableCell>
+                          <TableCell>{filing.dueDate}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                filing.status === "Completed"
+                                filing.status === "filled"
                                   ? "default"
-                                  : "secondary"
+                                  : filing.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
                               }
                             >
                               {filing.status}
                             </Badge>
                           </TableCell>
-                          <TableCell>{filing.amount}</TableCell>
+                          <TableCell>{filing.totalAmount}</TableCell>
+                          <TableCell>{filing.totalTaxableAmount}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Link href={`/admin/gst-filings/${filing.id}`}>
+                                <Button>
+                                  <Edit2 />
+                                </Button>
+                              </Link>
+                              <Button variant={"destructive"}>
+                                <Trash2 />
+                              </Button>
+                            </div>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

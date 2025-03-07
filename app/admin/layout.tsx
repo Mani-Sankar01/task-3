@@ -117,7 +117,7 @@ const data = {
       items: [
         {
           title: "All Filling",
-          url: "/gst-filling",
+          url: "/admin/gst-filings",
           icon: SquareKanban,
         },
         {
