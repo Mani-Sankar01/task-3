@@ -48,11 +48,11 @@ export interface Member {
   labourDetails: {
     estimatedMaleWorkers: string;
     estimatedFemaleWorkers: string;
-    workers: Array<{
-      name: string;
-      aadharNumber: string;
-      photo: string | null;
-    }>;
+    // workers: Array<{
+    //   name: string;
+    //   aadharNumber: string;
+    //   photo: string | null;
+    // }>;
   };
   complianceDetails: {
     gstinNo: string;
@@ -160,18 +160,18 @@ export const members: Member[] = [
     labourDetails: {
       estimatedMaleWorkers: "15",
       estimatedFemaleWorkers: "10",
-      workers: [
-        {
-          name: "Robert Smith",
-          aadharNumber: "1234 5678 9012",
-          photo: "/placeholder.svg",
-        },
-        {
-          name: "Jane Wilson",
-          aadharNumber: "9876 5432 1098",
-          photo: "/placeholder.svg",
-        },
-      ],
+      // workers: [
+      //   {
+      //     name: "Robert Smith",
+      //     aadharNumber: "1234 5678 9012",
+      //     photo: "/placeholder.svg",
+      //   },
+      //   {
+      //     name: "Jane Wilson",
+      //     aadharNumber: "9876 5432 1098",
+      //     photo: "/placeholder.svg",
+      //   },
+      // ],
     },
     complianceDetails: {
       gstinNo: "27AAPFU0939F1ZV",
@@ -275,18 +275,18 @@ export const members: Member[] = [
     labourDetails: {
       estimatedMaleWorkers: "15",
       estimatedFemaleWorkers: "10",
-      workers: [
-        {
-          name: "Robert Smith",
-          aadharNumber: "1234 5678 9012",
-          photo: "/placeholder.svg",
-        },
-        {
-          name: "Jane Wilson",
-          aadharNumber: "9876 5432 1098",
-          photo: "/placeholder.svg",
-        },
-      ],
+      // workers: [
+      //   {
+      //     name: "Robert Smith",
+      //     aadharNumber: "1234 5678 9012",
+      //     photo: "/placeholder.svg",
+      //   },
+      //   {
+      //     name: "Jane Wilson",
+      //     aadharNumber: "9876 5432 1098",
+      //     photo: "/placeholder.svg",
+      //   },
+      // ],
     },
     complianceDetails: {
       gstinNo: "27AAPFU0939F1ZV",

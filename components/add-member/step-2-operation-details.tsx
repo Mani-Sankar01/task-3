@@ -1,40 +1,54 @@
-"use client"
+"use client";
 
-import { useFieldArray, useFormContext } from "react-hook-form"
-import { Plus, Trash2 } from "lucide-react"
+import { useFieldArray, useFormContext } from "react-hook-form";
+import { Plus, Trash2 } from "lucide-react";
 
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Step2OperationDetails() {
-  const { control, register, watch } = useFormContext()
+  const { control, register, watch } = useFormContext();
 
   // Machinery information field array
   const machineryArray = useFieldArray({
     control,
     name: "electricalDetails.machinery",
-  })
+  });
 
   // Branch details field array
   const branchArray = useFieldArray({
     control,
     name: "branchDetails.branches",
-  })
+  });
 
   // Labour details field array
   const labourArray = useFieldArray({
     control,
     name: "labourDetails.workers",
-  })
+  });
 
   return (
     <div className="space-y-8">
       {/* Section 1: Electrical & Power Details */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Electrical & Power Details</h3>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+          Electrical & Power Details
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <FormField
             control={control}
@@ -43,7 +57,11 @@ export default function Step2OperationDetails() {
               <FormItem>
                 <FormLabel>Sanctioned HP</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter sanctioned HP" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Enter sanctioned HP"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -58,7 +76,13 @@ export default function Step2OperationDetails() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => machineryArray.append({ name: "", quantity: "", chasisNumber: "" })}
+              onClick={() =>
+                machineryArray.append({
+                  name: "",
+                  quantity: "",
+                  chasisNumber: "",
+                })
+              }
             >
               <Plus className="h-4 w-4 mr-2" /> Add Machine
             </Button>
@@ -76,7 +100,10 @@ export default function Step2OperationDetails() {
                         <FormItem>
                           <FormLabel>Machine Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter machine name" {...field} />
+                            <Input
+                              placeholder="Enter machine name"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -90,7 +117,11 @@ export default function Step2OperationDetails() {
                         <FormItem>
                           <FormLabel>Quantity</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="Enter quantity" {...field} />
+                            <Input
+                              type="number"
+                              placeholder="Enter quantity"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -104,7 +135,10 @@ export default function Step2OperationDetails() {
                         <FormItem>
                           <FormLabel>Chassis Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter chassis number" {...field} />
+                            <Input
+                              placeholder="Enter chassis number"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -168,7 +202,10 @@ export default function Step2OperationDetails() {
                       <FormItem>
                         <FormLabel>Place of Business</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter business location" {...field} />
+                          <Input
+                            placeholder="Enter business location"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -181,7 +218,10 @@ export default function Step2OperationDetails() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Ownership Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select ownership type" />
@@ -198,22 +238,30 @@ export default function Step2OperationDetails() {
                     )}
                   />
 
-                  {watch(`branchDetails.branches.${index}.ownershipType`) === "owner" && (
+                  {watch(`branchDetails.branches.${index}.ownershipType`) ===
+                    "owner" && (
                     <FormField
                       control={control}
                       name={`branchDetails.branches.${index}.ownerSubType`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Owner Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select owner type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="own_business">Own Business</SelectItem>
-                              <SelectItem value="factory_on_lease">Factory on Lease</SelectItem>
+                              <SelectItem value="own_business">
+                                Own Business
+                              </SelectItem>
+                              <SelectItem value="factory_on_lease">
+                                Factory on Lease
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -243,7 +291,11 @@ export default function Step2OperationDetails() {
                       <FormItem>
                         <FormLabel>Sanctioned HP</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Enter sanctioned HP" {...field} />
+                          <Input
+                            type="number"
+                            placeholder="Enter sanctioned HP"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -274,7 +326,9 @@ export default function Step2OperationDetails() {
 
       {/* Section 3: Labour Details */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Labour Details</h3>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+          Labour Details
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <FormField
             control={control}
@@ -283,7 +337,11 @@ export default function Step2OperationDetails() {
               <FormItem>
                 <FormLabel>Estimated Male Workers</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter number of male workers" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Enter number of male workers"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -297,7 +355,11 @@ export default function Step2OperationDetails() {
               <FormItem>
                 <FormLabel>Estimated Female Workers</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="Enter number of female workers" {...field} />
+                  <Input
+                    type="number"
+                    placeholder="Enter number of female workers"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -305,7 +367,7 @@ export default function Step2OperationDetails() {
           />
         </div>
 
-        <div className="mb-4">
+        {/* <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-medium">Labour Details</h4>
             <Button
@@ -392,9 +454,8 @@ export default function Step2OperationDetails() {
               </p>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
-  )
+  );
 }
-

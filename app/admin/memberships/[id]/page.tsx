@@ -116,13 +116,10 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                 <Machinery className="h-4 w-4" />
                 Machineries
               </TabsTrigger>
-              <TabsTrigger value="products" className="flex items-center gap-2">
-                <Product className="h-4 w-4" />
-                Products
-              </TabsTrigger>
+
               <TabsTrigger value="labors" className="flex items-center gap-2">
                 <UsersIcon className="h-4 w-4" />
-                Labors
+                Labours
               </TabsTrigger>
             </TabsList>
 
@@ -510,103 +507,6 @@ const page = async ({ params }: { params: Promise<{ id: string }> }) => {
                       ))}
                     </TableBody>
                   </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="products">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle>Product Catalog</CardTitle>
-                    <CardDescription>
-                      Registered products and their details
-                    </CardDescription>
-                  </div>
-                  <Button>
-                    <Product className="h-4 w-4 mr-2" />
-                    Add Product
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {[
-                      {
-                        id: "PRD001",
-                        name: "Premium Widget X",
-                        category: "Electronics",
-                        status: "In Stock",
-                        quantity: 150,
-                        lastUpdated: "2024-01-10",
-                      },
-                      {
-                        id: "PRD002",
-                        name: "Super Gadget Y",
-                        category: "Accessories",
-                        status: "Low Stock",
-                        quantity: 25,
-                        lastUpdated: "2024-01-08",
-                      },
-                      {
-                        id: "PRD003",
-                        name: "Mega Tool Z",
-                        category: "Tools",
-                        status: "Out of Stock",
-                        quantity: 0,
-                        lastUpdated: "2024-01-05",
-                      },
-                    ].map((product) => (
-                      <Card key={product.id}>
-                        <CardHeader className="flex flex-row items-start justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-base">
-                              {product.name}
-                            </CardTitle>
-                            <CardDescription>ID: {product.id}</CardDescription>
-                          </div>
-                          <Badge
-                            variant={
-                              product.status === "In Stock"
-                                ? "default"
-                                : product.status === "Low Stock"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                          >
-                            {product.status}
-                          </Badge>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">
-                                Category:
-                              </span>
-                              <span className="text-sm font-medium">
-                                {product.category}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">
-                                Quantity:
-                              </span>
-                              <span className="text-sm font-medium">
-                                {product.quantity}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-sm text-muted-foreground">
-                                Last Updated:
-                              </span>
-                              <span className="text-sm font-medium">
-                                {product.lastUpdated}
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

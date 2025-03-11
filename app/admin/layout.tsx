@@ -165,7 +165,7 @@ const data = {
       items: [
         {
           title: "All Labours",
-          url: "/admin/labours",
+          url: "/admin/labour",
           icon: Users2,
         },
       ],
