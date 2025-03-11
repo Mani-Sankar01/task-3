@@ -7,6 +7,7 @@ import { Component1 } from "@/components/chart1";
 import { Component4 } from "@/components/chart4";
 import { Component3 } from "@/components/chart3";
 import { Component2 } from "@/components/component2";
+import { MonthlyTripStatusChart } from "@/components/vehicles/monthlyTripStatusChart";
 
 function page() {
   return (
@@ -26,6 +27,9 @@ function page() {
         </div>
         <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
           <Component4 />
+        </div>
+        <div>
+          <MonthlyTripStatusChart />
         </div>
       </div>
     </SidebarInset>

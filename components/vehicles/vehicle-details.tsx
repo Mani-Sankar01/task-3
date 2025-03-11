@@ -58,6 +58,8 @@ import {
   YAxis,
   Cell,
 } from "recharts";
+import { VehicleOverviewPaymentStatusCard } from "./vehicleOverviewPaymentStatusCard";
+import { MonthlyTripStatusChart } from "./monthlyTripStatusChart";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
@@ -297,6 +299,10 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
               </Card>
             </div>
 
+            <div className="mt-4">
+              <MonthlyTripStatusChart />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2 mt-4">
               <Card>
                 <CardHeader>
@@ -329,41 +335,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Payment Status Distribution</CardTitle>
-                  <CardDescription>
-                    Breakdown of trip payment statuses
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={statistics.paymentStatusData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) =>
-                          `${name}: ${(percent * 100).toFixed(0)}%`
-                        }
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {statistics.paymentStatusData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+              <VehicleOverviewPaymentStatusCard
+                totalAmountPaid={statistics.totalAmountPaid}
+                totalAmountToPay={statistics.totalAmountToPay}
+                totalDues={statistics.totalDues}
+              />
             </div>
           </TabsContent>
 
