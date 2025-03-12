@@ -3,36 +3,37 @@
 import React from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
-import { Component1 } from "@/components/chart1";
-import { Component4 } from "@/components/chart4";
-import { Component3 } from "@/components/chart3";
-import { Component2 } from "@/components/component2";
-import { MonthlyTripStatusChart } from "@/components/vehicles/monthlyTripStatusChart";
+import { Suspense } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+
+export const dynamic = "force-dynamic"; // This ensures the page is not statically generated
+import DashboardOverview from "@/components/dashboard/dashboard-overview";
 
 function page() {
   return (
-    <SidebarInset>
-      <Header breadcrumbs={[{ label: "Dashoard" }]} />
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
-        <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-          <div className="">
-            <Component1 />
-          </div>
-          <div className="">
-            <Component2 />
-          </div>
-          <div className="">
-            <Component3 />
-          </div>
+    <Suspense
+      fallback={
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">
+                  Loading dashboard...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      }
+    >
+      <SidebarInset>
+        <Header breadcrumbs={[{ label: "Dashoard" }]} />
+        <div className="flex flex-1 flex-col">
+          <DashboardOverview />
         </div>
-        <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min">
-          <Component4 />
-        </div>
-        <div>
-          <MonthlyTripStatusChart />
-        </div>
-      </div>
-    </SidebarInset>
+      </SidebarInset>
+    </Suspense>
   );
 }
 
