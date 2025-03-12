@@ -94,7 +94,7 @@ const data = {
         },
         {
           title: "Membership Fees",
-          url: "/admin/memberships/Fees",
+          url: "/admin/membership-fees",
           icon: IndianRupee,
         },
       ],
