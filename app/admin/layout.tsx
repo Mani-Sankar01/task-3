@@ -22,7 +22,9 @@ import {
   UserRoundCogIcon,
   UserRoundX,
   Users2,
+  Users2Icon,
   UsersIcon,
+  UsersRound,
 } from "lucide-react";
 
 import {
@@ -80,6 +82,11 @@ const data = {
           title: "Notifications",
           url: "/admin/notifications",
           icon: BellIcon,
+        },
+        {
+          title: "Users",
+          url: "/admin/users",
+          icon: UserRoundCogIcon,
         },
       ],
     },
