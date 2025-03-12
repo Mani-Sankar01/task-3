@@ -69,11 +69,6 @@ const data = {
           icon: SquareKanban,
         },
         {
-          title: "Transactions",
-          url: "/admin/transactions",
-          icon: IndianRupee,
-        },
-        {
           title: "Analytics",
           url: "/admin/admin/analytics",
           icon: ChartColumn,
