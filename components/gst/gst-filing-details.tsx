@@ -7,6 +7,7 @@ import {
   Edit,
   ArrowLeft,
   DollarSign,
+  FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,7 @@ import {
   getMemberNameById,
   getGstFilingStatistics,
 } from "@/data/gst-filings";
+import { generateGstInvoice } from "@/lib/invoice-generator";
 import {
   Bar,
   BarChart,
@@ -56,23 +58,37 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
   const statistics = getGstFilingStatistics(filing.membershipId);
 
   const handleEdit = () => {
-    router.push(`/admin/gst-filings/${filing.id}/edit`);
+    router.push(`/admin/gst-filings/edit/${filing.id}`);
   };
 
   const handleBack = () => {
     router.push("/admin/gst-filings");
   };
 
+  const handleGenerateInvoice = () => {
+    generateGstInvoice(filing, memberName);
+  };
+
   // Colors for the pie chart
   const COLORS = ["#0088FE", "#FFBB28", "#FF8042"];
 
   return (
-    <div className="container">
+    <div className="container mx-auto">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">GST Filing Details</h1>
-        <Button onClick={handleEdit}>
-          <Edit className="mr-2 h-4 w-4" /> Edit Filing
-        </Button>
+        <div className="flex items-center">
+          <Button variant="outline" onClick={handleBack} className="mr-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <h1 className="text-2xl font-bold">GST Filing Details</h1>
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleGenerateInvoice}>
+            <FileDown className="mr-2 h-4 w-4" /> Generate Invoice
+          </Button>
+          <Button onClick={handleEdit}>
+            <Edit className="mr-2 h-4 w-4" /> Edit Filing
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -152,10 +168,11 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="analytics" className="space-y-4">
+        <Tabs defaultValue="items" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="items">GST Items</TabsTrigger>
+            <TabsTrigger value="history">Filing History</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="items">
@@ -213,6 +230,73 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
                   </div>
                 </CardFooter>
               )}
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="history">
+            <Card>
+              <CardHeader>
+                <CardTitle>Filing History</CardTitle>
+                <CardDescription>
+                  History of all GST filings for this member
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Period</TableHead>
+                      <TableHead>Filing Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">
+                        Taxable Amount (₹)
+                      </TableHead>
+                      <TableHead className="text-right">
+                        GST Amount (₹)
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {statistics.filingsByPeriod.map((periodFiling, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">
+                          {periodFiling.period}
+                        </TableCell>
+                        <TableCell>
+                          {periodFiling.period === filing.filingPeriod &&
+                          filing.filingDate
+                            ? new Date(filing.filingDate).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              periodFiling.period === filing.filingPeriod
+                                ? filing.status === "filled"
+                                  ? "default"
+                                  : filing.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {periodFiling.period === filing.filingPeriod
+                              ? filing.status.charAt(0).toUpperCase() +
+                                filing.status.slice(1)
+                              : "N/A"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {periodFiling.taxableAmount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {periodFiling.taxAmount.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
             </Card>
           </TabsContent>
 
@@ -291,6 +375,48 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle>Summary</CardTitle>
+                <CardDescription>
+                  GST filing summary for this member
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="bg-muted p-4 rounded-md">
+                    <h3 className="font-medium mb-2">Total Filings</h3>
+                    <p className="text-2xl font-bold">
+                      {statistics.totalFilings}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {statistics.filledFilings} filled,{" "}
+                      {statistics.pendingFilings} pending,{" "}
+                      {statistics.dueFilings} due
+                    </p>
+                  </div>
+                  <div className="bg-muted p-4 rounded-md">
+                    <h3 className="font-medium mb-2">Total Taxable Amount</h3>
+                    <p className="text-2xl font-bold">
+                      ₹{statistics.totalTaxableAmount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Across all filings
+                    </p>
+                  </div>
+                  <div className="bg-muted p-4 rounded-md">
+                    <h3 className="font-medium mb-2">Total GST Paid</h3>
+                    <p className="text-2xl font-bold">
+                      ₹{statistics.totalTaxAmount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      18% of taxable amount
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

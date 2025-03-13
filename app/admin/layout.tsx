@@ -70,7 +70,7 @@ const data = {
         },
         {
           title: "Analytics",
-          url: "/admin/admin/analytics",
+          url: "/admin/analytics",
           icon: ChartColumn,
         },
         {
