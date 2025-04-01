@@ -1,29 +1,37 @@
-"use client"
+"use client";
 
-import { useFormContext } from "react-hook-form"
-import { useFieldArray } from "react-hook-form"
-import { Plus, Trash2 } from "lucide-react"
+import { useFormContext } from "react-hook-form";
+import { useFieldArray } from "react-hook-form";
+import { Plus, Trash2 } from "lucide-react";
 
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Step3ComplianceLegal() {
-  const { control } = useFormContext()
+  const { control } = useFormContext();
 
   // Partner details field array
   const partnerArray = useFieldArray({
     control,
     name: "representativeDetails.partners",
-  })
+  });
 
   return (
     <div className="space-y-8">
       {/* Section 1: Registration & Compliance Numbers */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Registration & Compliance Numbers</h3>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+          Registration & Compliance Numbers
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={control}
@@ -46,7 +54,10 @@ export default function Step3ComplianceLegal() {
               <FormItem>
                 <FormLabel>Factory License No</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter factory license number" {...field} />
+                  <Input
+                    placeholder="Enter factory license number"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -88,7 +99,10 @@ export default function Step3ComplianceLegal() {
               <FormItem>
                 <FormLabel>Udyam Certificate No</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter Udyam certificate number" {...field} />
+                  <Input
+                    placeholder="Enter Udyam certificate number"
+                    {...field}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -99,7 +113,9 @@ export default function Step3ComplianceLegal() {
 
       {/* Section 2: Address for Communication */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Address for Communication</h3>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+          Address for Communication
+        </h3>
         <div className="grid grid-cols-1 gap-6">
           <FormField
             control={control}
@@ -124,14 +140,18 @@ export default function Step3ComplianceLegal() {
       {/* Section 3: Representative/Partner Details */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium">Representative/Partner Details</h3>
+          <h3 className="text-lg font-medium">
+            Representative/Partner Details
+          </h3>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => partnerArray.append({ name: "", contactNo: "", aadharNo: "" })}
+            onClick={() =>
+              partnerArray.append({ name: "", contactNo: "", aadharNo: "" })
+            }
           >
-            <Plus className="h-4 w-4 mr-2" /> Add Partner
+            <Plus className="h-4 w-4 mr-2" /> Add
           </Button>
         </div>
 
@@ -161,7 +181,10 @@ export default function Step3ComplianceLegal() {
                       <FormItem>
                         <FormLabel>Contact No</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter contact number" {...field} />
+                          <Input
+                            placeholder="Enter contact number"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -176,6 +199,34 @@ export default function Step3ComplianceLegal() {
                         <FormLabel>Aadhar No</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter Aadhar number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={control}
+                    name={`representativeDetails.partners.${index}.email`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={control}
+                    name={`representativeDetails.partners.${index}.pan`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>PAN</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter PAN no" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -198,12 +249,12 @@ export default function Step3ComplianceLegal() {
 
           {partnerArray.fields.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No partners added yet. Click the button above to add partner details.
+              No partners added yet. Click the button above to add partner
+              details.
             </p>
           )}
         </div>
       </div>
     </div>
-  )
+  );
 }
-

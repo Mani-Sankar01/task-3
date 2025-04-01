@@ -12,6 +12,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   CircleAlert,
+  ClipboardList,
   Dices,
   GalleryVerticalEnd,
   IndianRupee,
@@ -114,7 +115,7 @@ const data = {
     //   ],
     // },
     {
-      title: "GST Filling",
+      title: "GST & Invoices",
       url: "#",
       items: [
         {
@@ -123,10 +124,15 @@ const data = {
           icon: SquareKanban,
         },
         {
-          title: "Add Filling",
-          url: "/gst-filling/add",
-          icon: PlusSquare,
+          title: "All Invoices",
+          url: "/admin/invoices",
+          icon: ClipboardList,
         },
+        // {
+        //   title: "Add Filling",
+        //   url: "/gst-filling/add",
+        //   icon: PlusSquare,
+        // },
       ],
     },
     {

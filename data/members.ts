@@ -6,16 +6,18 @@ export interface Member {
   applicationDetails: {
     electricalUscNumber: string;
     dateOfApplication: string;
+    scNumber: string;
   };
   memberDetails: {
     applicantName: string;
     relation: string;
+    relativeName: string;
   };
   firmDetails: {
     firmName: string;
     proprietorName: string;
-    officeNumber: string;
-    phoneNumber: string;
+    contact1: string;
+    contact2?: string;
   };
   businessDetails: {
     surveyNumber: string;
@@ -39,10 +41,26 @@ export interface Member {
   branchDetails: {
     branches: Array<{
       placeBusiness: string;
-      ownershipType: string;
-      ownerSubType?: string;
+      proprietorStatus: string;
+      proprietorType?: string;
       electricalUscNumber: string;
+      scNumber: string; // Added SC Number field
       sanctionedHP: string;
+      machinery: Array<{
+        type: string; // Changed from name to type with dropdown options
+        customName?: string; // For "Others" type
+        quantity: string;
+      }>;
+      labour: Array<{
+        // Renamed from workers to labour
+        name: string;
+        aadharNumber: string;
+        eshramCardNumber: string; // Added Eshram Card Number
+        employedFrom: string; // Added Employed From date
+        employedTo?: string; // Added Employed To date (optional)
+        esiNumber?: string; // Added ESI Number (optional)
+        status: string; // Added Status dropdown
+      }>;
     }>;
   };
   labourDetails: {
@@ -69,6 +87,8 @@ export interface Member {
       name: string;
       contactNo: string;
       aadharNo: string;
+      email?: string;
+      pan?: string;
     }>;
   };
   membershipDetails: {
@@ -87,13 +107,11 @@ export interface Member {
     name: string;
     firmName: string;
     address: string;
-    signature?: string;
   };
   proposer2: {
     name: string;
     firmName: string;
     address: string;
-    signature?: string;
   };
   declaration: {
     agreeToTerms: boolean;
@@ -109,17 +127,19 @@ export const members: Member[] = [
     id: "MEM001",
     applicationDetails: {
       electricalUscNumber: "USC12345678",
+      scNumber: "SC98765",
       dateOfApplication: "2024-01-15",
     },
     memberDetails: {
       applicantName: "John Doe",
       relation: "S/O",
+      relativeName: "Michael Doe",
     },
     firmDetails: {
       firmName: "Doe Industries",
       proprietorName: "John Doe",
-      officeNumber: "123-456-7890",
-      phoneNumber: "9876543210",
+      contact1: "123-456-7890",
+      contact2: "9876543210",
     },
     businessDetails: {
       surveyNumber: "SRV123",
@@ -150,10 +170,50 @@ export const members: Member[] = [
     branchDetails: {
       branches: [
         {
+          placeBusiness: "Main Branch",
+          proprietorStatus: "owner",
+          proprietorType: "owned",
+          electricalUscNumber: "USC12345678",
+          scNumber: "SC98765", // Added SC Number
+          sanctionedHP: "50",
+          machinery: [
+            {
+              type: "High Polish", // Changed from name to type
+              quantity: "2",
+            },
+            {
+              type: "Cutting", // Changed from name to type
+              quantity: "1",
+            },
+          ],
+          labour: [
+            // Renamed from workers to labour
+            {
+              name: "Robert Smith",
+              aadharNumber: "1234 5678 9012",
+              eshramCardNumber: "ESHRAM123456", // Added Eshram Card Number
+              employedFrom: "2023-01-15", // Added Employed From date
+              esiNumber: "ESI789012", // Added ESI Number
+              status: "Active", // Added Status
+            },
+            {
+              name: "Jane Wilson",
+              aadharNumber: "9876 5432 1098",
+              eshramCardNumber: "ESHRAM654321", // Added Eshram Card Number
+              employedFrom: "2023-03-10", // Added Employed From date
+              employedTo: "2023-12-31", // Added Employed To date
+              status: "Discontinued", // Added Status
+            },
+          ],
+        },
+        {
           placeBusiness: "Downtown Branch",
-          ownershipType: "tenant",
+          proprietorStatus: "tenant",
           electricalUscNumber: "USC87654321",
+          scNumber: "SC54321", // Added SC Number
           sanctionedHP: "25",
+          machinery: [],
+          labour: [],
         },
       ],
     },
@@ -189,6 +249,8 @@ export const members: Member[] = [
           name: "Michael Johnson",
           contactNo: "8765432109",
           aadharNo: "5678 1234 9012",
+          email: "example@gmail.com",
+          pan: "1akdbfb5431dsf",
         },
       ],
     },
@@ -204,13 +266,11 @@ export const members: Member[] = [
       name: "David Brown",
       firmName: "Brown Enterprises",
       address: "456 Business Park, Greenville",
-      signature: "/placeholder.svg",
     },
     proposer2: {
       name: "Sarah Miller",
       firmName: "Miller Associates",
       address: "789 Commercial Zone, Greenville",
-      signature: "/placeholder.svg",
     },
     declaration: {
       agreeToTerms: true,
@@ -225,16 +285,18 @@ export const members: Member[] = [
     applicationDetails: {
       electricalUscNumber: "USC12345678",
       dateOfApplication: "2024-01-15",
+      scNumber: "SC12345",
     },
     memberDetails: {
-      applicantName: "John Doe",
+      applicantName: "James Bond",
       relation: "S/O",
+      relativeName: "Robert Smith",
     },
     firmDetails: {
-      firmName: "Doe Industries",
+      firmName: "James Bond Industries",
       proprietorName: "John Doe",
-      officeNumber: "123-456-7890",
-      phoneNumber: "9876543210",
+      contact1: "987-654-3210",
+      contact2: "8765432109",
     },
     businessDetails: {
       surveyNumber: "SRV123",
@@ -265,10 +327,28 @@ export const members: Member[] = [
     branchDetails: {
       branches: [
         {
-          placeBusiness: "Downtown Branch",
-          ownershipType: "tenant",
-          electricalUscNumber: "USC87654321",
-          sanctionedHP: "25",
+          placeBusiness: "Main Branch",
+          proprietorStatus: "tenant",
+          electricalUscNumber: "USC98765432",
+          scNumber: "SC12345", // Added SC Number
+          sanctionedHP: "75",
+          machinery: [
+            {
+              type: "Slice", // Changed from name to type
+              quantity: "3",
+            },
+          ],
+          labour: [
+            // Renamed from workers to labour
+            {
+              name: "Thomas Clark",
+              aadharNumber: "3456 7890 1234",
+              eshramCardNumber: "ESHRAM345678", // Added Eshram Card Number
+              employedFrom: "2023-05-20", // Added Employed From date
+              esiNumber: "ESI345678", // Added ESI Number
+              status: "Active", // Added Status
+            },
+          ],
         },
       ],
     },
@@ -304,6 +384,8 @@ export const members: Member[] = [
           name: "Michael Johnson",
           contactNo: "8765432109",
           aadharNo: "5678 1234 9012",
+          email: "example@gmail.com",
+          pan: "q3456edfq435",
         },
       ],
     },
@@ -319,13 +401,11 @@ export const members: Member[] = [
       name: "David Brown",
       firmName: "Brown Enterprises",
       address: "456 Business Park, Greenville",
-      signature: "/placeholder.svg",
     },
     proposer2: {
       name: "Sarah Miller",
       firmName: "Miller Associates",
       address: "789 Commercial Zone, Greenville",
-      signature: "/placeholder.svg",
     },
     declaration: {
       agreeToTerms: true,

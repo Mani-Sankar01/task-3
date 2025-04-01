@@ -1,7 +1,8 @@
 "use client";
 
 import { useFieldArray, useFormContext } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 export default function Step2OperationDetails() {
-  const { control, register, watch } = useFormContext();
-
-  // Machinery information field array
-  const machineryArray = useFieldArray({
-    control,
-    name: "electricalDetails.machinery",
-  });
+  const { control, register, watch, setValue, getValues } = useFormContext();
 
   // Branch details field array
   const branchArray = useFieldArray({
@@ -36,11 +38,51 @@ export default function Step2OperationDetails() {
     name: "branchDetails.branches",
   });
 
-  // Labour details field array
-  const labourArray = useFieldArray({
-    control,
-    name: "labourDetails.workers",
-  });
+  // Function to add a new machinery to a specific branch
+  const addMachinery = (branchIndex: number) => {
+    const currentBranches = getValues("branchDetails.branches");
+    if (!currentBranches[branchIndex].machinery) {
+      currentBranches[branchIndex].machinery = [];
+    }
+    currentBranches[branchIndex].machinery.push({
+      type: "",
+      customName: "",
+      quantity: "",
+    });
+    setValue("branchDetails.branches", [...currentBranches]);
+  };
+
+  // Function to remove a machinery from a specific branch
+  const removeMachinery = (branchIndex: number, machineryIndex: number) => {
+    const currentBranches = getValues("branchDetails.branches");
+    currentBranches[branchIndex].machinery.splice(machineryIndex, 1);
+    setValue("branchDetails.branches", [...currentBranches]);
+  };
+
+  // Function to add a new labour to a specific branch
+  const addLabour = (branchIndex: number) => {
+    const currentBranches = getValues("branchDetails.branches");
+    if (!currentBranches[branchIndex].labour) {
+      currentBranches[branchIndex].labour = [];
+    }
+    currentBranches[branchIndex].labour.push({
+      name: "",
+      aadharNumber: "",
+      eshramCardNumber: "",
+      employedFrom: new Date().toISOString().split("T")[0],
+      employedTo: "",
+      esiNumber: "",
+      status: "Active",
+    });
+    setValue("branchDetails.branches", [...currentBranches]);
+  };
+
+  // Function to remove a labour from a specific branch
+  const removeLabour = (branchIndex: number, labourIndex: number) => {
+    const currentBranches = getValues("branchDetails.branches");
+    currentBranches[branchIndex].labour.splice(labourIndex, 1);
+    setValue("branchDetails.branches", [...currentBranches]);
+  };
 
   return (
     <div className="space-y-8">
@@ -55,11 +97,11 @@ export default function Step2OperationDetails() {
             name="electricalDetails.sanctionedHP"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Sanctioned HP</FormLabel>
+                <FormLabel>Total Sanctioned HP</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="Enter sanctioned HP"
+                    placeholder="Enter total sanctioned HP"
                     {...field}
                   />
                 </FormControl>
@@ -68,40 +110,57 @@ export default function Step2OperationDetails() {
             )}
           />
         </div>
+      </div>
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium">Machinery Information</h4>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                machineryArray.append({
-                  name: "",
-                  quantity: "",
-                  chasisNumber: "",
-                })
-              }
-            >
-              <Plus className="h-4 w-4 mr-2" /> Add Machine
-            </Button>
-          </div>
+      {/* Section 2: Branch Details */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-medium">Branch Details</h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              branchArray.append({
+                placeBusiness: "",
+                proprietorStatus: "",
+                proprietorType: "",
+                electricalUscNumber: "",
+                scNumber: "", // Added SC Number
+                sanctionedHP: "",
+                machinery: [],
+                labour: [],
+              })
+            }
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Branch
+          </Button>
+        </div>
 
-          <div className="space-y-4">
-            {machineryArray.fields.map((field, index) => (
-              <Card key={field.id}>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-6">
+          {branchArray.fields.map((field, branchIndex) => (
+            <Card key={field.id} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="bg-muted p-4">
+                  <h4 className="text-base font-medium">
+                    Branch {branchIndex + 1}:{" "}
+                    {watch(
+                      `branchDetails.branches.${branchIndex}.placeBusiness`
+                    ) || "New Branch"}
+                  </h4>
+                </div>
+
+                <div className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <FormField
                       control={control}
-                      name={`electricalDetails.machinery.${index}.name`}
+                      name={`branchDetails.branches.${branchIndex}.placeBusiness`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Machine Name</FormLabel>
+                          <FormLabel>Place of Business</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter machine name"
+                              placeholder="Enter business location"
                               {...field}
                             />
                           </FormControl>
@@ -112,31 +171,103 @@ export default function Step2OperationDetails() {
 
                     <FormField
                       control={control}
-                      name={`electricalDetails.machinery.${index}.quantity`}
+                      name={`branchDetails.branches.${branchIndex}.proprietorStatus`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Quantity</FormLabel>
+                          <FormLabel>Status of the Proprietor</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="owner">Owner</SelectItem>
+                              <SelectItem value="tenant">Tenant</SelectItem>
+                              <SelectItem value="trader">Trader</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {watch(
+                      `branchDetails.branches.${branchIndex}.proprietorStatus`
+                    ) === "owner" && (
+                      <FormField
+                        control={control}
+                        name={`branchDetails.branches.${branchIndex}.proprietorType`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Proprietor Type</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select proprietor type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="owned">Owned</SelectItem>
+                                <SelectItem value="rented">
+                                  Rented/Tenant
+                                </SelectItem>
+                                <SelectItem value="trader">Trader</SelectItem>
+                                <SelectItem value="factory_on_lease">
+                                  Factory given on lease
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.electricalUscNumber`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Electrical USC Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter USC number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.scNumber`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>SC Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter SC number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.sanctionedHP`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sanctioned HP</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
-                              placeholder="Enter quantity"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={control}
-                      name={`electricalDetails.machinery.${index}.chasisNumber`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Chassis Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter chassis number"
+                              placeholder="Enter sanctioned HP"
                               {...field}
                             />
                           </FormControl>
@@ -146,185 +277,441 @@ export default function Step2OperationDetails() {
                     />
                   </div>
 
+                  {/* Tabs for Machinery and Labour */}
+                  <Tabs defaultValue="machinery" className="mt-6">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="machinery">Machinery</TabsTrigger>
+                      <TabsTrigger value="labour">Labour</TabsTrigger>
+                    </TabsList>
+
+                    {/* Machinery Tab */}
+                    <TabsContent value="machinery" className="pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium">Machinery Information</h5>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addMachinery(branchIndex)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Machine
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {(
+                          getValues(
+                            `branchDetails.branches.${branchIndex}.machinery`
+                          ) || []
+                        ).map((machine: any, machineryIndex: any) => (
+                          <Card key={machineryIndex}>
+                            <CardContent className="pt-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.type`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Machine Type</FormLabel>
+                                      <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select machine type" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="High Polish">
+                                            High Polish
+                                          </SelectItem>
+                                          <SelectItem value="Slice">
+                                            Slice
+                                          </SelectItem>
+                                          <SelectItem value="Cutting">
+                                            Cutting
+                                          </SelectItem>
+                                          <SelectItem value="Others">
+                                            Others
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                {watch(
+                                  `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.type`
+                                ) === "Others" && (
+                                  <FormField
+                                    control={control}
+                                    name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.customName`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Machine Name</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            placeholder="Enter machine name"
+                                            {...field}
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.quantity`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Quantity</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          placeholder="Enter quantity"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-4 text-destructive"
+                                onClick={() =>
+                                  removeMachinery(branchIndex, machineryIndex)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Remove
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {(!getValues(
+                          `branchDetails.branches.${branchIndex}.machinery`
+                        ) ||
+                          getValues(
+                            `branchDetails.branches.${branchIndex}.machinery`
+                          ).length === 0) && (
+                          <p className="text-sm text-muted-foreground">
+                            No machinery added yet for this branch. Click the
+                            button above to add machinery.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+
+                    {/* Labour Tab */}
+                    <TabsContent value="labour" className="pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="font-medium">Labour Information</h5>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addLabour(branchIndex)}
+                        >
+                          <Plus className="h-4 w-4 mr-2" /> Add Labour
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {(
+                          getValues(
+                            `branchDetails.branches.${branchIndex}.labour`
+                          ) || []
+                        ).map((labour: any, labourIndex: any) => (
+                          <Card key={labourIndex}>
+                            <CardContent className="pt-6">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.name`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Labour Name</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter labour name"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.aadharNumber`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Aadhar Number</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter Aadhar number"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.eshramCardNumber`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Eshram Card Number</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter Eshram card number"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.esiNumber`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>
+                                        ESI Number (Optional)
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Enter ESI number"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.employedFrom`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                      <FormLabel>Employed From</FormLabel>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <FormControl>
+                                            <Button
+                                              variant={"outline"}
+                                              className={`w-full pl-3 text-left font-normal ${
+                                                !field.value
+                                                  ? "text-muted-foreground"
+                                                  : ""
+                                              }`}
+                                            >
+                                              {field.value ? (
+                                                format(
+                                                  new Date(field.value),
+                                                  "PPP"
+                                                )
+                                              ) : (
+                                                <span>Pick a date</span>
+                                              )}
+                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                          </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                          className="w-auto p-0"
+                                          align="start"
+                                        >
+                                          <Calendar
+                                            mode="single"
+                                            selected={
+                                              field.value
+                                                ? new Date(field.value)
+                                                : undefined
+                                            }
+                                            onSelect={(date) =>
+                                              field.onChange(
+                                                date
+                                                  ? format(date, "yyyy-MM-dd")
+                                                  : ""
+                                              )
+                                            }
+                                            disabled={(date) =>
+                                              date > new Date()
+                                            }
+                                            initialFocus
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.employedTo`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                      <FormLabel>
+                                        Employed To (Leave empty if currently
+                                        employed)
+                                      </FormLabel>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <FormControl>
+                                            <Button
+                                              variant={"outline"}
+                                              className={`w-full pl-3 text-left font-normal ${
+                                                !field.value
+                                                  ? "text-muted-foreground"
+                                                  : ""
+                                              }`}
+                                            >
+                                              {field.value ? (
+                                                format(
+                                                  new Date(field.value),
+                                                  "PPP"
+                                                )
+                                              ) : (
+                                                <span>Pick a date</span>
+                                              )}
+                                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                          </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent
+                                          className="w-auto p-0"
+                                          align="start"
+                                        >
+                                          <Calendar
+                                            mode="single"
+                                            selected={
+                                              field.value
+                                                ? new Date(field.value)
+                                                : undefined
+                                            }
+                                            onSelect={(date) =>
+                                              field.onChange(
+                                                date
+                                                  ? format(date, "yyyy-MM-dd")
+                                                  : ""
+                                              )
+                                            }
+                                            initialFocus
+                                          />
+                                        </PopoverContent>
+                                      </Popover>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={control}
+                                  name={`branchDetails.branches.${branchIndex}.labour.${labourIndex}.status`}
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Status</FormLabel>
+                                      <Select
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select status" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="Active">
+                                            Active
+                                          </SelectItem>
+                                          <SelectItem value="Bench">
+                                            Bench
+                                          </SelectItem>
+                                          <SelectItem value="Discontinued">
+                                            Discontinued
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-4 text-destructive"
+                                onClick={() =>
+                                  removeLabour(branchIndex, labourIndex)
+                                }
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Remove
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+
+                        {(!getValues(
+                          `branchDetails.branches.${branchIndex}.labour`
+                        ) ||
+                          getValues(
+                            `branchDetails.branches.${branchIndex}.labour`
+                          ).length === 0) && (
+                          <p className="text-sm text-muted-foreground">
+                            No labour added yet for this branch. Click the
+                            button above to add labour details.
+                          </p>
+                        )}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="bg-muted p-4 flex justify-end">
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="mt-4 text-destructive"
-                    onClick={() => machineryArray.remove(index)}
+                    className="text-destructive"
+                    onClick={() => branchArray.remove(branchIndex)}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" /> Remove
+                    <Trash2 className="h-4 w-4 mr-2" /> Remove Branch
                   </Button>
-                </CardContent>
-              </Card>
-            ))}
-
-            {machineryArray.fields.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No machinery added yet. Click the button above to add machinery.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Section 2: Branch Details */}
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium">Branch Details (If Any)</h3>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              branchArray.append({
-                placeBusiness: "",
-                ownershipType: "",
-                ownerSubType: "",
-                electricalUscNumber: "",
-                sanctionedHP: "",
-              })
-            }
-          >
-            <Plus className="h-4 w-4 mr-2" /> Add Branch
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {branchArray.fields.map((field, index) => (
-            <Card key={field.id}>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={control}
-                    name={`branchDetails.branches.${index}.placeBusiness`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Place of Business</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter business location"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={control}
-                    name={`branchDetails.branches.${index}.ownershipType`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ownership Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select ownership type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="owner">Owner</SelectItem>
-                            <SelectItem value="tenant">Tenant</SelectItem>
-                            <SelectItem value="trader">Trader</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {watch(`branchDetails.branches.${index}.ownershipType`) ===
-                    "owner" && (
-                    <FormField
-                      control={control}
-                      name={`branchDetails.branches.${index}.ownerSubType`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Owner Type</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select owner type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="own_business">
-                                Own Business
-                              </SelectItem>
-                              <SelectItem value="factory_on_lease">
-                                Factory on Lease
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <FormField
-                    control={control}
-                    name={`branchDetails.branches.${index}.electricalUscNumber`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Electrical USC Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter USC number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={control}
-                    name={`branchDetails.branches.${index}.sanctionedHP`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sanctioned HP</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="Enter sanctioned HP"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-4 text-destructive"
-                  onClick={() => branchArray.remove(index)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Remove Branch
-                </Button>
               </CardContent>
             </Card>
           ))}
 
           {branchArray.fields.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No branches added yet. Click the button above to add a branch.
-            </p>
+            <Card className="p-6">
+              <p className="text-center text-muted-foreground">
+                No branches added yet. Click the "Add Branch" button above to
+                add your first branch.
+              </p>
+            </Card>
           )}
         </div>
       </div>
-
-      {/* Section 3: Labour Details */}
+      {/* Section 2: Labour Count Details */}
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
           Labour Details
@@ -366,95 +753,6 @@ export default function Step2OperationDetails() {
             )}
           />
         </div>
-
-        {/* <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium">Labour Details</h4>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => labourArray.append({ name: "", aadharNumber: "", photo: null })}
-            >
-              <Plus className="h-4 w-4 mr-2" /> Add Worker
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            {labourArray.fields.map((field, index) => (
-              <Card key={field.id}>
-                <CardContent className="pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                      control={control}
-                      name={`labourDetails.workers.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Worker Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter worker name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={control}
-                      name={`labourDetails.workers.${index}.aadharNumber`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Aadhar Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter Aadhar number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={control}
-                      name={`labourDetails.workers.${index}.photo`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Photo</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                field.onChange(file)
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-4 text-destructive"
-                    onClick={() => labourArray.remove(index)}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" /> Remove
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-
-            {labourArray.fields.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No workers added yet. Click the button above to add worker details.
-              </p>
-            )}
-          </div>
-        </div> */}
       </div>
     </div>
   );

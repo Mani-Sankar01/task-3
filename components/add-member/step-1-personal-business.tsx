@@ -55,6 +55,20 @@ export default function Step1PersonalBusiness() {
 
           <FormField
             control={control}
+            name="applicationDetails.scNumber"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>SC Number</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter SC number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
             name="applicationDetails.dateOfApplication"
             render={({ field }) => (
               <FormItem className="flex flex-col">
@@ -121,7 +135,7 @@ export default function Step1PersonalBusiness() {
             name="memberDetails.relation"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Relation</FormLabel>
+                <FormLabel>S/O, D/O, W/O</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -137,6 +151,20 @@ export default function Step1PersonalBusiness() {
                     <SelectItem value="W/O">W/O (Wife Of)</SelectItem>
                   </SelectContent>
                 </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="memberDetails.relativeName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Relative Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter relative's name" {...field} />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -181,9 +209,9 @@ export default function Step1PersonalBusiness() {
             name="firmDetails.officeNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Office Number</FormLabel>
+                <FormLabel>Contact 1 (Primary)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter office number" {...field} />
+                  <Input placeholder="Enter primary number" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -195,7 +223,7 @@ export default function Step1PersonalBusiness() {
             name="firmDetails.phoneNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone Number</FormLabel>
+                <FormLabel>Contact 2 (Optional)</FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter phone number"

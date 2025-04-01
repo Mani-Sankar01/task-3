@@ -31,16 +31,18 @@ const formSchema = z.object({
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(1, "USC Number is required"),
     dateOfApplication: z.string().min(1, "Date is required"),
+    scNumber: z.string().min(1, "USC Number is required"),
   }),
   memberDetails: z.object({
     applicantName: z.string().min(1, "Name is required"),
     relation: z.string().min(1, "Relation is required"),
+    relativeName: z.string().min(1, "Name is required"),
   }),
   firmDetails: z.object({
     firmName: z.string().min(1, "Firm name is required"),
     proprietorName: z.string().min(1, "Proprietor name is required"),
-    officeNumber: z.string().min(1, "Office number is required"),
-    phoneNumber: z.string().min(10, "Valid phone number is required"),
+    contact1: z.string().min(10, "Contact1 number is required"),
+    contact2: z.string().optional(),
   }),
   businessDetails: z.object({
     surveyNumber: z.string().min(1, "Survey number is required"),
@@ -70,10 +72,33 @@ const formSchema = z.object({
       .array(
         z.object({
           placeBusiness: z.string(),
-          ownershipType: z.string(),
-          ownerSubType: z.string().optional(),
+          proprietorStatus: z.string(),
+          proprietorType: z.string().optional(),
           electricalUscNumber: z.string(),
+          scNumber: z.string(), // Added SC Number field
           sanctionedHP: z.string(),
+          machinery: z
+            .array(
+              z.object({
+                type: z.string(), // Changed from name to type
+                customName: z.string().optional(), // For "Others" type
+                quantity: z.string(),
+              })
+            )
+            .default([]),
+          labour: z // Renamed from workers to labour
+            .array(
+              z.object({
+                name: z.string(),
+                aadharNumber: z.string(),
+                eshramCardNumber: z.string(), // Added Eshram Card Number
+                employedFrom: z.string(), // Added Employed From date
+                employedTo: z.string().optional(), // Added Employed To date (optional)
+                esiNumber: z.string().optional(), // Added ESI Number (optional)
+                status: z.string(), // Added Status dropdown
+              })
+            )
+            .default([]),
         })
       )
       .default([]),
@@ -128,13 +153,11 @@ const formSchema = z.object({
     name: z.string(),
     firmName: z.string(),
     address: z.string(),
-    signature: z.any().optional(),
   }),
   proposer2: z.object({
     name: z.string(),
     firmName: z.string(),
     address: z.string(),
-    signature: z.any().optional(),
   }),
   declaration: z.object({
     agreeToTerms: z.boolean(),
@@ -166,16 +189,18 @@ const AddMember = ({
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
+        scNumber: "",
       },
       memberDetails: {
         applicantName: "",
         relation: "",
+        relativeName: "",
       },
       firmDetails: {
         firmName: "",
         proprietorName: "",
-        officeNumber: "",
-        phoneNumber: "",
+        contact1: "",
+        contact2: "",
       },
       businessDetails: {
         surveyNumber: "",
