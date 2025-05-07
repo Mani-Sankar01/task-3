@@ -375,7 +375,7 @@ const AddMember = ({
     }
   };
 
-  const userRole = localStorage.getItem("userRole");
+  const userRole = "admin";
 
   const handleSubmit = (data: FormValues) => {
     setFormData(data);
