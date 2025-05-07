@@ -1,3 +1,5 @@
+"use client";
+
 import AddMember from "@/components/addMember";
 import React from "react";
 
