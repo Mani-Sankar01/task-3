@@ -1,7 +1,5 @@
-"use client";
-
-import AddMember from "@/components/addMember";
 import React from "react";
+import AddMember from "@/components/addMember";
 
 const page = () => {
   return <AddMember editMode={false} meterId="" />;
