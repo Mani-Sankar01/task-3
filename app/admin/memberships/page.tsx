@@ -47,7 +47,7 @@ const page = () => {
   const itemsPerPage = 10; // Number of items to show per page
 
   // User role for role-based access control - get from localStorage for persistence
-  const userRole = localStorage.getItem("userRole");
+  const userRole = "admin";
 
   // Filter members based on search term
   const filteredMembers = members.filter(
