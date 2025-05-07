@@ -1,4 +1,10 @@
-export type AttendeeType = "member" | "vehicle" | "labour" | "route";
+export type AttendeeType =
+  | "member"
+  | "vehicle"
+  | "labour"
+  | "mandal"
+  | "executive"
+  | "driver";
 export type AttendeeScope = "all" | "selected";
 export type MeetingStatus = "scheduled" | "completed" | "cancelled";
 
@@ -115,6 +121,71 @@ export const routes: Route[] = [
   },
 ];
 
+// Dummy data for mandals
+export const mandals = [
+  {
+    id: "MND001",
+    name: "North District Mandal",
+    region: "North",
+  },
+  {
+    id: "MND002",
+    name: "South District Mandal",
+    region: "South",
+  },
+  {
+    id: "MND003",
+    name: "East District Mandal",
+    region: "East",
+  },
+  {
+    id: "MND004",
+    name: "West District Mandal",
+    region: "West",
+  },
+];
+
+// Dummy data for executives (will be fetched from members in real implementation)
+export const executives = [
+  {
+    id: "EXE001",
+    name: "Rajesh Kumar",
+    position: "President",
+  },
+  {
+    id: "EXE002",
+    name: "Priya Singh",
+    position: "Vice President",
+  },
+  {
+    id: "EXE003",
+    name: "Amit Sharma",
+    position: "Secretary",
+  },
+];
+
+// Dummy data for drivers
+export const drivers = [
+  {
+    id: "DRV001",
+    name: "Suresh Patel",
+    licenseNumber: "DL-0123456789",
+    contactNumber: "9876543210",
+  },
+  {
+    id: "DRV002",
+    name: "Ramesh Verma",
+    licenseNumber: "DL-9876543210",
+    contactNumber: "8765432109",
+  },
+  {
+    id: "DRV003",
+    name: "Dinesh Gupta",
+    licenseNumber: "DL-5678901234",
+    contactNumber: "7654321098",
+  },
+];
+
 // Dummy data for meetings
 export const meetings: Meeting[] = [
   {
@@ -161,7 +232,6 @@ export const meetings: Meeting[] = [
     meetingPoint: "Planning Room",
     attendees: [
       { type: "member", scope: "selected", selectedIds: ["MEM001", "MEM002"] },
-      { type: "route", scope: "all" },
     ],
     expectedAttendees: 15,
     createdAt: "2024-03-05T11:00:00Z",
@@ -194,7 +264,7 @@ export function addMeeting(
 
 export function updateMeeting(
   id: string,
-  meeting: Omit<Meeting, "id" | "createdAt" | "updatedAt">
+  meeting: Omit<Meeting, "id" | "createdAt">
 ): Meeting | null {
   const index = meetings.findIndex((m) => m.id === id);
   if (index !== -1) {
@@ -228,8 +298,18 @@ export function getAttendeeOptions(type: AttendeeType) {
       return vehicles;
     case "labour":
       return labour;
-    case "route":
-      return routes;
+    case "mandal":
+      return mandals;
+    case "executive":
+      return import("./members").then((module) =>
+        module
+          .getAllMembers()
+          .filter(
+            (member) => member.membershipDetails.isExecutiveMember == "yes"
+          )
+      );
+    case "driver":
+      return drivers;
     default:
       return [];
   }

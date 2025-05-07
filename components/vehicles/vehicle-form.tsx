@@ -41,8 +41,11 @@ const formSchema = z.object({
     .string()
     .min(10, "Valid phone number is required")
     .max(10, "Phone number must be 10 digits"),
-  route: z.string().min(1, "Route is required"),
-  pricePerRound: z.coerce.number().min(1, "Price per round must be at least 1"),
+  ownerName: z.string().min(1, "Owner name is required"),
+  ownerPhoneNumber: z
+    .string()
+    .min(10, "Valid phone number is required")
+    .max(10, "Phone number must be 10 digits"),
   status: z.enum(["active", "maintenance", "inactive"]),
 });
 
@@ -65,16 +68,16 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
           vehicleNumber: vehicle.vehicleNumber,
           driverName: vehicle.driverName,
           driverNumber: vehicle.driverNumber,
-          route: vehicle.route,
-          pricePerRound: vehicle.pricePerRound,
+          ownerName: vehicle.ownerName,
+          ownerPhoneNumber: vehicle.ownerPhoneNumber,
           status: vehicle.status,
         }
       : {
           vehicleNumber: "",
           driverName: "",
           driverNumber: "",
-          route: "",
-          pricePerRound: 0,
+          ownerName: "",
+          ownerPhoneNumber: "",
           status: "active",
         },
   });
@@ -96,7 +99,7 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/admin/vehicle");
+      router.push("/admin/vehicles");
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -117,15 +120,15 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
   };
 
   return (
-    <div className="container mx-auto">
-      {/* <div className="mb-6 flex items-center">
+    <div className="container mx-auto ">
+      <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
         </Button>
         <h1 className="text-2xl font-bold">
           {isEditMode ? "Edit Vehicle" : "Add New Vehicle"}
         </h1>
-      </div> */}
+      </div>
 
       <Card>
         <CardHeader>
@@ -217,28 +220,13 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="route"
+                  name="ownerName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Route</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select route" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {routes.map((route) => (
-                            <SelectItem key={route.id} value={route.id}>
-                              {route.name} ({route.startPoint} -{" "}
-                              {route.endPoint})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Owner Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter owner name" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -246,19 +234,14 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="pricePerRound"
+                  name="ownerPhoneNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price Per Round (₹)</FormLabel>
+                      <FormLabel>Owner Phone Number</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          min="1"
-                          placeholder="Enter price per round"
+                          placeholder="Enter owner phone number"
                           {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
-                          }
                         />
                       </FormControl>
                       <FormMessage />

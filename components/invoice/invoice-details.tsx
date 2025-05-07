@@ -29,7 +29,7 @@ export default function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
   };
 
   const handleEdit = () => {
-    router.push(`/admin/invoices/edit/${invoice.id}`);
+    router.push(`/admin/invoices/${invoice.id}/edit/`);
   };
 
   const handlePrint = () => {
@@ -63,7 +63,7 @@ export default function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
         </div>
       </div>
 
-      <Card className="max-w-4xl mx-auto print:shadow-none print:border-none">
+      <Card className="mx-auto print:shadow-none print:border-none">
         <CardHeader className="print:pb-0">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div>

@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import InvoiceList from "@/components/invoice/invoice-list";
 import { Card, CardContent } from "@/components/ui/card";
+import { SidebarInset } from "@/components/ui/sidebar";
+import Header from "@/components/header";
 
 export default function InvoicesPage() {
   return (
@@ -20,7 +22,12 @@ export default function InvoicesPage() {
         </Card>
       }
     >
-      <InvoiceList />
+      <SidebarInset>
+        <Header breadcrumbs={[{ label: "All Invoices" }]} />
+        <div className="flex flex-1 flex-col">
+          <InvoiceList />
+        </div>
+      </SidebarInset>
     </Suspense>
   );
 }

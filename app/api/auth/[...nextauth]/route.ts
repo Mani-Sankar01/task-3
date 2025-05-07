@@ -59,6 +59,15 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
+        if (username === "editor" && password === "123") {
+          return {
+            id: "4",
+            name: "Editor",
+            email: "editor@example.com",
+            role: "editor", // Include role here
+          };
+        }
+
         return null;
       },
     }),

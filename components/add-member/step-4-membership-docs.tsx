@@ -1,30 +1,48 @@
-"use client"
+"use client";
 
-import { useFormContext } from "react-hook-form"
+import { useFieldArray, useFormContext } from "react-hook-form";
 
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Button } from "../ui/button";
+import { Plus, Trash2 } from "lucide-react";
 
 export default function Step4MembershipDocs() {
-  const { control, watch } = useFormContext()
-  const isMemberOfOrg = watch("membershipDetails.isMemberOfOrg")
-  const hasAppliedEarlier = watch("membershipDetails.hasAppliedEarlier")
+  const { control, watch } = useFormContext();
+  const isMemberOfOrg = watch("membershipDetails.isMemberOfOrg");
+  const hasAppliedEarlier = watch("membershipDetails.hasAppliedEarlier");
+
+  // Add field array for dynamic attachments
+  const attachmentsArray = useFieldArray({
+    control,
+    name: "documentDetails.additionalAttachments",
+  });
 
   return (
     <div className="space-y-8">
       {/* Section 1: Membership Inquiry */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Membership Inquiry</h3>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+          Membership Inquiry
+        </h3>
         <div className="space-y-6">
           <FormField
             control={control}
             name="membershipDetails.isMemberOfOrg"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel>Are you a member of any similar organization?</FormLabel>
+                <FormLabel>
+                  Are you a member of any similar organization?
+                </FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -112,12 +130,80 @@ export default function Step4MembershipDocs() {
               )}
             />
           )}
+
+          {/* New fields for valid member and executive member */}
+          <FormField
+            control={control}
+            name="membershipDetails.isValidMember"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Is this a valid member?</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-row space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="valid-yes" />
+                      <Label htmlFor="valid-yes">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="valid-no" />
+                      <Label htmlFor="valid-no">No</Label>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="membershipDetails.isExecutiveMember"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Is this an Executive member?</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="flex flex-row space-x-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="yes" id="executive-yes" />
+                      <Label htmlFor="executive-yes">Yes</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="no" id="executive-no" />
+                      <Label htmlFor="executive-no">No</Label>
+                    </div>
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
       </div>
 
       {/* Section 2: Required Attachments */}
       <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Required Attachments</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium border-b pb-2 w-full">
+            Required Attachments
+          </h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => attachmentsArray.append({ name: "", file: null })}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Attachment
+          </Button>
+        </div>
+
         <div className="space-y-6">
           <FormField
             control={control}
@@ -130,8 +216,8 @@ export default function Step4MembershipDocs() {
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      field.onChange(file)
+                      const file = e.target.files?.[0];
+                      field.onChange(file);
                     }}
                   />
                 </FormControl>
@@ -151,8 +237,8 @@ export default function Step4MembershipDocs() {
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      field.onChange(file)
+                      const file = e.target.files?.[0];
+                      field.onChange(file);
                     }}
                   />
                 </FormControl>
@@ -172,8 +258,8 @@ export default function Step4MembershipDocs() {
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      field.onChange(file)
+                      const file = e.target.files?.[0];
+                      field.onChange(file);
                     }}
                   />
                 </FormControl>
@@ -182,31 +268,57 @@ export default function Step4MembershipDocs() {
             )}
           />
 
-          <FormField
-            control={control}
-            name="documentDetails.additionalDocuments"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Additional Photos and Xerox Copies</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    multiple
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      const files = e.target.files
-                      field.onChange(files)
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-                <p className="text-sm text-muted-foreground">You can select multiple files</p>
-              </FormItem>
-            )}
-          />
+          {/* Dynamic attachments */}
+          {attachmentsArray.fields.map((field, index) => (
+            <div key={field.id} className="flex items-end gap-4">
+              <FormField
+                control={control}
+                name={`documentDetails.additionalAttachments.${index}.name`}
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>Document Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter document name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={control}
+                name={`documentDetails.additionalAttachments.${index}.file`}
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>Upload File</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          field.onChange(file);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-destructive mb-2"
+                onClick={() => attachmentsArray.remove(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
         </div>
       </div>
     </div>
-  )
+  );
 }
-

@@ -2,40 +2,43 @@
 export type VehicleStatus = "active" | "maintenance" | "inactive";
 export type PaymentStatus = "paid" | "partial" | "unpaid";
 
+// Update the Vehicle interface to include owner information and remove route/price per round
 export interface Vehicle {
   id: string;
   vehicleNumber: string;
   driverName: string;
   driverNumber: string;
-  route: string;
-  pricePerRound: number;
+  ownerName: string; // Added owner name
+  ownerPhoneNumber: string; // Added owner phone number
   status: VehicleStatus;
   createdAt: string;
   updatedAt: string;
 }
 
+// Update the Trip interface to include pricePerRound
 export interface Trip {
   id: string;
   vehicleId: string;
   date: string;
   totalRounds: number;
+  pricePerRound: number; // Added price per round
   totalAmountToPay: number;
   amountPaid: number;
-  paymentStatus: PaymentStatus; // Changed from status to paymentStatus
+  paymentStatus: PaymentStatus;
   notes?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-// Dummy data for vehicles
+// Update the dummy data for vehicles
 export const vehicles: Vehicle[] = [
   {
     id: "VEH001",
     vehicleNumber: "TS01AB1234",
     driverName: "John Doe",
     driverNumber: "9876543210",
-    route: "RTE001",
-    pricePerRound: 500,
+    ownerName: "Robert Smith",
+    ownerPhoneNumber: "9988776655",
     status: "active",
     createdAt: "2024-01-15T10:00:00Z",
     updatedAt: "2024-01-15T10:00:00Z",
@@ -45,8 +48,8 @@ export const vehicles: Vehicle[] = [
     vehicleNumber: "TS02CD5678",
     driverName: "Jane Smith",
     driverNumber: "8765432109",
-    route: "RTE002",
-    pricePerRound: 450,
+    ownerName: "Michael Johnson",
+    ownerPhoneNumber: "8877665544",
     status: "active",
     createdAt: "2024-01-20T11:30:00Z",
     updatedAt: "2024-01-20T11:30:00Z",
@@ -56,8 +59,8 @@ export const vehicles: Vehicle[] = [
     vehicleNumber: "TS03EF9012",
     driverName: "Robert Johnson",
     driverNumber: "7654321098",
-    route: "RTE003",
-    pricePerRound: 550,
+    ownerName: "Sarah Williams",
+    ownerPhoneNumber: "7766554433",
     status: "maintenance",
     createdAt: "2024-02-05T09:15:00Z",
     updatedAt: "2024-03-10T14:20:00Z",
@@ -67,8 +70,8 @@ export const vehicles: Vehicle[] = [
     vehicleNumber: "TS04GH3456",
     driverName: "Emily Davis",
     driverNumber: "6543210987",
-    route: "RTE001",
-    pricePerRound: 500,
+    ownerName: "David Brown",
+    ownerPhoneNumber: "6655443322",
     status: "inactive",
     createdAt: "2024-02-10T13:45:00Z",
     updatedAt: "2024-02-10T13:45:00Z",
@@ -78,24 +81,25 @@ export const vehicles: Vehicle[] = [
     vehicleNumber: "TS05IJ7890",
     driverName: "Michael Wilson",
     driverNumber: "5432109876",
-    route: "RTE002",
-    pricePerRound: 475,
+    ownerName: "Jennifer Miller",
+    ownerPhoneNumber: "5544332211",
     status: "active",
     createdAt: "2024-02-15T08:30:00Z",
     updatedAt: "2024-02-15T08:30:00Z",
   },
 ];
 
-// Dummy data for trips
+// Update the dummy data for trips to include pricePerRound
 export const trips: Trip[] = [
   {
     id: "TRP001",
     vehicleId: "VEH001",
     date: "2024-03-01",
     totalRounds: 5,
+    pricePerRound: 500,
     totalAmountToPay: 2500,
     amountPaid: 2500,
-    paymentStatus: "paid", // Changed from "completed" to "paid"
+    paymentStatus: "paid",
     notes: "All rounds completed on time",
     createdAt: "2024-03-01T18:00:00Z",
     updatedAt: "2024-03-01T18:00:00Z",
@@ -105,9 +109,10 @@ export const trips: Trip[] = [
     vehicleId: "VEH001",
     date: "2024-03-05",
     totalRounds: 4,
+    pricePerRound: 500,
     totalAmountToPay: 2000,
     amountPaid: 2000,
-    paymentStatus: "paid", // Changed from "completed" to "paid"
+    paymentStatus: "paid",
     createdAt: "2024-03-05T17:30:00Z",
     updatedAt: "2024-03-05T17:30:00Z",
   },
@@ -116,9 +121,10 @@ export const trips: Trip[] = [
     vehicleId: "VEH002",
     date: "2024-03-02",
     totalRounds: 6,
+    pricePerRound: 450,
     totalAmountToPay: 2700,
     amountPaid: 1350,
-    paymentStatus: "partial", // Changed from "pending" to "partial"
+    paymentStatus: "partial",
     notes: "Partial payment received",
     createdAt: "2024-03-02T19:15:00Z",
     updatedAt: "2024-03-02T19:15:00Z",
@@ -128,9 +134,10 @@ export const trips: Trip[] = [
     vehicleId: "VEH003",
     date: "2024-03-03",
     totalRounds: 3,
+    pricePerRound: 550,
     totalAmountToPay: 1650,
     amountPaid: 0,
-    paymentStatus: "unpaid", // Changed from "cancelled" to "unpaid"
+    paymentStatus: "unpaid",
     notes: "Vehicle broke down",
     createdAt: "2024-03-03T08:00:00Z",
     updatedAt: "2024-03-03T10:30:00Z",
@@ -140,9 +147,10 @@ export const trips: Trip[] = [
     vehicleId: "VEH005",
     date: "2024-03-04",
     totalRounds: 5,
+    pricePerRound: 475,
     totalAmountToPay: 2375,
     amountPaid: 2375,
-    paymentStatus: "paid", // Changed from "completed" to "paid"
+    paymentStatus: "paid",
     createdAt: "2024-03-04T18:45:00Z",
     updatedAt: "2024-03-04T18:45:00Z",
   },
@@ -151,19 +159,20 @@ export const trips: Trip[] = [
     vehicleId: "VEH001",
     date: "2024-03-10",
     totalRounds: 6,
+    pricePerRound: 500,
     totalAmountToPay: 3000,
     amountPaid: 1500,
-    paymentStatus: "partial", // Changed from "pending" to "partial"
+    paymentStatus: "partial",
     notes: "Remaining payment due next week",
     createdAt: "2024-03-10T19:00:00Z",
     updatedAt: "2024-03-10T19:00:00Z",
   },
-  // Add more recent trips for better statistics
   {
     id: "TRP007",
     vehicleId: "VEH001",
-    date: new Date().toISOString().split("T")[0], // Today
+    date: new Date().toISOString().split("T")[0],
     totalRounds: 3,
+    pricePerRound: 500,
     totalAmountToPay: 1500,
     amountPaid: 1500,
     paymentStatus: "paid",
@@ -173,8 +182,9 @@ export const trips: Trip[] = [
   {
     id: "TRP008",
     vehicleId: "VEH002",
-    date: new Date().toISOString().split("T")[0], // Today
+    date: new Date().toISOString().split("T")[0],
     totalRounds: 4,
+    pricePerRound: 450,
     totalAmountToPay: 1800,
     amountPaid: 0,
     paymentStatus: "unpaid",
@@ -184,8 +194,9 @@ export const trips: Trip[] = [
   {
     id: "TRP009",
     vehicleId: "VEH001",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0], // Yesterday
+    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
     totalRounds: 5,
+    pricePerRound: 500,
     totalAmountToPay: 2500,
     amountPaid: 1000,
     paymentStatus: "partial",
@@ -195,8 +206,9 @@ export const trips: Trip[] = [
   {
     id: "TRP010",
     vehicleId: "VEH001",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0], // Yesterday
+    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
     totalRounds: 2,
+    pricePerRound: 500,
     totalAmountToPay: 1000,
     amountPaid: 1000,
     paymentStatus: "paid",
@@ -210,6 +222,11 @@ export const trips: Trip[] = [
 // Vehicles
 export function getAllVehicles(): Vehicle[] {
   return vehicles;
+}
+
+export function getAllActiveVehicles(): Vehicle[] {
+  let vehicle = vehicles.filter((v, i) => v.status == "active");
+  return vehicle;
 }
 
 export function getVehicleById(id: string): Vehicle | undefined {
@@ -257,6 +274,7 @@ export function deleteVehicle(id: string): boolean {
 }
 
 // Trips
+// Add a function to get all trips
 export function getAllTrips(): Trip[] {
   return trips;
 }
@@ -269,20 +287,12 @@ export function getTripById(id: string): Trip | undefined {
   return trips.find((trip) => trip.id === id);
 }
 
+// Update the addTrip function to accept pricePerRound
 export function addTrip(
-  trip: Omit<Trip, "id" | "createdAt" | "updatedAt" | "totalAmountToPay">
+  trip: Omit<Trip, "id" | "createdAt" | "updatedAt">
 ): Trip {
-  // Calculate total amount to pay based on vehicle's price per round
-  const vehicle = getVehicleById(trip.vehicleId);
-  if (!vehicle) {
-    throw new Error("Vehicle not found");
-  }
-
-  const totalAmountToPay = trip.totalRounds * vehicle.pricePerRound;
-
   const newTrip: Trip = {
     id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
-    totalAmountToPay,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...trip,
@@ -291,23 +301,15 @@ export function addTrip(
   return newTrip;
 }
 
+// Update the updateTrip function
 export function updateTrip(
   id: string,
-  trip: Omit<Trip, "id" | "createdAt" | "totalAmountToPay">
+  trip: Omit<Trip, "id" | "createdAt">
 ): Trip | null {
   const index = trips.findIndex((t) => t.id === id);
   if (index !== -1) {
-    // Calculate total amount to pay based on vehicle's price per round
-    const vehicle = getVehicleById(trip.vehicleId);
-    if (!vehicle) {
-      throw new Error("Vehicle not found");
-    }
-
-    const totalAmountToPay = trip.totalRounds * vehicle.pricePerRound;
-
     const updatedTrip: Trip = {
       ...trip,
-      totalAmountToPay,
       id,
       createdAt: trips[index].createdAt,
       updatedAt: new Date().toISOString(),

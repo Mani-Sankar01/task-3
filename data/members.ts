@@ -74,10 +74,15 @@ export interface Member {
   };
   complianceDetails: {
     gstinNo: string;
+    gstinDoc?: string;
     factoryLicenseNo: string;
+    factoryLicenseDoc?: string;
     tspcbOrderNo: string;
+    tspcbOrderDoc?: string;
     mdlNo: string;
+    mdlDoc?: string;
     udyamCertificateNo: string;
+    udyamCertificateDoc?: string;
   };
   communicationDetails: {
     fullAddress: string;
@@ -96,26 +101,33 @@ export interface Member {
     orgDetails?: string;
     hasAppliedEarlier: string;
     previousApplicationDetails?: string;
+    isValidMember?: string;
+    isExecutiveMember?: string;
   };
   documentDetails: {
     saleDeedElectricityBill?: string;
     rentalDeed?: string;
     partnershipDeed?: string;
-    additionalDocuments?: string[];
+    additionalAttachments?: Array<{
+      name: string;
+      file: string;
+    }>;
   };
   proposer1: {
+    memberId?: string;
     name: string;
     firmName: string;
     address: string;
   };
   proposer2: {
+    memberId?: string;
     name: string;
     firmName: string;
     address: string;
   };
   declaration: {
     agreeToTerms: boolean;
-    photoUpload?: string;
+    membershipFormUpload?: string;
     signatureUpload?: string;
   };
   status: "active" | "pending" | "inactive";
@@ -145,12 +157,12 @@ export const members: Member[] = [
       surveyNumber: "SRV123",
       village: "Greenville",
       zone: "zone1",
-      mandal: "Central",
+      mandal: "mandal1",
       district: "district1",
       state: "telangana",
       pincode: "500001",
       ownershipType: "owner",
-      ownerSubType: "own_business",
+      ownerSubType: "factory_on_lease",
     },
     electricalDetails: {
       sanctionedHP: "50",
@@ -257,24 +269,37 @@ export const members: Member[] = [
     membershipDetails: {
       isMemberOfOrg: "no",
       hasAppliedEarlier: "no",
+      isValidMember: "yes",
+      isExecutiveMember: "yes",
     },
     documentDetails: {
       saleDeedElectricityBill: "/placeholder.svg",
-      additionalDocuments: ["/placeholder.svg"],
+      additionalAttachments: [
+        {
+          name: "Business License",
+          file: "/placeholder.svg",
+        },
+        {
+          name: "Insurance Certificate",
+          file: "/placeholder.svg",
+        },
+      ],
     },
     proposer1: {
-      name: "David Brown",
-      firmName: "Brown Enterprises",
-      address: "456 Business Park, Greenville",
+      memberId: "MEM001",
+      name: "John Doe",
+      firmName: "John Industries",
+      address: "123 Industrial Area, Greenville, Telangana - 500001",
     },
     proposer2: {
-      name: "Sarah Miller",
-      firmName: "Miller Associates",
-      address: "789 Commercial Zone, Greenville",
+      memberId: "MEM001",
+      name: "John Doe",
+      firmName: "John Industries",
+      address: "123 Industrial Area, Greenville, Telangana - 500001",
     },
     declaration: {
       agreeToTerms: true,
-      photoUpload: "/placeholder.svg",
+      membershipFormUpload: "/placeholder.svg",
       signatureUpload: "/placeholder.svg",
     },
     status: "active",
@@ -302,12 +327,12 @@ export const members: Member[] = [
       surveyNumber: "SRV123",
       village: "Greenville",
       zone: "zone1",
-      mandal: "Central",
+      mandal: "mandal2",
       district: "district1",
       state: "telangana",
       pincode: "500001",
       ownershipType: "owner",
-      ownerSubType: "own_business",
+      ownerSubType: "owned",
     },
     electricalDetails: {
       sanctionedHP: "50",
@@ -392,24 +417,37 @@ export const members: Member[] = [
     membershipDetails: {
       isMemberOfOrg: "no",
       hasAppliedEarlier: "no",
+      isValidMember: "yes",
+      isExecutiveMember: "no",
     },
     documentDetails: {
       saleDeedElectricityBill: "/placeholder.svg",
-      additionalDocuments: ["/placeholder.svg"],
+      additionalAttachments: [
+        {
+          name: "Business License",
+          file: "/placeholder.svg",
+        },
+        {
+          name: "Insurance Certificate",
+          file: "/placeholder.svg",
+        },
+      ],
     },
     proposer1: {
-      name: "David Brown",
-      firmName: "Brown Enterprises",
-      address: "456 Business Park, Greenville",
+      memberId: "MEM001",
+      name: "John Doe",
+      firmName: "John Industries",
+      address: "123 Industrial Area, Greenville, Telangana - 500001",
     },
     proposer2: {
-      name: "Sarah Miller",
-      firmName: "Miller Associates",
-      address: "789 Commercial Zone, Greenville",
+      memberId: "MEM001",
+      name: "John Doe",
+      firmName: "John Industries",
+      address: "123 Industrial Area, Greenville, Telangana - 500001",
     },
     declaration: {
       agreeToTerms: true,
-      photoUpload: "/placeholder.svg",
+      membershipFormUpload: "/placeholder.svg",
       signatureUpload: "/placeholder.svg",
     },
     status: "active",

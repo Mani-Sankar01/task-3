@@ -25,6 +25,24 @@ import Step3ComplianceLegal from "@/components/add-member/step-3-compliance-lega
 import Step4MembershipDocs from "@/components/add-member/step-4-membership-docs";
 import Step5ProposerDeclaration from "@/components/add-member/step-5-proposer-declaration";
 import { getMemberById, addMember, updateMember } from "@/data/members";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { FormLabel } from "./ui/form";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 // Define the form schema
 const formSchema = z.object({
@@ -164,6 +182,7 @@ const formSchema = z.object({
     photoUpload: z.any().optional(),
     signatureUpload: z.any().optional(),
   }),
+  status: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -182,6 +201,11 @@ const AddMember = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditMode);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showOtpDialog, setShowOtpDialog] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [formData, setFormData] = useState<FormValues | null>(null);
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -309,6 +333,7 @@ const AddMember = ({
   };
 
   const onSubmit = async (data: FormValues) => {
+    setFormData(data);
     setIsSubmitting(true);
     try {
       // Here you would send the data to your API
@@ -342,6 +367,86 @@ const AddMember = ({
 
       // Redirect to memberships page
       router.push("/memberships");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("Failed to save member. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const userRole = localStorage.getItem("userRole");
+
+  const handleSubmit = (data: FormValues) => {
+    setFormData(data);
+
+    if (isEditMode) {
+      // For edit mode, show confirmation dialog
+      setShowConfirmDialog(true);
+    } else {
+      // For new member, directly submit
+      processSubmit(data);
+    }
+  };
+
+  const confirmSubmit = () => {
+    setShowConfirmDialog(false);
+
+    if (userRole === "admin") {
+      // Admin can directly submit
+      if (formData) processSubmit(formData);
+    } else {
+      // Editor needs OTP verification
+      setShowOtpDialog(true);
+    }
+  };
+
+  const verifyOtp = () => {
+    if (otp === "1234") {
+      // OTP is correct
+      setOtpError("");
+      setShowOtpDialog(false);
+      if (formData) processSubmit(formData);
+    } else {
+      // OTP is incorrect
+      setOtpError("Invalid OTP. Please try again.");
+    }
+  };
+
+  const processSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
+    try {
+      // Here you would send the data to your API
+      if (isEditMode && memberId) {
+        // Update existing member
+        const updatedMember = updateMember(memberId, {
+          ...data,
+          status: data.status || "active", // Use selected status or default to active
+          joinDate: new Date().toISOString().split("T")[0], // Update join date
+        });
+        console.log("Member updated:", updatedMember);
+      } else {
+        // Add new member
+        const newMember = addMember({
+          ...data,
+          status: data.status || "pending", // Use selected status or default to pending
+          joinDate: new Date().toISOString().split("T")[0],
+        });
+        console.log("New member added:", newMember);
+      }
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      // Show success message
+      alert(
+        isEditMode
+          ? "Member updated successfully!"
+          : "Member added successfully!"
+      );
+
+      // Redirect to memberships page
+      router.push("/admin/memberships");
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Failed to save member. Please try again.");
@@ -476,7 +581,48 @@ const AddMember = ({
                 {currentStep === 2 && <Step2OperationDetails />}
                 {currentStep === 3 && <Step3ComplianceLegal />}
                 {currentStep === 4 && <Step4MembershipDocs />}
-                {currentStep === 5 && <Step5ProposerDeclaration />}
+                {currentStep === 5 && (
+                  <>
+                    <Step5ProposerDeclaration />
+
+                    {/* Status dropdown for admin only */}
+                    {userRole === "admin" && (
+                      <div className="mt-8">
+                        <h3 className="text-lg font-medium border-b pb-2 mb-4">
+                          Membership Status
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <Select
+                              value={methods.watch("status") || "pending"}
+                              onValueChange={(value) =>
+                                methods.setValue("status", value)
+                              }
+                            >
+                              <SelectTrigger id="status">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">
+                                  Inactive
+                                </SelectItem>
+                                <SelectItem value="approved">
+                                  Approved
+                                </SelectItem>
+                                <SelectItem value="rejected">
+                                  Rejected
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </form>
             </FormProvider>
           </CardContent>
@@ -496,7 +642,7 @@ const AddMember = ({
               </Button>
             ) : (
               <Button
-                onClick={methods.handleSubmit(onSubmit)}
+                onClick={methods.handleSubmit(handleSubmit)}
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -513,6 +659,65 @@ const AddMember = ({
             )}
           </CardFooter>
         </Card>
+
+        {/* Confirmation Dialog */}
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Changes</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to save the changes to this member?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmDialog(false)}
+              >
+                No
+              </Button>
+              <Button onClick={confirmSubmit}>Yes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* OTP Verification Dialog */}
+        <Dialog open={showOtpDialog} onOpenChange={setShowOtpDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>OTP Verification</DialogTitle>
+              <DialogDescription>
+                Please enter the OTP sent to your registered mobile number to
+                proceed.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <FormLabel htmlFor="otp">OTP</FormLabel>
+                <Input
+                  id="otp"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                />
+                {otpError && (
+                  <p className="text-sm font-medium text-destructive">
+                    {otpError}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  For demo purposes, the OTP is 1234
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowOtpDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={verifyOtp}>Verify</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarInset>
   );

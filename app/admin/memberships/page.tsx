@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState } from "react";
@@ -35,6 +35,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getAllMembers, type Member, deleteMember } from "@/data/members";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 const page = () => {
   const router = useRouter();
@@ -44,6 +45,9 @@ const page = () => {
   const [members, setMembers] = useState(() => getAllMembers());
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Number of items to show per page
+
+  // User role for role-based access control - get from localStorage for persistence
+  const userRole = localStorage.getItem("userRole");
 
   // Filter members based on search term
   const filteredMembers = members.filter(
@@ -278,22 +282,31 @@ const page = () => {
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Link
-                                  href={`/admin/memberships/${member.id}/edit`}
+
+                              {/* Show Edit option only for Admin or Editor roles */}
+                              {(userRole === "admin" ||
+                                userRole === "editor") && (
+                                <DropdownMenuItem>
+                                  <Link
+                                    href={`/admin/memberships/${member.id}/edit`}
+                                  >
+                                    Edit Member
+                                  </Link>
+                                </DropdownMenuItem>
+                              )}
+
+                              {/* Show Delete option only for Admin role */}
+                              {userRole === "admin" && (
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteMember(member.id);
+                                  }}
                                 >
-                                  Edit Member
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteMember(member.id);
-                                }}
-                              >
-                                Delete Member
-                              </DropdownMenuItem>
+                                  Delete Member
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

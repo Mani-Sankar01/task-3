@@ -26,14 +26,19 @@ export async function middleware(request: NextRequest) {
   // Check role-based access
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith("/admin") && userRole !== "admin") {
+  if (
+    pathname.startsWith("/admin") &&
+    userRole !== "admin" &&
+    userRole !== "editor"
+  ) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (
     pathname.startsWith("/tsmwa") &&
     userRole !== "admin" &&
-    userRole !== "tsmwaManager"
+    userRole !== "tsmwaManager" &&
+    userRole !== "editor"
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }

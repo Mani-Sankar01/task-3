@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getAllMeetings, deleteMeeting, type Meeting } from "@/data/meetings";
-import Link from "next/link";
 
 export default function MeetingsList() {
   const router = useRouter();
@@ -133,7 +132,7 @@ export default function MeetingsList() {
 
   // Navigate to edit meeting
   const editMeeting = (meetingId: string) => {
-    router.push(`/admin/meetings/add/${meetingId}`);
+    router.push(`/admin/meetings/${meetingId}/edit`);
   };
 
   // Delete a meeting
@@ -155,6 +154,25 @@ export default function MeetingsList() {
     }
   };
 
+  const getAttendeeTypeLabel = (type: string) => {
+    switch (type) {
+      case "member":
+        return "Members";
+      case "vehicle":
+        return "Vehicles";
+      case "labour":
+        return "Labour";
+      case "mandal":
+        return "Mandals";
+      case "executive":
+        return "Executives";
+      case "driver":
+        return "Drivers";
+      default:
+        return type.charAt(0).toUpperCase() + type.slice(1);
+    }
+  };
+
   return (
     <div className="container mx-auto">
       <Card>
@@ -163,11 +181,9 @@ export default function MeetingsList() {
             <CardTitle className="text-2xl">Meetings</CardTitle>
             <CardDescription>Schedule and manage all meetings</CardDescription>
           </div>
-          <Link href={"/admin/meetings/add"}>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
-            </Button>
-          </Link>
+          <Button onClick={addNewMeeting}>
+            <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -295,15 +311,21 @@ export default function MeetingsList() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Link href={`/admin/meetings/${meeting.id}`}>
-                                View Details{" "}
-                              </Link>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                viewMeetingDetails(meeting.id);
+                              }}
+                            >
+                              View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Link href={`/admin/meetings/${meeting.id}/edit`}>
-                                Edit Meeting
-                              </Link>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editMeeting(meeting.id);
+                              }}
+                            >
+                              Edit Meeting
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"

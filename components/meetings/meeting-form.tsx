@@ -63,7 +63,14 @@ const formSchema = z.object({
   actualAttendees: z.number().optional(),
   attendees: z.array(
     z.object({
-      type: z.enum(["member", "vehicle", "labour", "route"]),
+      type: z.enum([
+        "member",
+        "vehicle",
+        "labour",
+        "mandal",
+        "executive",
+        "driver",
+      ]),
       scope: z.enum(["all", "selected"]),
       selectedIds: z.array(z.string()).optional(),
     })
@@ -96,7 +103,9 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
     member: [],
     vehicle: [],
     labour: [],
-    route: [],
+    mandal: [],
+    executive: [],
+    driver: [],
   });
 
   const form = useForm<FormValues>({
@@ -127,13 +136,22 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
 
   useEffect(() => {
     const loadAttendeeOptions = async () => {
-      const types: AttendeeType[] = ["member", "vehicle", "labour", "route"];
+      const types: AttendeeType[] = [
+        "member",
+        "vehicle",
+        "labour",
+        "mandal",
+        "executive",
+        "driver",
+      ];
       const options: Record<AttendeeType, { value: string; label: string }[]> =
         {
           member: [],
           vehicle: [],
           labour: [],
-          route: [],
+          mandal: [],
+          executive: [],
+          driver: [],
         };
 
       for (const type of types) {
@@ -144,7 +162,7 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
             item.name ||
             item.registrationNumber ||
             item.firmName ||
-            `${item.startPoint} - ${item.endPoint}`,
+            `${item.position || ""} ${item.name || ""}`.trim(),
         }));
       }
 
@@ -195,7 +213,16 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
   };
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto ">
+      <div className="mb-6 flex items-center">
+        <Button variant="outline" onClick={handleCancel} className="mr-4">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
+        </Button>
+        <h1 className="text-2xl font-bold">
+          {isEditMode ? "Edit Meeting" : "Schedule New Meeting"}
+        </h1>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -434,11 +461,23 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
                             <SelectItem value="labour-selected">
                               Selected Labour
                             </SelectItem>
-                            <SelectItem value="route-all">
-                              All Routes
+                            <SelectItem value="mandal-all">
+                              All Mandals
                             </SelectItem>
-                            <SelectItem value="route-selected">
-                              Selected Routes
+                            <SelectItem value="mandal-selected">
+                              Selected Mandals
+                            </SelectItem>
+                            <SelectItem value="executive-all">
+                              All Executives
+                            </SelectItem>
+                            <SelectItem value="executive-selected">
+                              Selected Executives
+                            </SelectItem>
+                            <SelectItem value="driver-all">
+                              All Drivers
+                            </SelectItem>
+                            <SelectItem value="driver-selected">
+                              Selected Drivers
                             </SelectItem>
                           </SelectContent>
                         </Select>
@@ -558,7 +597,7 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
                               control={form.control}
                               name={`followUps.${index}.time`}
                               render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem>
                                   <FormLabel>Follow-up Time</FormLabel>
                                   <FormControl>
                                     <Input type="time" {...field} />
@@ -571,9 +610,9 @@ export default function MeetingForm({ meeting, isEditMode }: MeetingFormProps) {
 
                           <Button
                             type="button"
-                            variant="destructive"
+                            variant="ghost"
                             size="sm"
-                            className="mt-4"
+                            className="mt-8"
                             onClick={() => {
                               const followUps =
                                 form.getValues("followUps") || [];

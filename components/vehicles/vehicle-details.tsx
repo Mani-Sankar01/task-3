@@ -76,7 +76,6 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
   const [statistics, setStatistics] = useState(() =>
     getTripStatistics(vehicle.id)
   );
-  const route = getRouteById(vehicle.route);
 
   // Update filtered trips when date range changes
   useEffect(() => {
@@ -145,10 +144,18 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </CardTitle>
                 <CardDescription>Driver: {vehicle.driverName}</CardDescription>
               </div>
-
-              <Button onClick={handleEdit}>
-                <Edit className="mr-2 h-4 w-4" /> Edit Vehicle
-              </Button>
+              <Badge
+                variant={
+                  vehicle.status === "active"
+                    ? "default"
+                    : vehicle.status === "maintenance"
+                    ? "secondary"
+                    : "destructive"
+                }
+              >
+                {vehicle.status.charAt(0).toUpperCase() +
+                  vehicle.status.slice(1)}
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -159,13 +166,8 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                   <span>Driver Phone: {vehicle.driverNumber}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Route:{" "}
-                    {route
-                      ? `${route.name} (${route.startPoint} - ${route.endPoint})`
-                      : "Unknown Route"}
-                  </span>
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>Owner: {vehicle.ownerName}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -176,34 +178,14 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
               </div>
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>Owner Phone: {vehicle.ownerPhoneNumber}</span>
+                </div>
+                <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>
                     Last Updated:{" "}
                     {new Date(vehicle.updatedAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CircleCheckBig className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    Price Per Round: ₹{vehicle.pricePerRound}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Bus className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">
-                    Status:{" "}
-                    <Badge
-                      variant={
-                        vehicle.status === "active"
-                          ? "default"
-                          : vehicle.status === "maintenance"
-                          ? "secondary"
-                          : "destructive"
-                      }
-                    >
-                      {vehicle.status.charAt(0).toUpperCase() +
-                        vehicle.status.slice(1)}
-                    </Badge>
                   </span>
                 </div>
               </div>

@@ -58,7 +58,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 const data = {
-  versions: ["Admin", "TSMWA", "TQMA"],
+  versions: ["Admin", "TSMWA", "TQMWA"],
   navMain: [
     {
       title: "Platform",
@@ -118,11 +118,11 @@ const data = {
       title: "GST & Invoices",
       url: "#",
       items: [
-        {
-          title: "All Filling",
-          url: "/admin/gst-filings",
-          icon: SquareKanban,
-        },
+        // {
+        //   title: "All Filling",
+        //   url: "/admin/gst-filings",
+        //   icon: SquareKanban,
+        // },
         {
           title: "All Invoices",
           url: "/admin/invoices",
@@ -161,8 +161,8 @@ const data = {
           icon: CalendarDays,
         },
         {
-          title: "Fees",
-          url: "/admin/vehicle/Fees",
+          title: "All Trips",
+          url: "/admin/vehicle/trips",
           icon: IndianRupee,
         },
       ],
@@ -174,6 +174,17 @@ const data = {
         {
           title: "All Labours",
           url: "/admin/labour",
+          icon: Users2,
+        },
+      ],
+    },
+    {
+      title: "All Lease",
+      url: "#",
+      items: [
+        {
+          title: "All Lease",
+          url: "/admin/lease-queries",
           icon: Users2,
         },
       ],
@@ -293,6 +304,7 @@ export default function Layout({
                   description: "Redirecting you to login.",
                   variant: "destructive",
                 });
+                localStorage.removeItem("userRole");
                 signOut();
               }}
             >

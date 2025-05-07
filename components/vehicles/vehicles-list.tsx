@@ -74,10 +74,7 @@ export default function VehiclesList() {
         valueA = a.status;
         valueB = b.status;
         break;
-      case "pricePerRound":
-        valueA = a.pricePerRound;
-        valueB = b.pricePerRound;
-        break;
+
       case "createdAt":
         valueA = new Date(a.createdAt).getTime();
         valueB = new Date(b.createdAt).getTime();
@@ -219,17 +216,7 @@ export default function VehiclesList() {
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead className="hidden md:table-cell">Route</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("pricePerRound")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Price/Round
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
+
                   <TableHead className="hidden md:table-cell">
                     <Button
                       variant="ghost"
@@ -263,12 +250,7 @@ export default function VehiclesList() {
                       <TableCell className="hidden md:table-cell">
                         {vehicle.driverName}
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {getRouteName(vehicle.route)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        ₹{vehicle.pricePerRound}
-                      </TableCell>
+
                       <TableCell className="hidden md:table-cell">
                         <Badge
                           variant={

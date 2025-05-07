@@ -305,9 +305,23 @@ export default function Step1PersonalBusiness() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Mandal</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter mandal" {...field} />
-                </FormControl>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mandal" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="mandal1">Mandal 1</SelectItem>
+                    <SelectItem value="mandal2">Mandal 2</SelectItem>
+                    <SelectItem value="mandal3">Mandal 3</SelectItem>
+                    <SelectItem value="mandal4">Mandal 4</SelectItem>
+                    <SelectItem value="mandal5">Mandal 5</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -387,7 +401,7 @@ export default function Step1PersonalBusiness() {
             name="businessDetails.ownershipType"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Ownership Type</FormLabel>
+                <FormLabel>Status of the Proprietor</FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -414,20 +428,22 @@ export default function Step1PersonalBusiness() {
               name="businessDetails.ownerSubType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Owner Type</FormLabel>
+                  <FormLabel>Proprietor Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select owner type" />
+                        <SelectValue placeholder="Select proprietor type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="own_business">Own Business</SelectItem>
+                      <SelectItem value="owned">Owned</SelectItem>
+                      <SelectItem value="rented">Rented/Tenant</SelectItem>
+                      <SelectItem value="trader">Trader</SelectItem>
                       <SelectItem value="factory_on_lease">
-                        Factory on Lease
+                        Factory given on lease
                       </SelectItem>
                     </SelectContent>
                   </Select>

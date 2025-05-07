@@ -33,81 +33,191 @@ export default function Step3ComplianceLegal() {
           Registration & Compliance Numbers
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={control}
-            name="complianceDetails.gstinNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>GSTIN No</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter GSTIN number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-x-2 flex">
+            <FormField
+              control={control}
+              name="complianceDetails.gstinNo"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>GSTIN No</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter GSTIN number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="complianceDetails.gstinDoc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>GSTIN Certificate</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name="complianceDetails.factoryLicenseNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Factory License No</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter factory license number"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-x-2 flex">
+            <FormField
+              control={control}
+              name="complianceDetails.factoryLicenseNo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Factory License No</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter factory license number"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="complianceDetails.factoryLicenseDoc"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>Upload Doc</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name="complianceDetails.tspcbOrderNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>TSPCB Order No</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter TSPCB order number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-x-2 flex">
+            <FormField
+              control={control}
+              name="complianceDetails.tspcbOrderNo"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>TSPCB Order No</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter TSPCB order number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="complianceDetails.tspcbOrderDoc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upload Doc</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name="complianceDetails.mdlNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>M.D.L No</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter M.D.L number" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-x-2 flex">
+            <FormField
+              control={control}
+              name="complianceDetails.mdlNo"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>M.D.L No</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter M.D.L number" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="complianceDetails.mdlDoc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upload Doc</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-          <FormField
-            control={control}
-            name="complianceDetails.udyamCertificateNo"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Udyam Certificate No</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter Udyam certificate number"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="space-x-2 flex">
+            <FormField
+              control={control}
+              name="complianceDetails.udyamCertificateNo"
+              render={({ field }) => (
+                <FormItem className="flex-1">
+                  <FormLabel>Udyam Certificate No</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter Udyam certificate number"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name="complianceDetails.udyamCertificateDoc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Upload Doc</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        field.onChange(file);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
         </div>
       </div>
 

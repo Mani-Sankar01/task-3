@@ -80,13 +80,13 @@ export default async function Home() {
               </div>
               <CardTitle>TSMWA</CardTitle>
               <CardDescription>
-                Technical System Management Web Application
+                Tandur Stone Merchant Association
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
               <p>
-                Access technical controls, system configurations, and advanced
-                management features.
+                Manage and view all related to Tandur Stone Merchant
+                Association.
               </p>
             </CardContent>
           </Card>
@@ -99,13 +99,15 @@ export default async function Home() {
               <div className="w-20 h-20 mx-auto bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 <Users className="h-10 w-10 text-primary" />
               </div>
-              <CardTitle>TWWA</CardTitle>
-              <CardDescription>Team Workspace Web Application</CardDescription>
+              <CardTitle>TQMWA</CardTitle>
+              <CardDescription>
+                Tandur Quary Mandal Welfare Association
+              </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
               <p>
-                Collaborate with your team, manage projects, and track progress
-                in a unified workspace.
+                Manage and view all related to Tandur Quarry Mandal Welfare
+                Association.
               </p>
             </CardContent>
           </Card>

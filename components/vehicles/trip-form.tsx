@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,24 +48,29 @@ import {
   type Trip,
 } from "@/data/vehicles";
 
+// Update the form schema
 const formSchema = z.object({
   date: z.date({
     required_error: "Date is required",
   }),
   totalRounds: z.coerce.number().min(1, "Total rounds must be at least 1"),
+  pricePerRound: z.coerce.number().min(1, "Price per round must be at least 1"),
+  totalAmountToPay: z.coerce.number().min(1, "Total amount must be at least 1"),
   amountPaid: z.coerce.number().min(0, "Amount paid cannot be negative"),
-  paymentStatus: z.enum(["paid", "partial", "unpaid"]), // Changed from status to paymentStatus
+  paymentStatus: z.enum(["paid", "partial", "unpaid"]),
   notes: z.string().optional(),
 });
 
+// Update the form values type
 type FormValues = z.infer<typeof formSchema>;
 
 interface TripFormProps {
   vehicleId: string;
   trip?: Trip;
-  isEditMode: boolean;
+  isEditMode?: boolean;
 }
 
+// Update the form component
 export default function TripForm({
   vehicleId,
   trip,
@@ -74,24 +79,39 @@ export default function TripForm({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const vehicle = getVehicleById(vehicleId);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: trip
       ? {
           date: new Date(trip.date),
           totalRounds: trip.totalRounds,
+          pricePerRound: trip.pricePerRound,
+          totalAmountToPay: trip.totalAmountToPay,
           amountPaid: trip.amountPaid,
-          paymentStatus: trip.paymentStatus, // Changed from status to paymentStatus
+          paymentStatus: trip.paymentStatus,
           notes: trip.notes || "",
         }
       : {
           date: new Date(),
           totalRounds: 1,
+          pricePerRound: 500, // Default price
+          totalAmountToPay: 500, // Default total amount
           amountPaid: 0,
-          paymentStatus: "unpaid", // Changed from "pending" to "unpaid"
+          paymentStatus: "unpaid",
           notes: "",
         },
   });
+
+  // Watch for changes to calculate total
+  const totalRounds = form.watch("totalRounds");
+  const pricePerRound = form.watch("pricePerRound");
+
+  // Update total amount when rounds or price changes
+  useEffect(() => {
+    const calculatedTotal = totalRounds * pricePerRound;
+    form.setValue("totalAmountToPay", calculatedTotal);
+  }, [totalRounds, pricePerRound, form]);
 
   if (!vehicle) {
     return (
@@ -102,7 +122,7 @@ export default function TripForm({
             <p className="text-muted-foreground mb-4">
               The vehicle you're looking for doesn't exist or has been removed.
             </p>
-            <Button onClick={() => router.push("/admin/vehicle")}>
+            <Button onClick={() => router.push("/admin/vehicles")}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Vehicles
             </Button>
           </CardContent>
@@ -152,23 +172,16 @@ export default function TripForm({
     }
   };
 
-  // Calculate total amount based on rounds
-  const calculateTotal = (rounds: number) => {
-    return rounds * vehicle.pricePerRound;
-  };
-
-  const totalAmount = calculateTotal(form.watch("totalRounds"));
-
   return (
     <div className="container mx-auto">
-      {/* <div className="mb-6 flex items-center">
+      <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
         </Button>
         <h1 className="text-2xl font-bold">
           {isEditMode ? "Edit Trip" : "Add New Trip"}
         </h1>
-      </div> */}
+      </div>
 
       <Card>
         <CardHeader>
@@ -186,34 +199,34 @@ export default function TripForm({
               <div>
                 <p className="text-sm font-medium">Vehicle Number</p>
                 <p className="text-sm text-muted-foreground">
-                  {vehicle.vehicleNumber}
+                  {vehicle?.vehicleNumber}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium">Driver</p>
                 <p className="text-sm text-muted-foreground">
-                  {vehicle.driverName}
+                  {vehicle?.driverName}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium">Price Per Round</p>
+                <p className="text-sm font-medium">Owner</p>
                 <p className="text-sm text-muted-foreground">
-                  ₹{vehicle.pricePerRound}
+                  {vehicle?.ownerName}
                 </p>
               </div>
               <div>
                 <p className="text-sm font-medium">Status</p>
                 <Badge
                   variant={
-                    vehicle.status === "active"
+                    vehicle?.status === "active"
                       ? "default"
-                      : vehicle.status === "maintenance"
+                      : vehicle?.status === "maintenance"
                       ? "secondary"
                       : "destructive"
                   }
                 >
-                  {vehicle.status.charAt(0).toUpperCase() +
-                    vehicle.status.slice(1)}
+                  {vehicle?.status.charAt(0).toUpperCase() +
+                    vehicle?.status.slice(1)}
                 </Badge>
               </div>
             </div>
@@ -264,7 +277,7 @@ export default function TripForm({
                   control={form.control}
                   name="paymentStatus"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Payment Status</FormLabel>
                       <Select
                         onValueChange={field.onChange}
@@ -310,6 +323,50 @@ export default function TripForm({
 
                 <FormField
                   control={form.control}
+                  name="pricePerRound"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price Per Round (₹)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Enter price per round"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="totalAmountToPay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Total Amount (₹)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          placeholder="Enter total amount"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(Number(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="amountPaid"
                   render={({ field }) => (
                     <FormItem>
@@ -334,7 +391,9 @@ export default function TripForm({
               <div className="bg-muted p-4 rounded-md">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total Amount:</span>
-                  <span className="font-bold">₹{totalAmount}</span>
+                  <span className="font-bold">
+                    ₹{form.watch("totalAmountToPay")}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="font-medium">Amount Paid:</span>
@@ -344,12 +403,14 @@ export default function TripForm({
                   <span className="font-medium">Balance:</span>
                   <span
                     className={
-                      totalAmount - form.watch("amountPaid") > 0
+                      form.watch("totalAmountToPay") -
+                        form.watch("amountPaid") >
+                      0
                         ? "text-destructive font-bold"
                         : "text-green-600 font-bold"
                     }
                   >
-                    ₹{totalAmount - form.watch("amountPaid")}
+                    ₹{form.watch("totalAmountToPay") - form.watch("amountPaid")}
                   </span>
                 </div>
               </div>

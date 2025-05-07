@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { Suspense } from "react";
@@ -8,8 +8,16 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic"; // This ensures the page is not statically generated
 import DashboardOverview from "@/components/dashboard/dashboard-overview";
+import { useSession } from "next-auth/react";
 
 function page() {
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      localStorage.setItem("userRole", session.user.role);
+    }
+  }, [status, session]);
   return (
     <Suspense
       fallback={
