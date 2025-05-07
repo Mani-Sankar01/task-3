@@ -206,6 +206,7 @@ const AddMember = ({
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
   const [formData, setFormData] = useState<FormValues | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -375,7 +376,11 @@ const AddMember = ({
     }
   };
 
-  const userRole = "admin";
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    console.log(role);
+    setUserRole(role);
+  }, []);
 
   const handleSubmit = (data: FormValues) => {
     setFormData(data);
