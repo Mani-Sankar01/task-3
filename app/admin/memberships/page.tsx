@@ -45,9 +45,14 @@ const page = () => {
   const [members, setMembers] = useState(() => getAllMembers());
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Number of items to show per page
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // User role for role-based access control - get from localStorage for persistence
-  const userRole = "admin";
+  useEffect(() => {
+    const role = localStorage.getItem("userRole");
+    console.log(role);
+    setUserRole(role);
+  }, []);
 
   // Filter members based on search term
   const filteredMembers = members.filter(
