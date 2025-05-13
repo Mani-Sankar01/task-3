@@ -281,12 +281,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                     <FormItem className="col-span-1">
                       <FormLabel>Membership ID</FormLabel>
                       <div className="space-y-2">
-                        <Input
-                          placeholder="Search by ID, name, or firm..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="mb-2"
-                        />
                         <Select
                           onValueChange={field.onChange}
                           defaultValue={field.value}
@@ -297,6 +291,12 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
+                            <Input
+                              placeholder="Search by ID, name, or firm..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                              className="mb-2"
+                            />
                             {filteredMembers.map((member) => (
                               <SelectItem
                                 key={member.id}
