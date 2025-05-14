@@ -4,7 +4,7 @@ import type React from "react";
 
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import { redirect, useRouter, useSearchParams } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 export default function LoginPage() {
@@ -14,23 +14,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
   const session = useSession();
-
-  // Check for error in URL (e.g., redirected from error page)
-  const errorFromParams = searchParams.get("error");
 
   useEffect(() => {
     if (session?.data?.user) {
       router.push("/");
     }
   }, [session, router]);
-
-  useState(() => {
-    if (errorFromParams) {
-      setError("Authentication failed. Please try again.");
-    }
-  });
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
