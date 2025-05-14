@@ -1,13 +1,6 @@
-import { AddReadingButton } from "@/components/AddReadingButton";
-import AuthButton from "@/components/AuthButton";
-import FilterableTable2 from "@/components/FilterableTable2";
-import { PrismaClient } from "@prisma/client";
-
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // adjust path as needed
 import { redirect } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { read } from "fs";
 import {
   Card,
   CardContent,
@@ -19,8 +12,6 @@ import {
 import Link from "next/link";
 import { BarChart3, Layers, Users } from "lucide-react";
 
-const prisma = new PrismaClient();
-
 // Set the page to dynamic to avoid caching in Next.js 13+
 export const dynamic = "force-dynamic";
 
@@ -31,10 +22,20 @@ export default async function Home() {
     redirect("/api/auth/signin"); // Redirects to login page if not authenticated
   }
 
-  if (session.user?.role === "twwaManager") {
+  if (session.user?.role === "ADMIN_VIEWER") {
+    redirect("/admin");
+  }
+
+  if (
+    session.user?.role === "TQMA_EDITOR" ||
+    session.user?.role === "TQMA_VIEWER"
+  ) {
     redirect("/twwa");
   }
-  if (session.user?.role === "tsmwaManager") {
+  if (
+    session.user?.role === "TSMWA_EDITOR" ||
+    session.user?.role === "TSMWA_VIEWER"
+  ) {
     redirect("/tsmwa");
   }
 

@@ -1,130 +1,180 @@
 "use client";
 
-import { useState } from "react";
-import { signIn, SignInResponse } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { Label } from "@/components/ui/label";
+import type React from "react";
 
-// Define the custom response type with the role
-interface CustomSignInResponse extends SignInResponse {
-  user?: {
-    role: string; // Define role or any other property you'd like to access
-  };
-}
+import { useEffect, useState } from "react";
+import { signIn } from "next-auth/react";
+import { redirect, useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
-export default function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+export default function LoginPage() {
+  const [phone, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [step, setStep] = useState<"phone" | "otp">("phone");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
-  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const session = useSession();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Check for error in URL (e.g., redirected from error page)
+  const errorFromParams = searchParams.get("error");
+
+  useEffect(() => {
+    if (session?.data?.user) {
+      router.push("/");
+    }
+  }, [session, router]);
+
+  useState(() => {
+    if (errorFromParams) {
+      setError("Authentication failed. Please try again.");
+    }
+  });
+
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null);
+    setError("");
+    console.log(process.env.BACKEND_API_URL);
+    try {
+      // Call our API to request OTP
+      const response = await fetch(
+        `${process.env.BACKEND_API_URL}/api/auth/request_otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ phone }),
+        }
+      );
+
+      const data = await response.json();
+      console.log(data.otp);
+      setError(data.otp || "Failed to send OTP");
+      if (!response.ok) {
+        setError(data.error || "Failed to send OTP");
+        return;
+      }
+
+      // Also call NextAuth to set up the session (but don't authenticate yet)
+      await signIn("credentials", {
+        phone: phone,
+        step: "requestOTP",
+        redirect: false,
+      });
+
+      setStep("otp");
+    } catch (error) {
+      setError("An error occurred. Please try again.");
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
 
     try {
-      const result = (await signIn("credentials", {
-        username,
-        password,
+      const result = await signIn("credentials", {
+        phone,
+        otp,
+        step: "verifyOTP",
         redirect: false,
-      })) as CustomSignInResponse;
+      });
 
       if (result?.error) {
-        setError("Invalid username or password");
-      } else if (result?.ok) {
-        toast({
-          title: "Login Successful",
-          description: "Redirecting you to your dashboard...",
-          variant: "sucess",
-        });
-
-        // Redirect the user based on their role after successful login
-
-        const role = result?.user?.role;
-        if (role === "admin") {
-          router.push("/admin");
-        } else if (role === "tsmwaManager") {
-          router.push("/tsmwa");
-        } else if (role === "twwaManager") {
-          router.push("/twwa");
-        } else {
-          router.push("/"); // Default fallback
-        }
+        setError("Invalid OTP. Please try again.");
+      } else {
+        // Redirect to dashboard or home page
+        router.push("/");
       }
     } catch (error) {
-      setError("An unexpected error occurred. Please try again.");
+      setError("An error occurred. Please try again.");
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
+        <h1 className="mb-6 text-center text-2xl font-bold">Login</h1>
+
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        {step === "phone" ? (
+          <form onSubmit={handleSendOTP} className="space-y-4">
+            <div>
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Phone Number
+              </label>
+              <input
+                id="phone"
                 type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={phone}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                placeholder="Enter your phone number"
                 required
-                placeholder="Enter your username"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Enter your password"
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Logging in..." : "Login"}
-            </Button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isLoading ? "Sending..." : "Send OTP"}
+            </button>
           </form>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <a href="/register" className="text-primary hover:underline">
-              Sign up
-            </a>
-          </p>
-        </CardFooter>
-      </Card>
+        ) : (
+          <form onSubmit={handleVerifyOTP} className="space-y-4">
+            <div>
+              <label
+                htmlFor="otp"
+                className="block text-sm font-medium text-gray-700"
+              >
+                OTP
+              </label>
+              <input
+                id="otp"
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                placeholder="Enter the OTP sent to your phone"
+                required
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            >
+              {isLoading ? "Verifying..." : "Verify OTP"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep("phone")}
+              className="w-full text-center text-sm text-blue-600 hover:text-blue-800"
+            >
+              Back to Phone Number
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

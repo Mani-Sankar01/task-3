@@ -28,25 +28,26 @@ export async function middleware(request: NextRequest) {
 
   if (
     pathname.startsWith("/admin") &&
-    userRole !== "admin" &&
-    userRole !== "editor"
+    userRole !== "ADMIN" &&
+    userRole !== "ADMIN_VIEWER"
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (
     pathname.startsWith("/tsmwa") &&
-    userRole !== "admin" &&
-    userRole !== "tsmwaManager" &&
-    userRole !== "editor"
+    userRole !== "ADMIN" &&
+    userRole !== "TSMWA_EDITOR" &&
+    userRole !== "TSMWA_VIEWER"
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (
     pathname.startsWith("/twwa") &&
-    userRole !== "admin" &&
-    userRole !== "twwaManager"
+    userRole !== "ADMIN" &&
+    userRole !== "TQMA_VIEWER" &&
+    userRole !== "TQMA_EDITOR"
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }
