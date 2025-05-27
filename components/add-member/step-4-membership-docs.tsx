@@ -14,18 +14,39 @@ import {
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "../ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { DownloadCloudIcon, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 export default function Step4MembershipDocs() {
   const { control, watch } = useFormContext();
   const isMemberOfOrg = watch("membershipDetails.isMemberOfOrg");
   const hasAppliedEarlier = watch("membershipDetails.hasAppliedEarlier");
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
+    {}
+  );
 
   // Add field array for dynamic attachments
   const attachmentsArray = useFieldArray({
     control,
     name: "documentDetails.additionalAttachments",
   });
+
+  const mockUploadToS3 = (
+    file: File,
+    onProgress: (percent: number) => void
+  ): Promise<string> => {
+    return new Promise((resolve) => {
+      let percent = 0;
+      const interval = setInterval(() => {
+        percent += 10;
+        onProgress(percent);
+        if (percent >= 100) {
+          clearInterval(interval);
+          resolve(`/upload/${file.name}`);
+        }
+      }, 100);
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -292,14 +313,53 @@ export default function Step4MembershipDocs() {
                   <FormItem className="flex-1">
                     <FormLabel>Upload File</FormLabel>
                     <FormControl>
-                      <Input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          field.onChange(file);
-                        }}
-                      />
+                      <>
+                        <Input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const key = `attachment-${index}`;
+                              setUploadProgress((prev) => ({
+                                ...prev,
+                                [key]: 0,
+                              }));
+                              const uploadedPath = await mockUploadToS3(
+                                file,
+                                (percent) =>
+                                  setUploadProgress((prev) => ({
+                                    ...prev,
+                                    [key]: percent,
+                                  }))
+                              );
+                              field.onChange(uploadedPath);
+                            }
+                          }}
+                        />
+                        {uploadProgress[`attachment-${index}`] >= 0 &&
+                          uploadProgress[`attachment-${index}`] < 100 && (
+                            <div className="h-2 bg-muted mt-2 rounded">
+                              <div
+                                className="bg-primary h-2 rounded transition-all"
+                                style={{
+                                  width: `${
+                                    uploadProgress[`attachment-${index}`]
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          )}
+                        {
+                          <div
+                            onClick={() => {
+                              alert("");
+                            }}
+                          >
+                            <DownloadCloudIcon />
+                          </div>
+                        }
+                      </>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

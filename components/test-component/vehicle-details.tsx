@@ -1,32 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Calendar,
-  Clock,
-  MapPin,
-  Phone,
-  Truck,
-  Edit,
-  ArrowLeft,
-  Plus,
-  DollarSign,
-  BarChart,
-  CircleCheckBig,
-  Bus,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+} from "../ui/card";
+import {
+  ArrowLeft,
+  BarChart,
+  Calendar,
+  Clock,
+  DollarSign,
+  Edit,
+  Phone,
+  Plus,
+  Truck,
+  User,
+  UserCog2,
+} from "lucide-react";
+import { type Vehicle } from "@/data/vehicles";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format, isToday, isYesterday, subDays } from "date-fns";
+import { Button } from "../ui/button";
+import { DateRangePicker } from "../vehicles/date-range-picker";
 import {
   Table,
   TableBody,
@@ -34,61 +36,142 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import type { Vehicle } from "@/data/vehicles";
-import {
-  getTripsByVehicleId,
-  deleteTrip,
-  getTripStatistics,
-  getTripsByDateRange,
-} from "@/data/vehicles";
-import { getRouteById } from "@/data/routes";
-import { DateRangePicker } from "@/components/vehicles/date-range-picker";
-import { format, subDays } from "date-fns";
-import {
-  Bar,
-  BarChart as RechartsBarChart,
-  CartesianGrid,
-  Legend,
-  Pie,
-  PieChart as RechartsPieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-  Cell,
-} from "recharts";
-import { VehicleOverviewPaymentStatusCard } from "./vehicleOverviewPaymentStatusCard";
-import { MonthlyTripStatusChart } from "./monthlyTripStatusChart";
+} from "../ui/table";
+import { useRouter } from "next/navigation";
 
-interface VehicleDetailsProps {
-  vehicle: Vehicle;
-}
-
-export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
-  const router = useRouter();
-  const [trips, setTrips] = useState(() => getTripsByVehicleId(vehicle.id));
+export default function VehicleDetailsWithID({ id }: any) {
+  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, status } = useSession();
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null);
+  const [statistics, setStatistics] = useState<any>(null);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [filteredTrips, setFilteredTrips] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState({
     from: subDays(new Date(), 30),
     to: new Date(),
   });
-  const [filteredTrips, setFilteredTrips] = useState(trips);
-  const [statistics, setStatistics] = useState(() =>
-    getTripStatistics(vehicle.id)
-  );
+  const router = useRouter();
 
-  // Update filtered trips when date range changes
+  const vehicleId = id;
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(
+          `https://tandurmart.com/api/vehicle/search_vehicles/${vehicleId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        const vehicleData = response.data;
+        setVehicle(vehicleData);
+
+        // Process statistics here
+        const trips = vehicleData.tripRecords || [];
+
+        const totalTrips = trips.length;
+        const todayTrips = trips.filter((trip: any) =>
+          isToday(new Date(trip.tripDate))
+        ).length;
+        const yesterdayTrips = trips.filter((trip: any) =>
+          isYesterday(new Date(trip.tripDate))
+        ).length;
+
+        const totalAmountToPay = trips.reduce(
+          (sum: any, trip: any) => sum + (trip.totalAmount || 0),
+          0
+        );
+        const totalAmountPaid = trips.reduce(
+          (sum: any, trip: any) => sum + (trip.amountPaid || 0),
+          0
+        );
+        const totalDues = trips.reduce(
+          (sum: any, trip: any) => sum + (trip.balanceAmount || 0),
+          0
+        );
+
+        setStatistics({
+          totalTrips,
+          todayTrips,
+          yesterdayTrips,
+          totalAmountToPay,
+          totalAmountPaid,
+          totalDues,
+        });
+
+        setFilteredTrips(trips);
+        setTrips(trips);
+      } catch (err: any) {
+        console.error("Error fetching vehicle data:", err);
+        alert("Failed to load vehicle data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [status, session?.user?.token, vehicleId]);
+
   useEffect(() => {
     if (dateRange && dateRange.from && dateRange.to) {
       const fromDate = format(dateRange.from, "yyyy-MM-dd");
       const toDate = format(dateRange.to, "yyyy-MM-dd");
-      const filtered = getTripsByDateRange(fromDate, toDate, vehicle.id);
+      const filtered = getTripsByDateRange(fromDate, toDate, vehicleId);
+      console.log(filtered);
       setFilteredTrips(filtered);
     }
-  }, [dateRange, vehicle.id]);
+  }, [dateRange, vehicleId]);
+
+  if (isLoading || status === "loading") {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading vehicle data...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <div className="container mx-auto p-6">
+        <p>No vehicle found.</p>
+      </div>
+    );
+  }
+
+  function getTripsByDateRange(
+    startDate: string,
+    endDate: string,
+    vehicleId?: string
+  ) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Set end date to the end of the day
+    end.setHours(23, 59, 59, 999);
+
+    return trips.filter((trip) => {
+      const tripDate = new Date(trip.tripDate); // ensure tripDate is a Date object
+      const matchesVehicle = vehicleId ? trip.vehicleId === vehicleId : true;
+
+      return matchesVehicle && tripDate >= start && tripDate <= end;
+    });
+  }
 
   const handleEdit = () => {
-    router.push(`/admin/vehicle/${vehicle.id}/edit`);
+    router.push(`/admin/vehicle/${vehicleId}/edit`);
   };
 
   const handleBack = () => {
@@ -96,11 +179,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
   };
 
   const handleAddTrip = () => {
-    router.push(`/admin/vehicle/${vehicle.id}/add-trip`);
+    router.push(`/admin/vehicle/${vehicleId}/add-trip`);
   };
 
   const handleEditTrip = (tripId: string) => {
-    router.push(`/admin/vehicle/${vehicle.id}/edit-trip/${tripId}`);
+    router.push(`/admin/vehicle/${vehicleId}/edit-trip/${tripId}`);
   };
 
   const handleDeleteTrip = (tripId: string) => {
@@ -109,32 +192,25 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
         "Are you sure you want to delete this trip? This action cannot be undone."
       )
     ) {
-      deleteTrip(tripId);
-      const updatedTrips = getTripsByVehicleId(vehicle.id);
-      setTrips(updatedTrips);
-      setFilteredTrips(updatedTrips);
-      setStatistics(getTripStatistics(vehicle.id));
+      console.log("delete trip");
     }
   };
 
-  // Colors for the pie chart
-  const COLORS = ["#0088FE", "#FFBB28", "#FF8042"];
-
   return (
     <div className="container mx-auto p-6">
-      {/* <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Button variant="outline" onClick={handleBack} className="mr-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-          <h1 className="text-2xl font-bold">Vehicle Details</h1>
-        </div>
-        <Button onClick={handleEdit}>
-          <Edit className="mr-2 h-4 w-4" /> Edit Vehicle
-        </Button>
-      </div> */}
-
       <div className="grid gap-6">
+        {/* Vehicle Information Card */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Button variant="outline" onClick={handleBack} className="mr-4">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+            </Button>
+            <h1 className="text-2xl font-bold">Vehicle Details</h1>
+          </div>
+          <Button onClick={handleEdit}>
+            <Edit className="mr-2 h-4 w-4" /> Edit Vehicle
+          </Button>
+        </div>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -142,7 +218,9 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 <CardTitle className="text-2xl flex items-center">
                   <Truck className="mr-2 h-5 w-5" /> {vehicle.vehicleNumber}
                 </CardTitle>
-                <CardDescription>Driver: {vehicle.driverName}</CardDescription>
+                <CardDescription>
+                  Vehicle ID: {vehicle.vehicleId}
+                </CardDescription>
               </div>
               <Badge
                 variant={
@@ -154,7 +232,7 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 }
               >
                 {vehicle.status.charAt(0).toUpperCase() +
-                  vehicle.status.slice(1)}
+                  vehicle.status.slice(1).toLowerCase()}
               </Badge>
             </div>
           </CardHeader>
@@ -162,12 +240,12 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>Driver Phone: {vehicle.driverPhoneNumber}</span>
+                  <UserCog2 className="h-4 w-4 text-muted-foreground" />
+                  <span>Driver Name: {vehicle.driverName}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>Owner: {vehicle.ownerName}</span>
+                  <span>Driver Phone: {vehicle.driverPhoneNumber}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -177,6 +255,10 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </div>
               </div>
               <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span>Owner Name: {vehicle.ownerName}</span>
+                </div>
                 <div className="flex items-center space-x-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span>Owner Phone: {vehicle.ownerPhoneNumber}</span>
@@ -193,15 +275,16 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
           </CardContent>
         </Card>
 
+        {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="trips">Trips</TabsTrigger>
-            <TabsTrigger value="maintenance">Maintenance History</TabsTrigger>
+            <TabsTrigger value="trips">Trips Record</TabsTrigger>
+            {/* <TabsTrigger value="maintenance">Maintenance History</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="overview">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
@@ -211,11 +294,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {statistics.totalTrips}
+                    {statistics?.totalTrips || 0}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {statistics.todayTrips} today, {statistics.yesterdayTrips}{" "}
-                    yesterday
+                    {statistics?.todayTrips || 0} today,{" "}
+                    {statistics?.yesterdayTrips || 0} yesterday
                   </p>
                 </CardContent>
               </Card>
@@ -223,17 +306,14 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Total Amount
+                    Total Amount to Pay
                   </CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ₹{statistics.totalAmountToPay}
+                    ₹{statistics?.totalAmountToPay || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Lifetime earnings
-                  </p>
                 </CardContent>
               </Card>
 
@@ -242,86 +322,26 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                   <CardTitle className="text-sm font-medium">
                     Amount Paid
                   </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <DollarSign className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    ₹{statistics.totalAmountPaid}
+                    ₹{statistics?.totalAmountPaid || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {(
-                      (statistics.totalAmountPaid /
-                        statistics.totalAmountToPay) *
-                      100
-                    ).toFixed(1)}
-                    % of total
-                  </p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Outstanding Dues
-                  </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Dues</CardTitle>
+                  <DollarSign className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-destructive">
-                    ₹{statistics.totalDues}
+                  <div className="text-2xl font-bold">
+                    ₹{statistics?.totalDues || 0}
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {(
-                      (statistics.totalDues / statistics.totalAmountToPay) *
-                      100
-                    ).toFixed(1)}
-                    % of total
-                  </p>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="mt-4">
-              <MonthlyTripStatusChart />
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Trip History (Last 7 Days)</CardTitle>
-                  <CardDescription>Number of trips per day</CardDescription>
-                </CardHeader>
-                <CardContent className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart
-                      data={statistics.tripsByDate}
-                      margin={{
-                        top: 20,
-                        right: 30,
-                        left: 20,
-                        bottom: 5,
-                      }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar
-                        dataKey="count"
-                        name="Number of Trips"
-                        fill="#8884d8"
-                      />
-                    </RechartsBarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <VehicleOverviewPaymentStatusCard
-                totalAmountPaid={statistics.totalAmountPaid}
-                totalAmountToPay={statistics.totalAmountToPay}
-                totalDues={statistics.totalDues}
-              />
             </div>
           </TabsContent>
 
@@ -379,15 +399,15 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                             {trip.id}
                           </TableCell>
                           <TableCell>
-                            {new Date(trip.date).toLocaleDateString()}
+                            {new Date(trip.tripDate).toLocaleDateString()}
                           </TableCell>
-                          <TableCell>{trip.totalRounds}</TableCell>
-                          <TableCell>₹{trip.totalAmountToPay}</TableCell>
+                          <TableCell>{trip.numberOfTrips}</TableCell>
+                          <TableCell>₹{trip.totalAmount}</TableCell>
                           <TableCell>₹{trip.amountPaid}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                trip.paymentStatus === "paid"
+                                trip.paymentStatus === "PAID"
                                   ? "default"
                                   : trip.paymentStatus === "partial"
                                   ? "secondary"
@@ -400,18 +420,13 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditTrip(trip.id)}
-                              >
+                              <Button variant="outline" size="sm">
                                 Edit
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="text-destructive"
-                                onClick={() => handleDeleteTrip(trip.id)}
                               >
                                 Delete
                               </Button>
@@ -432,30 +447,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
-                <p className="text-sm text-muted-foreground">
-                  Showing {filteredTrips.length} trips
-                </p>
-              </CardFooter>
             </Card>
           </TabsContent>
 
           <TabsContent value="maintenance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Maintenance History</CardTitle>
-                <CardDescription>
-                  Record of all maintenance activities
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-6">
-                  <p className="text-muted-foreground">
-                    No maintenance records available.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div>Maintenance records coming soon...</div>
           </TabsContent>
         </Tabs>
       </div>

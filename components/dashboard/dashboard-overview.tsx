@@ -16,6 +16,13 @@ import {
   CheckCircle2,
   ArrowRight,
   Plus,
+  Cpu,
+  MemoryStick,
+  HardDrive,
+  Database,
+  Server,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -33,11 +40,83 @@ import { Progress } from "@/components/ui/progress";
 
 import { getDashboardData } from "@/data/dashboard";
 import { format, isToday, addDays } from "date-fns";
+import {
+  fetchHealthCheckData,
+  formatBytes,
+  formatUptime,
+  calculateDiskUsagePercentage,
+  calculateMemoryUsagePercentage,
+  type HealthCheckResponse,
+} from "@/services/health-check";
+import { Skeleton } from "../ui/skeleton";
 
 export default function DashboardOverview() {
   const router = useRouter();
   const [dashboardData, setDashboardData] = useState(() => getDashboardData());
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Health check state
+  const [healthData, setHealthData] = useState<HealthCheckResponse | null>(
+    null
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch health check data
+  useEffect(() => {
+    const getHealthData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchHealthCheckData();
+        setHealthData(data);
+        setError(null);
+      } catch (err) {
+        setError("Failed to fetch system health data");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    getHealthData();
+  }, []);
+
+  // Helper function to get status badge color
+  const getStatusBadgeColor = (status: string) => {
+    if (status === "Due Today") return "destructive";
+    if (status === "Due This Week") return "warning";
+    return "secondary";
+  };
+
+  // Helper function to render status indicator
+  const renderStatusIndicator = (isOk: boolean) => {
+    return isOk ? (
+      <div className="flex items-center">
+        <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+        <span className="text-green-600 font-medium">Operational</span>
+      </div>
+    ) : (
+      <div className="flex items-center">
+        <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
+        <span className="text-red-600 font-medium">Issue Detected</span>
+      </div>
+    );
+  };
+
+  // Function to refresh health data
+  const refreshHealthData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchHealthCheckData();
+      setHealthData(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to fetch system health data");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Refresh dashboard data every minute
   useEffect(() => {
@@ -75,7 +154,7 @@ export default function DashboardOverview() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="dues">Dues & Payments</TabsTrigger>
           <TabsTrigger value="upcoming">Upcoming Events</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="health">System Health</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -515,7 +594,7 @@ export default function DashboardOverview() {
         </TabsContent>
 
         <TabsContent value="upcoming" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Upcoming Meetings</CardTitle>
@@ -570,7 +649,7 @@ export default function DashboardOverview() {
               </CardFooter>
             </Card>
 
-            <Card>
+            {/* <Card>
               <CardHeader>
                 <CardTitle>GST Filings Due</CardTitle>
                 <CardDescription>Upcoming GST filings</CardDescription>
@@ -620,7 +699,7 @@ export default function DashboardOverview() {
                   View All GST Filings
                 </Button>
               </CardFooter>
-            </Card>
+            </Card> */}
 
             <Card>
               <CardHeader>
@@ -678,158 +757,188 @@ export default function DashboardOverview() {
           </div>
         </TabsContent>
 
-        <TabsContent value="alerts" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Critical Alerts</CardTitle>
-                <CardDescription>
-                  Issues that need immediate attention
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.criticalAlerts.length > 0 ? (
-                    dashboardData.criticalAlerts.map((alert, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-4 border-b pb-3 last:border-0"
-                      >
-                        <div className="rounded-full bg-destructive/10 p-2">
-                          <AlertTriangle className="h-4 w-4 text-destructive" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{alert.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {alert.description}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigateToSection(alert.actionLink)}
-                        >
-                          Resolve
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8">
-                      <CheckCircle2 className="h-12 w-12 text-green-500 mb-2" />
-                      <p className="text-center text-muted-foreground">
-                        No critical alerts at this time
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Notifications</CardTitle>
-                <CardDescription>
-                  System notifications and updates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.notifications.length > 0 ? (
-                    dashboardData.notifications.map((notification, index) => (
-                      <div
-                        key={index}
-                        className="flex items-start gap-4 border-b pb-3 last:border-0"
-                      >
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <Bell className="h-4 w-4" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{notification.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {notification.description}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {format(
-                              new Date(notification.timestamp),
-                              "MMM dd, HH:mm"
-                            )}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No new notifications
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigateToSection("/admin/notifications")}
-                >
-                  View All Notifications
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-
+        <TabsContent value="health" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>System Health</CardTitle>
-              <CardDescription>Status of system components</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>System Status</CardTitle>
+                <CardDescription>Current system health</CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={refreshHealthData}
+                disabled={isLoading}
+                title="Refresh system status"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {dashboardData.systemHealth.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center border-b pb-3 last:border-0"
-                  >
-                    <div className="flex items-center">
-                      <div
-                        className={`rounded-full h-3 w-3 mr-2 ${
-                          item.status === "healthy"
-                            ? "bg-green-500"
-                            : item.status === "warning"
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
-                        }`}
-                      ></div>
-                      <span className="font-medium">{item.name}</span>
+              {error ? (
+                <div className="flex items-center justify-center p-4 text-destructive">
+                  <XCircle className="h-5 w-5 mr-2" />
+                  <span>{error}</span>
+                </div>
+              ) : isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                </div>
+              ) : healthData ? (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Server className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">API Status</span>
                     </div>
-                    <div className="flex items-center">
-                      <span className="text-sm text-muted-foreground mr-2">
-                        {item.status === "healthy"
-                          ? "Operational"
-                          : item.status === "warning"
-                          ? "Performance Issues"
-                          : "Down"}
-                      </span>
-                      <Badge
-                        variant={
-                          item.status === "healthy"
-                            ? "default"
-                            : item.status === "warning"
-                            ? "secondary"
-                            : "destructive"
-                        }
-                      >
-                        {item.uptime}
-                      </Badge>
+                    <Badge
+                      variant={
+                        healthData.status === "OK" ? "outline" : "destructive"
+                      }
+                      className={
+                        healthData.status === "OK" ? "bg-green-50" : ""
+                      }
+                    >
+                      {healthData.status}
+                    </Badge>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Database className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">Database</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Connection</span>
+                      {renderStatusIndicator(healthData.db.ok)}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {healthData.db.message}
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Database className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">Redis</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Connection</span>
+                      {renderStatusIndicator(healthData.redis.ok)}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {healthData.redis.message}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <HardDrive className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">Disk Usage</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-muted-foreground">Status</span>
+                      {renderStatusIndicator(healthData.disk.ok)}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Free</span>
+                        <span>{formatBytes(healthData.disk.free)}</span>
+                      </div>
+                      <Progress
+                        value={calculateDiskUsagePercentage(
+                          healthData.disk.total - healthData.disk.free,
+                          healthData.disk.total
+                        )}
+                      />
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Total</span>
+                        <span>{formatBytes(healthData.disk.total)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <MemoryStick className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">Memory Usage</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Heap Used</span>
+                        <span>
+                          {formatBytes(healthData.memoryUsage.heapUsed)}
+                        </span>
+                      </div>
+                      <Progress
+                        value={calculateMemoryUsagePercentage(
+                          healthData.memoryUsage.heapUsed,
+                          healthData.memoryUsage.heapTotal
+                        )}
+                      />
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Heap Total
+                        </span>
+                        <span>
+                          {formatBytes(healthData.memoryUsage.heapTotal)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Cpu className="h-5 w-5 text-primary" />
+                      <span className="text-sm font-medium">CPU Usage</span>
+                    </div>
+                    <div className="text-xs">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-muted-foreground">
+                          Load Average
+                        </span>
+                        <span>{healthData.cpuUsage.loadavg.join(", ")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">CPU Count</span>
+                        <span>{healthData.cpuUsage.cpus.length}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Environment</span>
+                      <Badge variant="outline">{healthData.environment}</Badge>
+                    </div>
+                    <div className="flex justify-between text-xs mt-2">
+                      <span className="text-muted-foreground">Uptime</span>
+                      <span>{formatUptime(healthData.uptime)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mt-2">
+                      <span className="text-muted-foreground">
+                        Last Updated
+                      </span>
+                      <span>
+                        {format(
+                          new Date(healthData.timestamp),
+                          "dd MMM yyyy HH:mm:ss"
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center p-4 text-muted-foreground">
+                  No system health data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

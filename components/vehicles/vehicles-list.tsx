@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowUpDown, MoreHorizontal, Plus, Search, Truck } from "lucide-react";
 
@@ -32,6 +32,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getAllVehicles, deleteVehicle, type Vehicle } from "@/data/vehicles";
 import { getRouteById } from "@/data/routes";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 
 export default function VehiclesList() {
   const router = useRouter();
@@ -40,7 +42,40 @@ export default function VehiclesList() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [vehicles, setVehicles] = useState(() => getAllVehicles());
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 15;
+
+  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true); // Start loading
+        const response = await axios.get(
+          `https://tandurmart.com/api/vehicle/get_vehicles`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        const reponseData = response.data;
+        setVehicles(reponseData);
+        console.log(JSON.stringify(reponseData));
+        // set form data here if needed
+      } catch (err: any) {
+        console.error("Error fetching member data:", err);
+        alert("Failed to load member data");
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+
+    fetchData();
+  }, [status, session?.user?.token]);
 
   // Filter vehicles based on search term
   const filteredVehicles = vehicles.filter(
@@ -152,6 +187,21 @@ export default function VehiclesList() {
     return route ? route.name : "Unknown Route";
   };
 
+  if (isLoading || status === "loading") {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading vehicle data...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <Card>
@@ -236,7 +286,7 @@ export default function VehiclesList() {
                     <TableRow
                       key={vehicle.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => viewVehicleDetails(vehicle.id)}
+                      onClick={() => viewVehicleDetails(vehicle.vehicleId)}
                     >
                       <TableCell className="font-medium">
                         {vehicle.id}
@@ -254,9 +304,9 @@ export default function VehiclesList() {
                       <TableCell className="hidden md:table-cell">
                         <Badge
                           variant={
-                            vehicle.status === "active"
+                            vehicle.status === "ACTIVE"
                               ? "default"
-                              : vehicle.status === "maintenance"
+                              : vehicle.status === "MAINTENANCE"
                               ? "secondary"
                               : "destructive"
                           }
@@ -282,7 +332,7 @@ export default function VehiclesList() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                viewVehicleDetails(vehicle.id);
+                                viewVehicleDetails(vehicle.vehicleId);
                               }}
                             >
                               View Details
@@ -290,7 +340,7 @@ export default function VehiclesList() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                editVehicle(vehicle.id);
+                                editVehicle(vehicle.vehicleId);
                               }}
                             >
                               Edit Vehicle
@@ -299,7 +349,7 @@ export default function VehiclesList() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 router.push(
-                                  `/admin/vehicle/${vehicle.id}/add-trip`
+                                  `/admin/vehicle/${vehicle.vehicleId}/add-trip`
                                 );
                               }}
                             >
@@ -309,7 +359,7 @@ export default function VehiclesList() {
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteVehicle(vehicle.id);
+                                handleDeleteVehicle(vehicle.vehicleId);
                               }}
                             >
                               Delete Vehicle

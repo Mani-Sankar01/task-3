@@ -146,9 +146,9 @@ export default function Step1PersonalBusiness() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="S/O">S/O (Son Of)</SelectItem>
-                    <SelectItem value="D/O">D/O (Daughter Of)</SelectItem>
-                    <SelectItem value="W/O">W/O (Wife Of)</SelectItem>
+                    <SelectItem value="SO">S/O (Son Of)</SelectItem>
+                    <SelectItem value="DO">D/O (Daughter Of)</SelectItem>
+                    <SelectItem value="WO">W/O (Wife Of)</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -206,7 +206,7 @@ export default function Step1PersonalBusiness() {
 
           <FormField
             control={control}
-            name="firmDetails.officeNumber"
+            name="firmDetails.contact1"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Contact 1 (Primary)</FormLabel>
@@ -220,7 +220,7 @@ export default function Step1PersonalBusiness() {
 
           <FormField
             control={control}
-            name="firmDetails.phoneNumber"
+            name="firmDetails.contact2"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Contact 2 (Optional)</FormLabel>
@@ -412,9 +412,9 @@ export default function Step1PersonalBusiness() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="tenant">Tenant</SelectItem>
-                    <SelectItem value="trader">Trader</SelectItem>
+                    <SelectItem value="OWNER">Owner</SelectItem>
+                    <SelectItem value="TENANT">Tenant</SelectItem>
+                    <SelectItem value="TRADER">Trader</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -422,7 +422,7 @@ export default function Step1PersonalBusiness() {
             )}
           />
 
-          {ownershipType === "owner" && (
+          {ownershipType === "OWNER" && (
             <FormField
               control={control}
               name="businessDetails.ownerSubType"
@@ -439,10 +439,10 @@ export default function Step1PersonalBusiness() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="owned">Owned</SelectItem>
-                      <SelectItem value="rented">Rented/Tenant</SelectItem>
-                      <SelectItem value="trader">Trader</SelectItem>
-                      <SelectItem value="factory_on_lease">
+                      <SelectItem value="OWNED">Owned</SelectItem>
+                      <SelectItem value="RENTED">Rented/Tenant</SelectItem>
+                      <SelectItem value="TRADING">Trader</SelectItem>
+                      <SelectItem value="FACTORY_ON_LEASE">
                         Factory given on lease
                       </SelectItem>
                     </SelectContent>

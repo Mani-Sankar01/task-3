@@ -33,37 +33,60 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getAllMembers, type Member, deleteMember } from "@/data/members";
+// import { getAllMembers, type Member, deleteMember } from "@/data/members";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { memberApi, type Member } from "@/services/api";
 
 const page = () => {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Member | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [members, setMembers] = useState(() => getAllMembers());
+  const [members, setMembers] = useState<Member[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Number of items to show per page
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const session = useSession();
 
   // User role for role-based access control - get from localStorage for persistence
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
+    console.log(session.status);
+    if (session.status == "loading") {
+      setIsLoading(true);
+    }
+    const role = session?.data?.user.role!;
     console.log(role);
     setUserRole(role);
-  }, []);
+  }, [session.status]);
+
+  // Fetch members from API
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        setIsLoading(true);
+        const data = await memberApi.getAllMembers();
+        setMembers(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch members:", err);
+        setError("Failed to load members. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, [session.status]);
 
   // Filter members based on search term
   const filteredMembers = members.filter(
     (member) =>
-      member.memberDetails.applicantName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      member.firmDetails.firmName
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      member.id.toLowerCase().includes(searchTerm.toLowerCase())
+      member.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.firmName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      member.membershipId.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Sort members if a sort field is selected
@@ -72,21 +95,21 @@ const page = () => {
 
     let valueA, valueB;
 
-    if (sortField === "id") {
-      valueA = a.id;
-      valueB = b.id;
-    } else if (sortField === "memberDetails") {
-      valueA = a.memberDetails.applicantName;
-      valueB = b.memberDetails.applicantName;
-    } else if (sortField === "firmDetails") {
-      valueA = a.firmDetails.firmName;
-      valueB = b.firmDetails.firmName;
-    } else if (sortField === "status") {
-      valueA = a.status;
-      valueB = b.status;
-    } else if (sortField === "joinDate") {
-      valueA = new Date(a.joinDate).getTime();
-      valueB = new Date(b.joinDate).getTime();
+    if (sortField === "membershipId") {
+      valueA = a.membershipId;
+      valueB = b.membershipId;
+    } else if (sortField === "applicantName") {
+      valueA = a.applicantName;
+      valueB = b.applicantName;
+    } else if (sortField === "firmName") {
+      valueA = a.firmName;
+      valueB = b.firmName;
+    } else if (sortField === "approvalStatus") {
+      valueA = a.approvalStatus;
+      valueB = b.approvalStatus;
+    } else if (sortField === "createdAt") {
+      valueA = new Date(a.createdAt).getTime();
+      valueB = new Date(b.createdAt).getTime();
     } else {
       return 0;
     }
@@ -131,14 +154,16 @@ const page = () => {
   };
 
   // Delete a member
-  const handleDeleteMember = (memberId: string) => {
+  const handleDeleteMember = async (memberId: string) => {
     if (
       window.confirm(
         "Are you sure you want to delete this member? This action cannot be undone."
       )
     ) {
-      deleteMember(memberId);
-      setMembers(getAllMembers());
+      await memberApi.deleteMember(memberId);
+      // Refresh the list
+      const updatedMembers = await memberApi.getAllMembers();
+      setMembers(updatedMembers);
 
       // If we're on a page that would now be empty, go back one page
       if (
@@ -149,6 +174,45 @@ const page = () => {
       }
     }
   };
+
+  // Render loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading memberships...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <p className="text-destructive font-medium mb-2">Error</p>
+                <p className="text-muted-foreground">{error}</p>
+                <Button
+                  className="mt-4"
+                  onClick={() => window.location.reload()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: "All Memberships" }]} />
@@ -187,10 +251,10 @@ const page = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[100px]">
+                    <TableHead className="w-[150px]">
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort("id")}
+                        onClick={() => handleSort("membershipId")}
                         className="flex items-center p-0 h-auto font-medium"
                       >
                         ID
@@ -224,7 +288,7 @@ const page = () => {
                     <TableHead className="hidden md:table-cell">
                       <Button
                         variant="ghost"
-                        onClick={() => handleSort("joinDate")}
+                        onClick={() => handleSort("createdAt")}
                         className="flex items-center p-0 h-auto font-medium"
                       >
                         Join Date
@@ -238,35 +302,33 @@ const page = () => {
                   {paginatedMembers.length > 0 ? (
                     paginatedMembers.map((member) => (
                       <TableRow
-                        key={member.id}
+                        key={member.membershipId}
                         className="cursor-pointer hover:bg-muted/50"
                       >
                         <TableCell
                           className="font-medium"
-                          onClick={() => viewMemberDetails(member.id)}
+                          onClick={() => viewMemberDetails(member.membershipId)}
                         >
-                          {member.id}
+                          {member.membershipId}
                         </TableCell>
-                        <TableCell>
-                          {member.memberDetails.applicantName}
-                        </TableCell>
-                        <TableCell>{member.firmDetails.firmName}</TableCell>
+                        <TableCell>{member.applicantName}</TableCell>
+                        <TableCell>{member.firmName}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge
                             variant={
-                              member.status === "active"
+                              member.membershipStatus === "ACTIVE"
                                 ? "default"
-                                : member.status === "pending"
+                                : member.membershipStatus === "INACTIVE"
                                 ? "secondary"
                                 : "destructive"
                             }
                           >
-                            {member.status.charAt(0).toUpperCase() +
-                              member.status.slice(1)}
+                            {member.membershipStatus.charAt(0).toUpperCase() +
+                              member.membershipStatus.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {new Date(member.joinDate).toLocaleDateString()}
+                          {new Date(member.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -283,17 +345,19 @@ const page = () => {
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem>
-                                <Link href={`/admin/memberships/${member.id}`}>
+                                <Link
+                                  href={`/admin/memberships/${member.membershipId}`}
+                                >
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
 
                               {/* Show Edit option only for Admin or Editor roles */}
-                              {(userRole === "admin" ||
-                                userRole === "editor") && (
+                              {(session?.data?.user.role! === "ADMIN" ||
+                                userRole === "TSMWA_EDITOR") && (
                                 <DropdownMenuItem>
                                   <Link
-                                    href={`/admin/memberships/${member.id}/edit`}
+                                    href={`/admin/memberships/${member.membershipId}/edit`}
                                   >
                                     Edit Member
                                   </Link>
@@ -301,12 +365,12 @@ const page = () => {
                               )}
 
                               {/* Show Delete option only for Admin role */}
-                              {userRole === "admin" && (
+                              {session?.data?.user.role! === "ADMIN" && (
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDeleteMember(member.id);
+                                    handleDeleteMember(member.membershipId);
                                   }}
                                 >
                                   Delete Member

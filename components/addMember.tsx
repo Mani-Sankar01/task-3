@@ -508,6 +508,10 @@ const AddMember = ({
     );
   }
 
+  const handleBack = () => {
+    router.push("/admin/memberships");
+  };
+
   return (
     <SidebarInset>
       <Header
@@ -518,6 +522,16 @@ const AddMember = ({
         }
       />
       <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
+        <div className=" flex items-center">
+          <Button variant="outline" onClick={handleBack} className="mr-4">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+          <h1 className="text-2xl font-bold">
+            {" "}
+            {isEditMode ? "Edit Memberships" : "Add Memberships"}
+          </h1>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">

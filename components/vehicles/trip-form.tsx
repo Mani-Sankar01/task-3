@@ -115,14 +115,14 @@ export default function TripForm({
 
   if (!vehicle) {
     return (
-      <div className="container mx-auto py-10 px-4">
+      <div className="container mx-auto ">
         <Card>
           <CardContent className="pt-6 text-center">
             <h2 className="text-2xl font-bold mb-2">Vehicle Not Found</h2>
             <p className="text-muted-foreground mb-4">
               The vehicle you're looking for doesn't exist or has been removed.
             </p>
-            <Button onClick={() => router.push("/admin/vehicles")}>
+            <Button onClick={() => router.push("/admin/vehicle")}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Vehicles
             </Button>
           </CardContent>

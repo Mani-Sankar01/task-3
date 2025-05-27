@@ -1,8 +1,8 @@
 import React from "react";
-import AddMember from "@/components/addMember";
+import AddMemberForm from "@/components/test-component/add-member-form";
 
 const page = () => {
-  return <AddMember editMode={false} meterId="" />;
+  return <AddMemberForm />;
 };
 
 export default page;

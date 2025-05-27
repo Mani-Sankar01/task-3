@@ -40,6 +40,7 @@ export interface Member {
   };
   branchDetails: {
     branches: Array<{
+      id: number;
       placeBusiness: string;
       proprietorStatus: string;
       proprietorType?: string;
@@ -116,6 +117,7 @@ export interface Member {
   proposer1: {
     memberId?: string;
     name: string;
+    membershipId: string; // Added membershipId field
     firmName: string;
     address: string;
   };
@@ -123,6 +125,7 @@ export interface Member {
     memberId?: string;
     name: string;
     firmName: string;
+    membershipId: string; // Added membershipId field
     address: string;
   };
   declaration: {
@@ -182,6 +185,7 @@ export const members: Member[] = [
     branchDetails: {
       branches: [
         {
+          id: 1,
           placeBusiness: "Main Branch",
           proprietorStatus: "owner",
           proprietorType: "owned",
@@ -219,6 +223,7 @@ export const members: Member[] = [
           ],
         },
         {
+          id: 2,
           placeBusiness: "Downtown Branch",
           proprietorStatus: "tenant",
           electricalUscNumber: "USC87654321",
@@ -290,12 +295,14 @@ export const members: Member[] = [
       name: "John Doe",
       firmName: "John Industries",
       address: "123 Industrial Area, Greenville, Telangana - 500001",
+      membershipId: "MEM001",
     },
     proposer2: {
       memberId: "MEM001",
       name: "John Doe",
       firmName: "John Industries",
       address: "123 Industrial Area, Greenville, Telangana - 500001",
+      membershipId: "MEM001",
     },
     declaration: {
       agreeToTerms: true,
@@ -352,6 +359,7 @@ export const members: Member[] = [
     branchDetails: {
       branches: [
         {
+          id: 1,
           placeBusiness: "Main Branch",
           proprietorStatus: "tenant",
           electricalUscNumber: "USC98765432",
@@ -438,12 +446,14 @@ export const members: Member[] = [
       name: "John Doe",
       firmName: "John Industries",
       address: "123 Industrial Area, Greenville, Telangana - 500001",
+      membershipId: "MEM001",
     },
     proposer2: {
       memberId: "MEM001",
       name: "John Doe",
       firmName: "John Industries",
       address: "123 Industrial Area, Greenville, Telangana - 500001",
+      membershipId: "MEM001",
     },
     declaration: {
       agreeToTerms: true,

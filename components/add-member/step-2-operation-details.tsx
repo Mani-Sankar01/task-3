@@ -122,7 +122,7 @@ export default function Step2OperationDetails() {
             size="sm"
             onClick={() =>
               branchArray.append({
-                placeBusiness: "",
+                placeOfBusiness: "",
                 proprietorStatus: "",
                 proprietorType: "",
                 electricalUscNumber: "",
@@ -145,7 +145,7 @@ export default function Step2OperationDetails() {
                   <h4 className="text-base font-medium">
                     Branch {branchIndex + 1}:{" "}
                     {watch(
-                      `branchDetails.branches.${branchIndex}.placeBusiness`
+                      `branchDetails.branches.${branchIndex}.placeOfBusiness`
                     ) || "New Branch"}
                   </h4>
                 </div>
@@ -154,7 +154,7 @@ export default function Step2OperationDetails() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <FormField
                       control={control}
-                      name={`branchDetails.branches.${branchIndex}.placeBusiness`}
+                      name={`branchDetails.branches.${branchIndex}.placeOfBusiness`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Place of Business</FormLabel>
@@ -185,9 +185,9 @@ export default function Step2OperationDetails() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="owner">Owner</SelectItem>
-                              <SelectItem value="tenant">Tenant</SelectItem>
-                              <SelectItem value="trader">Trader</SelectItem>
+                              <SelectItem value="OWNER">Owner</SelectItem>
+                              <SelectItem value="TENANT">Tenant</SelectItem>
+                              <SelectItem value="TRADER">Trader</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -197,7 +197,7 @@ export default function Step2OperationDetails() {
 
                     {watch(
                       `branchDetails.branches.${branchIndex}.proprietorStatus`
-                    ) === "owner" && (
+                    ) === "OWNER" && (
                       <FormField
                         control={control}
                         name={`branchDetails.branches.${branchIndex}.proprietorType`}
@@ -214,12 +214,12 @@ export default function Step2OperationDetails() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="owned">Owned</SelectItem>
-                                <SelectItem value="rented">
+                                <SelectItem value="OWNED">Owned</SelectItem>
+                                <SelectItem value="RENTED">
                                   Rented/Tenant
                                 </SelectItem>
-                                <SelectItem value="trader">Trader</SelectItem>
-                                <SelectItem value="factory_on_lease">
+                                <SelectItem value="TRADING">Trader</SelectItem>
+                                <SelectItem value="FACTORY_ON_LEASE">
                                   Factory given on lease
                                 </SelectItem>
                               </SelectContent>

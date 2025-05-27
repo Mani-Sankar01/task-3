@@ -20,11 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 
 export default function Step5ProposerDeclaration() {
-  const { control, setValue } = useFormContext();
+  const { control, setValue, watch } = useFormContext();
   const [validMembers, setValidMembers] = useState<any[]>([]);
   const [executiveMembers, setExecutiveMembers] = useState<any[]>([]);
+  const proposer1Id = watch("proposer1.membershipId");
+  const proposer2Id = watch("proposer2.membershipId");
+  const proposer1Name = watch("proposer1.name");
+  const proposer1firm = watch("proposer1.firmName");
+  const proposer2Name = watch("proposer2.name");
+  const proposer2firm = watch("proposer2.firmName");
 
   // Fetch members on component mount
   useEffect(() => {
@@ -43,17 +51,66 @@ export default function Step5ProposerDeclaration() {
     setExecutiveMembers(executiveMembersList);
   }, []);
 
+  const { data: session, status } = useSession();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (status === "authenticated" && session?.user?.token) {
+        try {
+          const response1 = await axios.get(
+            `https://tandurmart.com/api/member/get_valid_members`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          const response2 = await axios.get(
+            `https://tandurmart.com/api/member/get_executive_members`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          setValidMembers(response1.data);
+          setExecutiveMembers(response2.data);
+        } catch (err: any) {
+          console.error("Error fetching member data:", err);
+          setError("Failed to load member data");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+  }, [status, session]);
+
+  useEffect(() => {
+    if (!isLoading && validMembers.length > 0 && proposer1Id) {
+      handleProposer1Select(proposer1Id);
+    }
+
+    if (!isLoading && executiveMembers.length > 0 && proposer2Id) {
+      handleProposer2Select(proposer2Id);
+    }
+  }, [isLoading, validMembers, executiveMembers, proposer1Id, proposer2Id]);
+
   // Handle proposer 1 selection
   const handleProposer1Select = (memberId: any) => {
     const selectedMember = validMembers.find(
-      (member) => member.id === memberId
+      (member) => member.membershipId === memberId
     );
     if (selectedMember) {
-      setValue("proposer1.name", selectedMember.memberDetails.applicantName);
-      setValue("proposer1.firmName", selectedMember.firmDetails.firmName);
+      setValue("proposer1.membershipId", memberId);
+      setValue("proposer1.name", selectedMember.applicantName);
+      setValue("proposer1.firmName", selectedMember.firmName);
       setValue(
         "proposer1.address",
-        selectedMember.communicationDetails?.fullAddress || ""
+        selectedMember.complianceDetails?.fullAddress || ""
       );
     }
   };
@@ -61,15 +118,16 @@ export default function Step5ProposerDeclaration() {
   // Handle proposer 2 selection
   const handleProposer2Select = (memberId: any) => {
     const selectedMember = executiveMembers.find(
-      (member) => member.id === memberId
+      (member) => member.membershipId === memberId
     );
     if (selectedMember) {
-      setValue("proposer2.name", selectedMember.memberDetails.applicantName);
-      setValue("proposer2.firmName", selectedMember.firmDetails.firmName);
+      setValue("proposer2.name", selectedMember.applicantName);
+      setValue("proposer2.firmName", selectedMember.firmName);
       setValue(
         "proposer2.address",
-        selectedMember.communicationDetails?.fullAddress || ""
+        selectedMember.complianceDetails?.fullAddress || ""
       );
+      setValue("proposer2.membershipId", memberId);
     }
   };
 
@@ -80,7 +138,7 @@ export default function Step5ProposerDeclaration() {
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
           Proposer 1 (Factory Owner/Valid Member)
         </h3>
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={control}
             name="proposer1.memberId"
@@ -96,14 +154,22 @@ export default function Step5ProposerDeclaration() {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a valid member" />
+                      <SelectValue
+                        placeholder={
+                          !isLoading && proposer1Id && proposer2Id
+                            ? `${proposer1Name} - ${proposer1firm}`
+                            : "Select Valid Member"
+                        }
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {validMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.memberDetails.applicantName} -{" "}
-                        {member.firmDetails.firmName}
+                      <SelectItem
+                        key={member.membershipId}
+                        value={member.membershipId}
+                      >
+                        {member.applicantName} - {member.firmName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -122,6 +188,24 @@ export default function Step5ProposerDeclaration() {
                 <FormControl>
                   <Input
                     placeholder="Name will be auto-filled"
+                    {...field}
+                    readOnly
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="proposer1.membershipId"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormLabel>Membership ID</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Membership ID will be auto-filled"
                     {...field}
                     readOnly
                   />
@@ -174,7 +258,7 @@ export default function Step5ProposerDeclaration() {
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
           Proposer 2 (Executive Member)
         </h3>
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
             control={control}
             name="proposer2.memberId"
@@ -190,14 +274,22 @@ export default function Step5ProposerDeclaration() {
                 >
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select an executive member" />
+                      <SelectValue
+                        placeholder={
+                          !isLoading && proposer2Name && proposer2firm
+                            ? `${proposer2Name} - ${proposer2firm}`
+                            : "Select an executive member"
+                        }
+                      />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {executiveMembers.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.memberDetails.applicantName} -{" "}
-                        {member.firmDetails.firmName}
+                      <SelectItem
+                        key={member.membershipId}
+                        value={member.membershipId}
+                      >
+                        {member.applicantName} - {member.firmName}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -216,6 +308,24 @@ export default function Step5ProposerDeclaration() {
                 <FormControl>
                   <Input
                     placeholder="Name will be auto-filled"
+                    {...field}
+                    readOnly
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="proposer2.membershipId"
+            render={({ field }) => (
+              <FormItem className="hidden">
+                <FormLabel>Membership ID</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Membership ID will be auto-filled"
                     {...field}
                     readOnly
                   />

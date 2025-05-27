@@ -1,18 +1,19 @@
 // Types for vehicles and trips
-export type VehicleStatus = "active" | "maintenance" | "inactive";
+export type VehicleStatus = "ACTIVE" | "MAINTENANCE" | "INACTIVE";
 export type PaymentStatus = "paid" | "partial" | "unpaid";
 
 // Update the Vehicle interface to include owner information and remove route/price per round
 export interface Vehicle {
   id: string;
+  vehicleId: string;
   vehicleNumber: string;
   driverName: string;
-  driverNumber: string;
+  driverPhoneNumber: string;
   ownerName: string; // Added owner name
   ownerPhoneNumber: string; // Added owner phone number
   status: VehicleStatus;
   createdAt: string;
-  updatedAt: string;
+  modifiedAt: string;
 }
 
 // Update the Trip interface to include pricePerRound
@@ -34,58 +35,27 @@ export interface Trip {
 export const vehicles: Vehicle[] = [
   {
     id: "VEH001",
+    vehicleId: "VEH2025-001",
     vehicleNumber: "TS01AB1234",
     driverName: "John Doe",
-    driverNumber: "9876543210",
+    driverPhoneNumber: "9876543210",
     ownerName: "Robert Smith",
     ownerPhoneNumber: "9988776655",
-    status: "active",
+    status: "ACTIVE",
     createdAt: "2024-01-15T10:00:00Z",
-    updatedAt: "2024-01-15T10:00:00Z",
+    modifiedAt: "2024-01-15T10:00:00Z",
   },
   {
     id: "VEH002",
+    vehicleId: "VEH2025-001",
     vehicleNumber: "TS02CD5678",
     driverName: "Jane Smith",
-    driverNumber: "8765432109",
+    driverPhoneNumber: "8765432109",
     ownerName: "Michael Johnson",
     ownerPhoneNumber: "8877665544",
-    status: "active",
+    status: "ACTIVE",
     createdAt: "2024-01-20T11:30:00Z",
-    updatedAt: "2024-01-20T11:30:00Z",
-  },
-  {
-    id: "VEH003",
-    vehicleNumber: "TS03EF9012",
-    driverName: "Robert Johnson",
-    driverNumber: "7654321098",
-    ownerName: "Sarah Williams",
-    ownerPhoneNumber: "7766554433",
-    status: "maintenance",
-    createdAt: "2024-02-05T09:15:00Z",
-    updatedAt: "2024-03-10T14:20:00Z",
-  },
-  {
-    id: "VEH004",
-    vehicleNumber: "TS04GH3456",
-    driverName: "Emily Davis",
-    driverNumber: "6543210987",
-    ownerName: "David Brown",
-    ownerPhoneNumber: "6655443322",
-    status: "inactive",
-    createdAt: "2024-02-10T13:45:00Z",
-    updatedAt: "2024-02-10T13:45:00Z",
-  },
-  {
-    id: "VEH005",
-    vehicleNumber: "TS05IJ7890",
-    driverName: "Michael Wilson",
-    driverNumber: "5432109876",
-    ownerName: "Jennifer Miller",
-    ownerPhoneNumber: "5544332211",
-    status: "active",
-    createdAt: "2024-02-15T08:30:00Z",
-    updatedAt: "2024-02-15T08:30:00Z",
+    modifiedAt: "2024-01-20T11:30:00Z",
   },
 ];
 
@@ -225,7 +195,7 @@ export function getAllVehicles(): Vehicle[] {
 }
 
 export function getAllActiveVehicles(): Vehicle[] {
-  let vehicle = vehicles.filter((v, i) => v.status == "active");
+  let vehicle = vehicles.filter((v, i) => v.status == "ACTIVE");
   return vehicle;
 }
 
@@ -234,12 +204,12 @@ export function getVehicleById(id: string): Vehicle | undefined {
 }
 
 export function addVehicle(
-  vehicle: Omit<Vehicle, "id" | "createdAt" | "updatedAt">
+  vehicle: Omit<Vehicle, "id" | "createdAt" | "modifiedAt">
 ): Vehicle {
   const newVehicle: Vehicle = {
     id: `VEH${String(vehicles.length + 1).padStart(3, "0")}`,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    modifiedAt: new Date().toISOString(),
     ...vehicle,
   };
   vehicles.push(newVehicle);
@@ -256,7 +226,7 @@ export function updateVehicle(
       ...vehicle,
       id,
       createdAt: vehicles[index].createdAt,
-      updatedAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
     };
     vehicles[index] = updatedVehicle;
     return updatedVehicle;
