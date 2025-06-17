@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-
+import axios from "axios";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
@@ -44,10 +44,17 @@ import {
   getLeaseQueryById,
   type LeaseQuery,
 } from "@/data/lease-queries";
-import { getAllMembers, type Member } from "@/data/members";
+import { getAllMembers } from "@/data/members";
 import { AlertCircle, FileText, Plus, Trash2, Upload } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { memberApi } from "@/services/api";
+
+export interface Member {
+  id: string;
+  applicantName: string;
+  firmName: string;
+  membershipId: string;
+}
 
 // Form schema
 const leaseHolderSchema = z.object({
@@ -124,11 +131,20 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     name: "documents",
   });
 
+  const memberDataExample: Member[] = [
+    {
+      applicantName: "Member 1",
+      firmName: "Firm",
+      id: "1",
+      membershipId: "MEM2025-5",
+    },
+  ];
+
   useEffect(() => {
     // Load members
     const allMembers = getAllMembers();
-    setMembers(allMembers);
-    setFilteredMembers(allMembers);
+    // setMembers(memberDataExample);
+    // setFilteredMembers(memberDataExample);
 
     // Get user role from localStorage
     const savedRole = localStorage.getItem("userRole");
@@ -166,12 +182,24 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
 
   // Fetch members from API
   useEffect(() => {
+    if (session.status !== "authenticated" || !session?.data.user.token) return;
     const fetchMembers = async () => {
       try {
         setIsLoading(true);
-        const data = await memberApi.getAllMembers();
-        console.log(data);
-        setError(null);
+        const response = await axios.get(
+          `https://tandurmart.com/api/member/get_members`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.data.user.token}`,
+            },
+          }
+        );
+        const data = response.data.filter(
+          (m: any) =>
+            m.approvalStatus == "APPROVED" && m.membershipStatus == "ACTIVE"
+        );
+        setMembers(data);
+        setFilteredMembers(data);
       } catch (err) {
         console.error("Failed to fetch members:", err);
         setError("Failed to load members. Please try again later.");
@@ -189,12 +217,10 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
       const filtered = members.filter(
         (member) =>
           member.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          member.memberDetails.applicantName
+          member.applicantName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          member.firmDetails.firmName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
+          member.firmName.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredMembers(filtered);
     } else {
@@ -202,19 +228,54 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     }
   }, [searchTerm, members]);
 
-  const onSubmit = (data: LeaseQueryFormValues) => {
+  const onSubmit = async (data: LeaseQueryFormValues) => {
     setFormData(data);
 
-    // If user is Admin, submit directly
-    if (userRole === "admin") {
-      handleConfirmSubmit();
+    // // If user is Admin, submit directly
+    // if (userRole === "admin") {
+    //   handleConfirmSubmit();
+    // } else {
+    //   // For non-Admin roles, show OTP verification
+    //   setShowOtpDialog(true);
+    // }
+
+    if (!formData) return;
+
+    const updatedFormData = {
+      membershipId: formData.membershipId,
+      presentLeaseHolder: formData.presentLeaseHolder,
+      dateOfLease: formData.leaseDate,
+      expiryOfLease: formData.expiryDate,
+      leaseQueryAttachments: formData.documents.map((doc, index) => {
+        const file = uploadedFiles[index];
+        return {
+          documentName: doc.name,
+          documentPath: file ? doc.fileName : "",
+        };
+      }),
+      status: formData.status.toUpperCase(),
+    };
+
+    const response = await axios.post(
+      "https://tandurmart.com/api/lease_query/add_lease_query",
+      updatedFormData,
+      {
+        headers: {
+          Authorization: `Bearer ${session.data?.user.token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.status === 200 || response.status === 201) {
+      setIsSubmitting(false);
+      alert(`✅ Lease Added successfully!`);
     } else {
-      // For non-Admin roles, show OTP verification
-      setShowOtpDialog(true);
+      alert("⚠️ Something went wrong. Vechicle not updated.");
     }
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     if (!formData) return;
 
     setIsSubmitting(true);
@@ -234,16 +295,8 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
         }),
       };
 
-      if (id) {
-        // Update existing query
-        updateLeaseQuery(id, updatedFormData as LeaseQuery);
-      } else {
-        // Add new query
-        addLeaseQuery(updatedFormData);
-      }
-
       // Redirect back to list
-      router.push(`/admin/lease-queries?role=${userRole}`);
+      //   router.push(`/admin/lease-queries?role=${userRole}`);
     } catch (error) {
       console.error("Error submitting form:", error);
     } finally {
@@ -264,8 +317,8 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   };
 
   const getMemberLabel = (member: Member) => {
-    return `${member.id || "No ID"} - ${member.memberDetails.applicantName} (${
-      member.firmDetails.firmName
+    return `${member.membershipId || "No ID"} - ${member.applicantName} (${
+      member.firmName
     })`;
   };
 
@@ -289,6 +342,21 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
       form.setValue(`documents.${index}.fileName`, file.name);
     }
   };
+
+  if (isLoading || session.status === "loading") {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading vehicle data...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -333,8 +401,8 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                             />
                             {filteredMembers.map((member) => (
                               <SelectItem
-                                key={member.id}
-                                value={member.id || member.id}
+                                key={member.membershipId}
+                                value={member.membershipId}
                               >
                                 {getMemberLabel(member)}
                               </SelectItem>
@@ -716,7 +784,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
             <Button variant="outline" onClick={() => setShowOtpDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={verifyOtp}>Verify & Submit</Button>
+            <Button>Verify & Submit</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

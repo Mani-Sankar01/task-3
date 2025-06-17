@@ -1,11 +1,11 @@
 // API service for making requests to the backend
 
 // Base URL for API requests
-const API_BASE_URL = "https://tandurmart.com/api";
+const API_BASE_URL = "https://tsmwa.online/api";
 
 // Default authentication token - in a real app, this would be handled more securely
 const DEFAULT_AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJBRE1JTiIsInBob25lIjoiOTY1MjMxNDQwNiIsImlhdCI6MTc0ODIzNjgxOSwiZXhwIjoxNzQ4ODQxNjE5fQ.zrwaWhasv8-F9rkNmFKAwhycCQ8c1U-oCntcZKBn7_Y";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJBRE1JTiIsInBob25lIjoiOTA3ODU2OTY3OCIsImlhdCI6MTc0OTA0NDg4NiwiZXhwIjoxNzQ5NjQ5Njg2fQ.C57TcHZN_lFgPKNqaLgZJxRwgOe_FkBiVrktEtMvT4w";
 
 // Function to get the auth token - in a real app, this would come from a secure storage
 export const getAuthToken = (): string => {

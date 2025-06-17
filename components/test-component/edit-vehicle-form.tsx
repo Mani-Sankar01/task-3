@@ -96,7 +96,7 @@ export default function EditVehicleForm({
         try {
           setIsLoading(true);
           const response = await axios.get(
-            `https://tandurmart.com/api/vehicle/search_vehicles/${vehicleId}`,
+            `${process.env.BACKEND_API_URL}/api/vehicle/search_vehicle/${vehicleId}`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -105,6 +105,7 @@ export default function EditVehicleForm({
           );
 
           const vehicleData = response.data;
+          console.log(vehicleData);
           setVehicle(vehicleData);
           form.reset({
             vehicleId: vehicleData.vehicleId || "",
@@ -132,7 +133,7 @@ export default function EditVehicleForm({
       if (isEditMode && session?.user.token) {
         console.log(data);
         const response = await axios.post(
-          "https://tandurmart.com/api/vehicle/update_vehicle",
+          `${process.env.BACKEND_API_URL}/api/vehicle/update_vehicle`,
           data,
           {
             headers: {
@@ -150,7 +151,7 @@ export default function EditVehicleForm({
       } else {
         console.log(JSON.stringify(data));
         const response = await axios.post(
-          "https://tandurmart.com/api/vehicle/add_vehicle",
+          `${process.env.BACKEND_API_URL}/api/vehicle/add_vehicle`,
           data,
           {
             headers: {

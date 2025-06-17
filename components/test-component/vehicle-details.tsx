@@ -61,7 +61,7 @@ export default function VehicleDetailsWithID({ id }: any) {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `https://tandurmart.com/api/vehicle/search_vehicles/${vehicleId}`,
+          `${process.env.BACKEND_API_URL}/api/vehicle/search_vehicle/${vehicleId}`,
           {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
@@ -420,7 +420,13 @@ export default function VehicleDetailsWithID({ id }: any) {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  handleEditTrip(trip.tripId);
+                                }}
+                              >
                                 Edit
                               </Button>
                               <Button

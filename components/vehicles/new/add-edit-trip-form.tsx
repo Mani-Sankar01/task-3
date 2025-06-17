@@ -46,7 +46,10 @@ import {
   updateTrip,
   getVehicleById,
   type Trip,
+  Vehicle,
 } from "@/data/vehicles";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 
 // Update the form schema
 const formSchema = z.object({
@@ -68,17 +71,22 @@ interface TripFormProps {
   vehicleId: string;
   trip?: Trip;
   isEditMode?: boolean;
+  tripId?: string;
 }
 
 // Update the form component
-export default function TripForm({
+export default function AddEditTripForm({
   vehicleId,
   trip,
   isEditMode,
+  tripId,
 }: TripFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const vehicle = getVehicleById(vehicleId);
+  //   const vehicle = getVehicleById(vehicleId);
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null); // or undefined
+  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, status } = useSession();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -103,57 +111,121 @@ export default function TripForm({
         },
   });
 
-  // Watch for changes to calculate total
-  const totalRounds = form.watch("totalRounds");
-  const pricePerRound = form.watch("pricePerRound");
-
-  // Update total amount when rounds or price changes
   useEffect(() => {
-    const calculatedTotal = totalRounds * pricePerRound;
-    form.setValue("totalAmountToPay", calculatedTotal);
-  }, [totalRounds, pricePerRound, form]);
+    if (status !== "authenticated" || !session?.user?.token) return;
 
-  if (!vehicle) {
-    return (
-      <div className="container mx-auto ">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <h2 className="text-2xl font-bold mb-2">Vehicle Not Found</h2>
-            <p className="text-muted-foreground mb-4">
-              The vehicle you're looking for doesn't exist or has been removed.
-            </p>
-            <Button onClick={() => router.push("/admin/vehicle")}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Vehicles
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+    const fetchData = async () => {
+      try {
+        setIsLoading(true); // Start loading
+
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/vehicle/search_vehicle/${vehicleId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        const reponseData = response.data;
+        setVehicle(reponseData);
+        // set form data here if needed
+        if (isEditMode && tripId) {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL}/api/vehicle/get_trip_id/${tripId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          const tripData = response.data.trip;
+          form.reset({
+            date: new Date(tripData.tripDate),
+            totalRounds: tripData.numberOfTrips,
+            pricePerRound: tripData.amountPerTrip,
+            totalAmountToPay: tripData.totalAmount,
+            amountPaid: tripData.amountPaid,
+            paymentStatus: tripData.paymentStatus.toLowerCase() as
+              | "paid"
+              | "partial"
+              | "unpaid",
+            notes: tripData.notes || "",
+          });
+        }
+      } catch (err: any) {
+        console.error("Error fetching member data:", err);
+        alert("Failed to load member data");
+      } finally {
+        setIsLoading(false); // Stop loading
+      }
+    };
+
+    fetchData();
+  }, [status, session?.user?.token, vehicleId, isEditMode, tripId]);
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      if (isEditMode && trip) {
-        const updatedTrip = updateTrip(trip.id, {
-          ...data,
-          vehicleId,
-          date: data.date.toISOString().split("T")[0],
-          updatedAt: new Date().toISOString(),
-        });
-        console.log("Trip updated:", updatedTrip);
+      if (isEditMode && tripId) {
+        const updateData = {
+          tripId: tripId,
+          tripDate: new Date(data.date),
+          amountPerTrip: data.pricePerRound,
+          numberOfTrips: data.totalRounds,
+          notes: data.notes ? data.notes : "",
+          amountPaid: data.amountPaid,
+        };
+
+        const response = await axios.post(
+          `${process.env.BACKEND_API_URL}/api/vehicle/update_trip`,
+          updateData,
+          {
+            headers: {
+              Authorization: `Bearer ${session?.user.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.status === 200 || response.status === 201) {
+          setIsSubmitting(false);
+          alert(`✅ Vehicle trp updated successfully!`);
+        } else {
+          alert("⚠️ Something went wrong. Vehicle not added.");
+        }
       } else {
-        const newTrip = addTrip({
-          ...data,
-          vehicleId,
-          date: data.date.toISOString().split("T")[0],
-        });
-        console.log("New trip added:", newTrip);
+        const newData = {
+          vehicleId: vehicleId,
+          tripDate: new Date(data.date),
+          amountPerTrip: data.pricePerRound,
+          numberOfTrips: data.totalRounds,
+          notes: data.notes ? data.notes : "",
+          amountPaid: data.amountPaid,
+        };
+
+        setIsSubmitting(true);
+
+        const response = await axios.post(
+          `${process.env.BACKEND_API_URL}/api/vehicle/add_trip`,
+          newData,
+          {
+            headers: {
+              Authorization: `Bearer ${session?.user.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (response.status === 200 || response.status === 201) {
+          setIsSubmitting(false);
+          alert(`✅ Vehicle trp Added successfully!`);
+        } else {
+          alert("⚠️ Something went wrong. Vehicle not added.");
+        }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push(`/admin/vehicle/${vehicleId}`);
-      router.refresh();
+      //   await new Promise((resolve) => setTimeout(resolve, 1000));
+      //   router.push(`/admin/vehicle/${vehicleId}`);
+      //   router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Failed to save trip. Please try again.");
@@ -171,6 +243,39 @@ export default function TripForm({
       router.push(`/admin/vehicle/${vehicleId}`);
     }
   };
+
+  if (isLoading || status === "loading") {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading vehicle data...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <div className="container mx-auto">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <h2 className="text-2xl font-bold mb-2">Vehicle Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              The vehicle you're looking for doesn't exist or has been removed.
+            </p>
+            <Button onClick={() => router.push("/admin/vehicle")}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Vehicles
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto">
@@ -225,8 +330,7 @@ export default function TripForm({
                       : "destructive"
                   }
                 >
-                  {vehicle?.status.charAt(0).toUpperCase() +
-                    vehicle?.status.slice(1)}
+                  {vehicle?.status}
                 </Badge>
               </div>
             </div>

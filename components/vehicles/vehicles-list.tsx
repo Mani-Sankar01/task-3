@@ -54,7 +54,7 @@ export default function VehiclesList() {
       try {
         setIsLoading(true); // Start loading
         const response = await axios.get(
-          `https://tandurmart.com/api/vehicle/get_vehicles`,
+          `${process.env.BACKEND_API_URL}/api/vehicle/get_vehicles`,
           {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
