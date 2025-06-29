@@ -20,7 +20,7 @@ export default function MembershipDetailsWrapper({ id }: { id: string }) {
       if (status === "authenticated" && session?.user?.token) {
         try {
           const response = await axios.get(
-            `https://tandurmart.com/api/member/get_member/${id}`,
+            `https://tsmwa.online/api/member/get_member/${id}`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
