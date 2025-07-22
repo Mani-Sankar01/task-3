@@ -8,7 +8,7 @@ import Header from "@/components/header";
 
 export const dynamic = "force-dynamic";
 
-export default async function InvoicesPage() {
+export default function InvoicesPage() {
   return (
     <Suspense
       fallback={
