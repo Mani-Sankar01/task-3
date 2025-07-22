@@ -1,15 +1,16 @@
+"use client";
 import { notFound } from "next/navigation";
 import MeetingDetails from "@/components/meetings/meeting-details";
 import { getMeetingById } from "@/data/meetings";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-export default async function MeetingDetailsPage({
+export default function MeetingDetailsPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const meetingId = (await params).id;
+  const meetingId = params.id;
   const meeting = getMeetingById(meetingId);
 
   if (!meeting) {

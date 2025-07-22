@@ -1,3 +1,4 @@
+"use client";
 import Header from "@/components/header";
 import { SidebarInset } from "@/components/ui/sidebar";
 import React from "react";
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
   description: "View user details",
 };
 
-const page = async ({ params }: { params: { id: string } }) => {
-  const userId = await params.id;
+const Page = ({ params }: { params: { id: string } }) => {
+  const userId = params.id;
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: "Dashoard" }]} />
@@ -21,4 +22,4 @@ const page = async ({ params }: { params: { id: string } }) => {
   );
 };
 
-export default page;
+export default Page;

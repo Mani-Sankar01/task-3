@@ -1,11 +1,12 @@
+"use client";
 import { notFound } from "next/navigation";
 import MembershipFeeDetails from "@/components/membership-fees/membership-fee-details";
 import { getMembershipFeeById } from "@/data/membership-fees";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const feeId = await params.id;
+export default function Page({ params }: { params: { id: string } }) {
+  const feeId = params.id;
   const fee = getMembershipFeeById(feeId);
 
   if (!fee) {
