@@ -1,6 +1,5 @@
 import React from "react";
 import InvoiceList from "@/components/invoice/invoice-list";
-import { Card, CardContent } from "@/components/ui/card";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 

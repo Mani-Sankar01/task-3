@@ -1,12 +1,14 @@
-import type { GstFiling } from "@/data/gst-filings";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+// import type { GstFiling } from "@/data/gst-filings";
+// REMOVE top-level imports of jspdf and autotable
 
 // Function to generate and download a GST invoice PDF
-export function generateGstInvoice(
-  filing: GstFiling,
+export async function generateGstInvoice(
+  filing: any, // GstFiling,
   memberName: string
-): void {
+): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
   // Create a new PDF document
   const doc = new jsPDF();
 
@@ -18,12 +20,11 @@ export function generateGstInvoice(
     creator: "TSMWA Management System",
   });
 
-
   // Add invoice information
   addInvoiceInfo(doc, filing, memberName);
 
   // Add GST items table
-  addGstItemsTable(doc, filing);
+  addGstItemsTable(doc, filing, autoTable);
 
   // Add totals section
   addTotalsSection(doc, filing);
@@ -38,10 +39,13 @@ export function generateGstInvoice(
 }
 
 // Function to generate and download a tax invoice PDF
-export function generateTaxInvoicePDF(
+export async function generateTaxInvoicePDF(
   invoice: any,
   member: any
-): void {
+): Promise<void> {
+  const { jsPDF } = await import("jspdf");
+  const autoTable = (await import("jspdf-autotable")).default;
+
   // Create a new PDF document
   const doc = new jsPDF();
 
@@ -59,11 +63,9 @@ export function generateTaxInvoicePDF(
   // Add invoice information
   addTaxInvoiceInfo(doc, invoice, member);
 
-
-
   // Add invoice items table if available
   if (invoice.invoiceItems && invoice.invoiceItems.length > 0) {
-    addTaxInvoiceItemsTable(doc, invoice);
+    addTaxInvoiceItemsTable(doc, invoice, autoTable);
   }
 
   // Add totals section
@@ -77,7 +79,7 @@ export function generateTaxInvoicePDF(
 }
 
 // Function to add tax invoice header
-function addTaxInvoiceHeader(doc: jsPDF, member: any): void {
+function addTaxInvoiceHeader(doc: any, member: any): void {
   // Add member firm name
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
@@ -99,7 +101,7 @@ function addTaxInvoiceHeader(doc: jsPDF, member: any): void {
 }
 
 // Function to add tax invoice information
-function addTaxInvoiceInfo(doc: jsPDF, invoice: any, member: any): void {
+function addTaxInvoiceInfo(doc: any, invoice: any, member: any): void {
   const startY = 65;
 
   // Invoice details on the left
@@ -126,7 +128,7 @@ function addTaxInvoiceInfo(doc: jsPDF, invoice: any, member: any): void {
 
 
 // Function to add tax invoice items table
-function addTaxInvoiceItemsTable(doc: jsPDF, invoice: any): void {
+function addTaxInvoiceItemsTable(doc: any, invoice: any, autoTable: any): void {
   const startY = 100;
 
   // Items title
@@ -184,7 +186,7 @@ function addTaxInvoiceItemsTable(doc: jsPDF, invoice: any): void {
 }
 
 // Function to add tax invoice totals
-function addTaxInvoiceTotals(doc: jsPDF, invoice: any): void {
+function addTaxInvoiceTotals(doc: any, invoice: any): void {
   // Get the Y position after the items table
   const finalY = (doc as any).lastAutoTable.finalY || 250;
   const startY = finalY + 10;
@@ -251,7 +253,7 @@ function addTaxInvoiceTotals(doc: jsPDF, invoice: any): void {
 }
 
 // Function to add tax invoice footer
-function addTaxInvoiceFooter(doc: jsPDF): void {
+function addTaxInvoiceFooter(doc: any): void {
   const pageHeight = doc.internal.pageSize.height;
   
   doc.setFontSize(10);
@@ -265,8 +267,8 @@ function addTaxInvoiceFooter(doc: jsPDF): void {
 
 // Function to add invoice information
 function addInvoiceInfo(
-  doc: jsPDF,
-  filing: GstFiling,
+  doc: any,
+  filing: any,
   memberName: string
 ): void {
   // Add invoice title
@@ -314,9 +316,8 @@ function addInvoiceInfo(
   doc.line(15, 90, 195, 90);
 }
 
-// Function to add GST items table
-function addGstItemsTable(doc: jsPDF, filing: GstFiling): void {
-  // Prepare table data
+// Function to add GST items table (for GST invoice)
+function addGstItemsTable(doc: any, filing: any, autoTable: any): void {
   const tableColumn = [
     "S.No",
     "Item Description",
@@ -325,7 +326,7 @@ function addGstItemsTable(doc: jsPDF, filing: GstFiling): void {
     "GST Amount (₹)",
     "Total (₹)",
   ];
-  const tableRows = filing.gstItems.map((item, index) => {
+  const tableRows = filing.gstItems.map((item: any, index: number) => {
     const gstAmount = item.taxableAmount * 0.18;
     const total = item.taxableAmount + gstAmount;
     return [
@@ -337,8 +338,6 @@ function addGstItemsTable(doc: jsPDF, filing: GstFiling): void {
       total.toLocaleString(),
     ];
   });
-
-  // Add table
   autoTable(doc, {
     head: [tableColumn],
     body: tableRows,
@@ -365,7 +364,7 @@ function addGstItemsTable(doc: jsPDF, filing: GstFiling): void {
 }
 
 // Function to add totals section
-function addTotalsSection(doc: jsPDF, filing: GstFiling): void {
+function addTotalsSection(doc: any, filing: any): void {
   // Get the final Y position after the table
   const finalY = (doc as any).lastAutoTable.finalY + 10;
 
@@ -419,7 +418,7 @@ function addTotalsSection(doc: jsPDF, filing: GstFiling): void {
 }
 
 // Function to add footer
-function addFooter(doc: jsPDF): void {
+function addFooter(doc: any): void {
   const pageHeight = doc.internal.pageSize.height;
 
   // Add horizontal line

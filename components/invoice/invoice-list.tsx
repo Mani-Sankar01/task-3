@@ -300,11 +300,11 @@ export default function InvoiceList() {
 
     try {
       // Find the invoice from the current list
-    const invoice = invoices.find((inv) => inv.id === id);
-    if (!invoice) {
-      alert("Invoice not found");
-      return;
-    }
+      const invoice = invoices.find((inv) => inv.id === id);
+      if (!invoice) {
+        alert("Invoice not found");
+        return;
+      }
 
       // Fetch member details for the invoice
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
@@ -320,7 +320,7 @@ export default function InvoiceList() {
       const member = memberResponse.data;
 
       // Generate and download PDF
-      generateTaxInvoicePDF(invoice, member);
+      await generateTaxInvoicePDF(invoice, member);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
