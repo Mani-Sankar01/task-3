@@ -2,12 +2,12 @@ import InvoiceDetails from "@/components/invoice/invoice-details";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-export default function InvoiceDetailsPage({
+export default async function InvoiceDetailsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const invoiceId = params.id;
+  const invoiceId = await params.id;
 
   return (
     <SidebarInset>

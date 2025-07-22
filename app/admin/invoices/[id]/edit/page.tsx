@@ -1,11 +1,11 @@
 import InvoiceForm from "@/components/invoice/invoice-form";
 
-export default function EditInvoicePage({
+export default async function EditInvoicePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const invoiceId = params.id;
+  const invoiceId = await params.id;
 
   return <InvoiceForm invoiceId={invoiceId} isEditMode={true} />;
 }

@@ -1,10 +1,14 @@
+"use client";
+
 import { Suspense } from "react";
 import InvoiceList from "@/components/invoice/invoice-list";
 import { Card, CardContent } from "@/components/ui/card";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-export default function InvoicesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function InvoicesPage() {
   return (
     <Suspense
       fallback={
