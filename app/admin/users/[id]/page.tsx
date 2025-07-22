@@ -9,12 +9,13 @@ export const metadata: Metadata = {
   description: "View user details",
 };
 
-const page = ({ params }: { params: { id: string } }) => {
+const page = async ({ params }: { params: { id: string } }) => {
+  const userId = await params.id;
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: "Dashoard" }]} />
       <div className="flex flex-1 flex-col p-4">
-        <UserDetails userId={params.id} />
+        <UserDetails userId={userId} />
       </div>
     </SidebarInset>
   );

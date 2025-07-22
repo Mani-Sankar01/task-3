@@ -4,8 +4,8 @@ import { getMembershipFeeById } from "@/data/membership-fees";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-export default function Page({ params }: { params: { id: string } }) {
-  const feeId = params.id;
+export default async function Page({ params }: { params: { id: string } }) {
+  const feeId = await params.id;
   const fee = getMembershipFeeById(feeId);
 
   if (!fee) {

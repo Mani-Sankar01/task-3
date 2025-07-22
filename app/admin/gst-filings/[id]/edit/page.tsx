@@ -7,8 +7,8 @@ import Header from "@/components/header";
 import GstFilingForm from "@/components/gst/gst-filing-form";
 <GstFilingForm isEditMode={false} />;
 
-const page = ({ params }: { params: { id: string } }) => {
-  const filingId = params.id;
+const page = async ({ params }: { params: { id: string } }) => {
+  const filingId = await params.id;
   const filing = getGstFilingById(filingId);
 
   if (!filing) {

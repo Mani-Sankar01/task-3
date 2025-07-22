@@ -2,12 +2,12 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import MembershipFeeForm from "@/components/membership-fees/membership-fee-form";
 
-export default function EditMembershipFeePage({
+export default async function EditMembershipFeePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const billingId = params.id;
+  const billingId = await params.id;
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: "Edit Membership Fees Details" }]} />

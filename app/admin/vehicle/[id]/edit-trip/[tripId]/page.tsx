@@ -13,7 +13,6 @@ const page = async ({
 }) => {
   const vehicleId = (await params).id;
   const tripId = (await params).tripId;
-  const trip = getTripById(tripId);
 
   if (!tripId || !vehicleId) {
     notFound();

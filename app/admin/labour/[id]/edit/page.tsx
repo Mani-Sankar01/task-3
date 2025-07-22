@@ -5,7 +5,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
 export default async function Page({ params }: { params: { id: string } }) {
-  const labourId = params.id;
+  const labourId = await params.id;
   const labour = getLabourById(labourId);
 
   if (!labour) {

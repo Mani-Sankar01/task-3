@@ -5,8 +5,8 @@ import { getGstFilingById } from "@/data/gst-filings";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 
-const page = ({ params }: { params: { id: string } }) => {
-  const filingId = params.id;
+const page = async ({ params }: { params: { id: string } }) => {
+  const filingId = await params.id;
   const filing = getGstFilingById(filingId);
 
   if (!filing) {
