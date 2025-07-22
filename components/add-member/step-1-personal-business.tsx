@@ -27,7 +27,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 
-export default function Step1PersonalBusiness() {
+interface Step1PersonalBusinessProps {
+  isEditMode?: boolean;
+  validationErrors?: {
+    electricalUscNumber?: string;
+    scNumber?: string;
+  };
+  validationSuccess?: {
+    electricalUscNumber?: string;
+    scNumber?: string;
+  };
+  onFieldChange?: (fieldName: string, value: string) => void;
+  isValidating?: boolean;
+}
+
+export default function Step1PersonalBusiness({ 
+  isEditMode = false, 
+  validationErrors = {},
+  validationSuccess = {},
+  onFieldChange,
+  isValidating = false
+}: Step1PersonalBusinessProps) {
   const { control, watch } = useFormContext();
   const ownershipType = watch("businessDetails.ownershipType");
 
@@ -37,6 +57,11 @@ export default function Step1PersonalBusiness() {
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
           Application Details
+          {isValidating && (
+            <span className="ml-2 text-sm text-blue-600">
+              Validating...
+            </span>
+          )}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
@@ -46,9 +71,30 @@ export default function Step1PersonalBusiness() {
               <FormItem className="flex flex-col">
                 <FormLabel>Electrical USC Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter USC number" {...field} />
+                  <Input 
+                    placeholder="Enter USC number" 
+                    {...field} 
+                    readOnly={isEditMode}
+                    className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      if (onFieldChange && !isEditMode) {
+                        onFieldChange('electricalUscNumber', e.target.value);
+                      }
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
+                {validationErrors.electricalUscNumber && (
+                  <p className="text-sm text-destructive">
+                    {validationErrors.electricalUscNumber}
+                  </p>
+                )}
+                {validationSuccess.electricalUscNumber && (
+                  <p className="text-sm text-green-600">
+                    {validationSuccess.electricalUscNumber}
+                  </p>
+                )}
               </FormItem>
             )}
           />
@@ -60,9 +106,30 @@ export default function Step1PersonalBusiness() {
               <FormItem className="flex flex-col">
                 <FormLabel>SC Number</FormLabel>
                 <FormControl>
-                  <Input placeholder="Enter SC number" {...field} />
+                  <Input 
+                    placeholder="Enter SC number" 
+                    {...field} 
+                    readOnly={isEditMode}
+                    className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      if (onFieldChange && !isEditMode) {
+                        onFieldChange('scNumber', e.target.value);
+                      }
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
+                {validationErrors.scNumber && (
+                  <p className="text-sm text-destructive">
+                    {validationErrors.scNumber}
+                  </p>
+                )}
+                {validationSuccess.scNumber && (
+                  <p className="text-sm text-green-600">
+                    {validationSuccess.scNumber}
+                  </p>
+                )}
               </FormItem>
             )}
           />

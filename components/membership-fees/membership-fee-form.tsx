@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CalendarIcon, Loader2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
+import React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,6 +46,9 @@ import {
   getMemberOptions,
   type MembershipFee,
 } from "@/data/membership-fees";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+import { FileUpload } from "@/components/ui/file-upload";
 
 const formSchema = z.object({
   memberId: z.string().min(1, "Member is required"),
@@ -57,7 +61,7 @@ const formSchema = z.object({
   periodTo: z.date({
     required_error: "Period end date is required",
   }),
-  status: z.enum(["paid", "due", "canceled"]),
+  status: z.string(), // Allow any string from API
   notes: z.string().optional(),
   receiptNumber: z.string().optional(),
   paymentMethod: z.string().optional(),
@@ -68,14 +72,64 @@ type FormValues = z.infer<typeof formSchema>;
 interface MembershipFeeFormProps {
   fee?: MembershipFee;
   isEditMode: boolean;
+  billingId?: string;
 }
 
 export default function MembershipFeeForm({
   fee,
   isEditMode,
+  billingId,
 }: MembershipFeeFormProps) {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [members, setMembers] = useState<any[]>([]);
+  const [memberSearchTerm, setMemberSearchTerm] = useState("");
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPath, setReceiptPath] = useState<string>("");
+  const [receiptError, setReceiptError] = useState<string>("");
+  const [isLoadingFee, setIsLoadingFee] = useState(false);
+  const [originalFee, setOriginalFee] = useState<any>(null);
+
+  // Fetch members from API
+  React.useEffect(() => {
+    const fetchMembers = async () => {
+      if (sessionStatus === "authenticated" && session?.user?.token) {
+        try {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_members`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          setMembers(response.data);
+          setFilteredMembers(response.data);
+        } catch (err) {
+          setMembers([]);
+          setFilteredMembers([]);
+        }
+      }
+    };
+    fetchMembers();
+  }, [sessionStatus, session?.user?.token]);
+
+  // Filter members based on search term
+  React.useEffect(() => {
+    if (memberSearchTerm) {
+      const filtered = members.filter(
+        (member) =>
+          member.applicantName?.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
+          member.firmName?.toLowerCase().includes(memberSearchTerm.toLowerCase())
+      );
+      setFilteredMembers(filtered);
+    } else {
+      setFilteredMembers(members);
+    }
+  }, [memberSearchTerm, members]);
+
   const memberOptions = getMemberOptions();
 
   const form = useForm<FormValues>({
@@ -123,35 +177,119 @@ export default function MembershipFeeForm({
     }
   };
 
+  // Fetch fee details if in edit mode and billingId is provided
+  React.useEffect(() => {
+    if (isEditMode && billingId && sessionStatus === "authenticated" && session?.user?.token) {
+      setIsLoadingFee(true);
+      axios.get(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/bill/getBillById/${billingId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      )
+        .then((response) => {
+          const feeData = response.data;
+          setOriginalFee(feeData);
+          form.reset({
+            memberId: feeData.membershipId,
+            amount: parseFloat(feeData.totalAmount),
+            paidAmount: parseFloat(feeData.paidAmount),
+            paidDate: undefined, // Not in API
+            periodFrom: new Date(feeData.fromDate),
+            periodTo: new Date(feeData.toDate),
+            status: feeData.paymentStatus || "",
+            notes: feeData.notes || "",
+            receiptNumber: "",
+            paymentMethod: "",
+          });
+          setReceiptPath(feeData.receiptPath || "");
+        })
+        .finally(() => setIsLoadingFee(false));
+    }
+    // eslint-disable-next-line
+  }, [isEditMode, billingId, sessionStatus, session?.user?.token]);
+
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Format dates
-      const formattedData = {
-        ...data,
-        paidDate: data.paidDate
-          ? format(data.paidDate, "yyyy-MM-dd")
-          : undefined,
-        periodFrom: format(data.periodFrom, "yyyy-MM-dd"),
-        periodTo: format(data.periodTo, "yyyy-MM-dd"),
-      };
-
-      let result;
-      if (isEditMode && fee) {
-        result = updateMembershipFee(fee.id, formattedData);
-        console.log("Fee updated:", result);
-      } else {
-        result = addMembershipFee(formattedData);
-        console.log("New fee added:", result);
+      if (sessionStatus !== "authenticated" || !session?.user?.token) {
+        alert("Authentication required");
+        setIsSubmitting(false);
+        return;
       }
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Upload receipt if present
+      let uploadedReceiptPath = receiptPath;
+      if (receiptFile) {
+        const result = await axios.post(
+          "/api/upload",
+          (() => {
+            const formData = new FormData();
+            formData.append("file", receiptFile);
+            formData.append("subfolder", `receipts/${data.memberId}`);
+            return formData;
+          })(),
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        uploadedReceiptPath = result.data.filePath;
+      }
+      if (isEditMode && billingId && originalFee) {
+        // Only send changed fields
+        const payload: any = { billingId };
+        if (data.memberId !== originalFee.membershipId) payload.membershipId = data.memberId;
+        if (data.amount !== parseFloat(originalFee.totalAmount)) payload.totalAmount = data.amount;
+        if (data.paidAmount !== parseFloat(originalFee.paidAmount)) payload.paidAmount = data.paidAmount;
+        if (data.notes !== originalFee.notes) payload.notes = data.notes;
+        if (uploadedReceiptPath && uploadedReceiptPath !== originalFee.receiptPath) payload.receiptPath = uploadedReceiptPath;
+        if (data.periodFrom && new Date(data.periodFrom).toISOString() !== originalFee.fromDate) payload.fromDate = new Date(data.periodFrom).toISOString();
+        if (data.periodTo && new Date(data.periodTo).toISOString() !== originalFee.toDate) payload.toDate = new Date(data.periodTo).toISOString();
+        await axios.post(
+          `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/bill/update_bill`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        router.push("/admin/membership-fees");
+        router.refresh();
+        setIsSubmitting(false);
+        return;
+      }
+      // Format dates
+      const payload: any = {
+        membershipId: data.memberId,
+        fromDate: data.periodFrom.toISOString(),
+        toDate: data.periodTo.toISOString(),
+        totalAmount: data.amount,
+        paidAmount: data.paidAmount,
+        notes: data.notes,
+      };
+      if (uploadedReceiptPath) {
+        payload.receiptPath = uploadedReceiptPath;
+      }
+      await axios.post(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/bill/add_bill`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       router.push("/admin/membership-fees");
       router.refresh();
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert("Failed to save membership fee. Please try again.");
+    } catch (error: any) {
+      alert("Failed to save membership fee. Please try again.\n" + (error?.response?.data?.message || error.message));
     } finally {
       setIsSubmitting(false);
     }
@@ -169,6 +307,13 @@ export default function MembershipFeeForm({
 
   return (
     <div className="container">
+      {(isEditMode && isLoadingFee) ? (
+        <div className="flex flex-col items-center justify-center min-h-[200px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+          <span className="text-muted-foreground">Fetching fee details...</span>
+        </div>
+      ) : (
+      <>
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
@@ -201,17 +346,24 @@ export default function MembershipFeeForm({
                       <FormLabel>Member</FormLabel>
                       <Select
                         onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        value={field.value || ""}
+                        disabled={isEditMode}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select member" />
+                            <SelectValue placeholder="Select a member" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {memberOptions.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                          <Input
+                            placeholder="Search by name or firm..."
+                            value={memberSearchTerm}
+                            onChange={(e) => setMemberSearchTerm(e.target.value)}
+                            className="w-full mb-2"
+                          />
+                          {filteredMembers.map((member) => (
+                            <SelectItem key={member.membershipId} value={member.membershipId}>
+                              {(member.applicantName || "Unknown") + " - " + (member.firmName || "Unknown")}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -227,22 +379,11 @@ export default function MembershipFeeForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="due">Due</SelectItem>
-                          <SelectItem value="canceled">Canceled</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input {...field} readOnly value={field.value} />
+                      </FormControl>
                       <FormMessage />
+                      <p className="text-xs text-muted-foreground">Status is set automatically by the backend.</p>
                     </FormItem>
                   )}
                 />
@@ -463,6 +604,21 @@ export default function MembershipFeeForm({
                 )}
               </div>
 
+              {/* Receipt Upload */}
+              <div>
+                <FormLabel>Receipt (optional)</FormLabel>
+                <FileUpload
+                  onFileSelect={setReceiptFile}
+                  onUploadComplete={setReceiptPath}
+                  onUploadError={setReceiptError}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  maxSize={6 * 1024 * 1024}
+                  subfolder={form.watch("memberId") ? `receipts/${form.watch("memberId")}` : "receipts"}
+                  existingFilePath={receiptPath}
+                />
+                {receiptError && <p className="text-sm text-destructive">{receiptError}</p>}
+              </div>
+
               <div className="bg-muted p-4 rounded-md">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total Amount:</span>
@@ -523,6 +679,8 @@ export default function MembershipFeeForm({
           </Form>
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }

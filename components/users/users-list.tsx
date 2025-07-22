@@ -38,11 +38,29 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type User, UserRole, UserStatus, getAllUsers } from "@/data/users";
+import { UserRole, UserStatus } from "@/data/users";
 import { formatDate } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+
+// User interface
+interface User {
+  id: number;
+  fullName: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  email: string;
+  phone: string;
+  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  status: "ACTIVE" | "INACTIVE";
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export default function UsersList() {
   const router = useRouter();
+  const { toast } = useToast();
+  const { data: session, status } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,6 +68,7 @@ export default function UsersList() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [isLoading, setIsLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof User;
     direction: "ascending" | "descending";
@@ -57,10 +76,38 @@ export default function UsersList() {
 
   // Load users data
   useEffect(() => {
-    const loadedUsers = getAllUsers();
-    setUsers(loadedUsers);
-    setFilteredUsers(loadedUsers);
-  }, []);
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchUsers = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/user/get_all_user`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        const loadedUsers = response.data;
+        console.log("Users loaded:", loadedUsers);
+        setUsers(loadedUsers);
+        setFilteredUsers(loadedUsers);
+      } catch (error: any) {
+        console.error("Error loading users:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load users",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [status, session?.user?.token, toast]);
 
   // Apply filters and search
   useEffect(() => {
@@ -71,7 +118,7 @@ export default function UsersList() {
       const lowerCaseQuery = searchQuery.toLowerCase();
       result = result.filter(
         (user) =>
-          user.name.toLowerCase().includes(lowerCaseQuery) ||
+          user.fullName.toLowerCase().includes(lowerCaseQuery) ||
           user.email.toLowerCase().includes(lowerCaseQuery) ||
           user.phone.includes(searchQuery)
       );
@@ -90,10 +137,18 @@ export default function UsersList() {
     // Apply sorting
     if (sortConfig) {
       result.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        const aValue = a[sortConfig.key];
+        const bValue = b[sortConfig.key];
+        
+        // Handle undefined values
+        if (aValue === undefined && bValue === undefined) return 0;
+        if (aValue === undefined) return sortConfig.direction === "ascending" ? 1 : -1;
+        if (bValue === undefined) return sortConfig.direction === "ascending" ? -1 : 1;
+        
+        if (aValue < bValue) {
           return sortConfig.direction === "ascending" ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (aValue > bValue) {
           return sortConfig.direction === "ascending" ? 1 : -1;
         }
         return 0;
@@ -132,12 +187,45 @@ export default function UsersList() {
     router.push(`/admin/users/${id}/edit/`);
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = (id: number) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (window.confirm("Are you sure you want to delete this user?")) {
-      // In a real application, you would call an API to delete the user
-      // For now, we'll just filter it out from the local state
-      const updatedUsers = users.filter((user) => user.id !== id);
-      setUsers(updatedUsers);
+      const deleteUser = async () => {
+        try {
+          await axios.delete(
+            `${process.env.BACKEND_API_URL}/api/user/delete_user/${id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+
+          const updatedUsers = users.filter((user) => user.id !== id);
+          setUsers(updatedUsers);
+          toast({
+            title: "Success",
+            description: "User deleted successfully",
+          });
+        } catch (error: any) {
+          console.error("Error deleting user:", error);
+          toast({
+            title: "Error",
+            description: "Failed to delete user",
+            variant: "destructive",
+          });
+        }
+      };
+
+      deleteUser();
     }
   };
 
@@ -149,9 +237,9 @@ export default function UsersList() {
   const renderStatusBadge = (status: UserStatus) => {
     return (
       <Badge
-        variant={status === UserStatus.Active ? "default" : "destructive"}
+        variant={status === UserStatus.ACTIVE ? "default" : "destructive"}
         className={
-          status === UserStatus.Active
+          status === UserStatus.ACTIVE
             ? "bg-green-100 text-green-800 hover:bg-green-100"
             : "bg-red-100 text-red-800 hover:bg-red-100"
         }
@@ -166,23 +254,20 @@ export default function UsersList() {
     let badgeClass = "";
 
     switch (role) {
-      case UserRole.Admin:
+      case UserRole.TSMWA_ADMIN:
         badgeClass = "bg-purple-100 text-purple-800 hover:bg-purple-100";
         break;
-      case UserRole.TSMWAAdmin:
+      case UserRole.TSMWA_EDITOR:
         badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-100";
         break;
-      case UserRole.TSMWAEditor:
+      case UserRole.TSMWA_VIEWER:
         badgeClass = "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
         break;
-      case UserRole.TSMWAViewer:
+      case UserRole.TQMWA_EDITOR:
         badgeClass = "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
         break;
-      case UserRole.TQMWAEditor:
+      case UserRole.TQMWA_VIEWER:
         badgeClass = "bg-amber-100 text-amber-800 hover:bg-amber-100";
-        break;
-      case UserRole.TQMWAViewer:
-        badgeClass = "bg-orange-100 text-orange-800 hover:bg-orange-100";
         break;
       default:
         badgeClass = "bg-gray-100 text-gray-800 hover:bg-gray-100";
@@ -194,6 +279,27 @@ export default function UsersList() {
       </Badge>
     );
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Users Management</CardTitle>
+          <Button disabled>
+            <Plus className="mr-2 h-4 w-4" /> Add User
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading users...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -254,10 +360,10 @@ export default function UsersList() {
               <TableRow>
                 <TableHead
                   className="cursor-pointer"
-                  onClick={() => requestSort("name")}
+                  onClick={() => requestSort("fullName")}
                 >
                   Name
-                  {sortConfig?.key === "name" && (
+                  {sortConfig?.key === "fullName" && (
                     <span className="ml-1">
                       {sortConfig.direction === "ascending" ? "↑" : "↓"}
                     </span>
@@ -321,12 +427,12 @@ export default function UsersList() {
               ) : (
                 currentItems.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell className="font-medium">{user.fullName}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.phone}</TableCell>
-                    <TableCell>{renderRoleBadge(user.role)}</TableCell>
-                    <TableCell>{renderStatusBadge(user.status)}</TableCell>
-                    <TableCell>{formatDate(user.createdAt)}</TableCell>
+                    <TableCell>{renderRoleBadge(user.role as UserRole)}</TableCell>
+                    <TableCell>{renderStatusBadge(user.status as UserStatus)}</TableCell>
+                    <TableCell>{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -337,13 +443,13 @@ export default function UsersList() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={() => handleViewUser(user.id)}
+                            onClick={() => handleViewUser(user.id.toString())}
                           >
                             <Eye className="mr-2 h-4 w-4" />
                             View
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => handleEditUser(user.id)}
+                            onClick={() => handleEditUser(user.id.toString())}
                           >
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit

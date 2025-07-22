@@ -33,10 +33,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-// import { getAllMembers, type Member, deleteMember } from "@/data/members";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { memberApi, type Member } from "@/services/api";
+import axios from "axios";
+
+// Define the Member type based on API response
+interface Member {
+  membershipId: string;
+  approvalStatus: "APPROVED" | "PENDING" | "REJECTED";
+  membershipStatus: "ACTIVE" | "INACTIVE";
+  nextDueDate: string | null;
+  isPaymentDue: "TRUE" | "FALSE";
+  electricalUscNumber: string;
+  scNumber: string;
+  applicantName: string;
+  relation: string;
+  relativeName: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  firmName: string;
+  proprietorName: string;
+  proprietorStatus: string;
+  proprietorType: string;
+  sanctionedHP: string;
+  phoneNumber1: string;
+  phoneNumber2: string;
+  surveyNumber: number;
+  village: string;
+  zone: string;
+  mandal: string;
+  district: string;
+  state: string;
+  pinCode: string;
+  estimatedMaleWorker: number;
+  estimatedFemaleWorker: number;
+  modifiedBy: number | null;
+  approvedOrDeclinedBy: number | null;
+  approvedOrDeclinedAt: string | null;
+  declineReason: string | null;
+  createdAt: string;
+  modifiedAt: string;
+}
 
 const page = () => {
   const router = useRouter();
@@ -49,26 +85,50 @@ const page = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const session = useSession();
+  const { data: session, status } = useSession();
 
   // User role for role-based access control - get from localStorage for persistence
   useEffect(() => {
-    console.log(session.status);
-    if (session.status == "loading") {
+    console.log(status);
+    if (status == "loading") {
       setIsLoading(true);
     }
-    const role = session?.data?.user.role!;
+    const role = session?.user?.role!;
     console.log(role);
     setUserRole(role);
-  }, [session.status]);
+  }, [status, session?.user?.role]);
 
   // Fetch members from API
   useEffect(() => {
     const fetchMembers = async () => {
+      if (status !== "authenticated" || !session?.user?.token) return;
+
       try {
         setIsLoading(true);
-        const data = await memberApi.getAllMembers();
-        setMembers(data);
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const response = await axios.get(
+          `${apiUrl}/api/member/get_members`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        console.log("Members API response:", response.data);
+        
+        // Handle the response structure
+        let membersData: Member[] = [];
+        if (response.data && Array.isArray(response.data)) {
+          membersData = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+          membersData = response.data.data;
+        } else if (response.data && Array.isArray(response.data.members)) {
+          membersData = response.data.members;
+        }
+        
+        console.log("Processed members data:", membersData);
+        setMembers(membersData);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch members:", err);
@@ -79,7 +139,7 @@ const page = () => {
     };
 
     fetchMembers();
-  }, [session.status]);
+  }, [status, session?.user?.token]);
 
   // Filter members based on search term
   const filteredMembers = members.filter(
@@ -160,17 +220,47 @@ const page = () => {
         "Are you sure you want to delete this member? This action cannot be undone."
       )
     ) {
-      await memberApi.deleteMember(memberId);
-      // Refresh the list
-      const updatedMembers = await memberApi.getAllMembers();
-      setMembers(updatedMembers);
+      try {
+        if (status !== "authenticated" || !session?.user?.token) {
+          alert("Authentication required");
+          return;
+        }
 
-      // If we're on a page that would now be empty, go back one page
-      if (
-        currentPage > 1 &&
-        (currentPage - 1) * itemsPerPage >= sortedMembers.length - 1
-      ) {
-        setCurrentPage(currentPage - 1);
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        await axios.delete(`${apiUrl}/api/member/delete_member/${memberId}`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
+
+        // Refresh the list
+        const refreshResponse = await axios.get(`${apiUrl}/api/member/get_members`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
+
+        let updatedMembersData: Member[] = [];
+        if (refreshResponse.data && Array.isArray(refreshResponse.data)) {
+          updatedMembersData = refreshResponse.data;
+        } else if (refreshResponse.data && Array.isArray(refreshResponse.data.data)) {
+          updatedMembersData = refreshResponse.data.data;
+        } else if (refreshResponse.data && Array.isArray(refreshResponse.data.members)) {
+          updatedMembersData = refreshResponse.data.members;
+        }
+
+        setMembers(updatedMembersData);
+
+        // If we're on a page that would now be empty, go back one page
+        if (
+          currentPage > 1 &&
+          (currentPage - 1) * itemsPerPage >= sortedMembers.length - 1
+        ) {
+          setCurrentPage(currentPage - 1);
+        }
+      } catch (error) {
+        console.error("Error deleting member:", error);
+        alert("Failed to delete member. Please try again.");
       }
     }
   };
@@ -353,7 +443,7 @@ const page = () => {
                               </DropdownMenuItem>
 
                               {/* Show Edit option only for Admin or Editor roles */}
-                              {(session?.data?.user.role! === "ADMIN" ||
+                              {(session?.user.role! === "ADMIN" ||
                                 userRole === "TSMWA_EDITOR") && (
                                 <DropdownMenuItem>
                                   <Link
@@ -365,7 +455,7 @@ const page = () => {
                               )}
 
                               {/* Show Delete option only for Admin role */}
-                              {session?.data?.user.role! === "ADMIN" && (
+                              {session?.user.role! === "ADMIN" && (
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   onClick={(e) => {

@@ -5,7 +5,7 @@ const API_BASE_URL = "https://tsmwa.online/api";
 
 // Default authentication token - in a real app, this would be handled more securely
 const DEFAULT_AUTH_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJBRE1JTiIsInBob25lIjoiOTY1MjMxNDQwNiIsImlhdCI6MTc1MTE3NzYxNywiZXhwIjoxNzUxNzgyNDE3fQ.bIFY55Yl5coZ4pO0QemPcII6M88qv40LrSKseZnD5QI";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInJvbGUiOiJBRE1JTiIsInBob25lIjoiOTY1MjMxNDQwNiIsImlhdCI6MTc1MTk0ODA3MCwiZXhwIjoxNzUyNTUyODcwfQ.ZKjjsFqNVfyvOsMdES_tnR1Xr8Gu1EHb0gpGKoo0Tfs";
 
 // Function to get the auth token - in a real app, this would come from a secure storage
 export const getAuthToken = (): string => {
@@ -30,9 +30,18 @@ export const clearAuthToken = (): void => {
   }
 };
 
+
+
 // Function to handle API errors
 const handleApiError = (error: any) => {
   console.error("API Error:", error);
+  console.error("API Error Details:", {
+    message: error.message,
+    status: error.status,
+    response: error.response,
+    url: error.url
+  });
+  
   // Check if the error is due to an expired token
   if (
     error.message &&
@@ -124,6 +133,44 @@ export async function updateMember(
     body: JSON.stringify(data),
   });
 }
+
+// User API endpoints
+export const userApi = {
+  // Get all users
+  getAllUsers: () => fetchApi<User[]>("/user/get_all_user"),
+
+  // Get user by ID
+  getUserById: (id: string) => fetchApi<User>(`/user/get_user_id/${id}`),
+
+  // Get inactive users
+  getInactiveUsers: () => fetchApi<User[]>("/user/get_inactive_user"),
+
+  // Create new user
+  createUser: (data: CreateUserPayload) =>
+    fetchApi<User>("/user/add_user", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  // Update user
+  updateUser: (data: UpdateUserPayload) => {
+    console.log("API Update User - Endpoint:", `/user/update_user/${data.id}`);
+    console.log("API Update User - Payload:", data);
+    return fetchApi<User>(`/user/update_user/${data.id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete user
+  deleteUser: (id: string) =>
+    fetchApi<{ success: boolean }>(`/user/delete_user/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Test API connection
+  testConnection: () => fetchApi<{ message: string }>("/user/get_all_user"),
+};
 
 // Auth API endpoints (for future use)
 export const authApi = {
@@ -302,4 +349,36 @@ export interface Declaration {
   applicationSignaturePath: string;
   createdAt: string;
   modifiedAt: string;
+}
+
+// User types based on API
+export interface User {
+  id: number;
+  fullName: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  email: string;
+  phone: string;
+  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  status: "ACTIVE" | "INACTIVE";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateUserPayload {
+  fullName: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  email: string;
+  phone: string;
+  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  status: "ACTIVE" | "INACTIVE";
+}
+
+export interface UpdateUserPayload {
+  id: number;
+  fullName?: string;
+  gender?: "MALE" | "FEMALE" | "OTHER";
+  email?: string;
+  phone?: string;
+  role?: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  status?: "ACTIVE" | "INACTIVE";
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 import { ArrowUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,58 +32,102 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  getAllLeaseQueries,
-  deleteLeaseQuery,
-  type LeaseQuery,
-  getMemberNameByMembershipId,
-} from "@/data/lease-queries";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
+
+// Define the lease query type based on API response
+interface ApiLeaseQuery {
+  id: number;
+  leaseQueryId: string;
+  membershipId: string;
+  presentLeaseHolder: string;
+  dateOfLease: string;
+  expiryOfLease: string;
+  dateOfRenewal: string | null;
+  status: string;
+  createdAt: string;
+  createdBy: number;
+  modifiedAt: string;
+  modifiedBy: number | null;
+}
 
 export default function LeaseQueryList() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof LeaseQuery | null>(null);
+  const [sortField, setSortField] = useState<keyof ApiLeaseQuery | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [queries, setQueries] = useState<LeaseQuery[]>([]);
-  const [filteredQueries, setFilteredQueries] = useState<LeaseQuery[]>([]);
+  const [queries, setQueries] = useState<ApiLeaseQuery[]>([]);
+  const [filteredQueries, setFilteredQueries] = useState<ApiLeaseQuery[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5; // Number of items to show per page
+  const [isLoading, setIsLoading] = useState(true);
+  const itemsPerPage = 10;
 
-  // User role for role-based access control - get from localStorage for persistence
-  const [userRole, setUserRole] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedRole = localStorage.getItem("userRole");
-      if (savedRole && ["admin", "editor", "viewer"].includes(savedRole)) {
-        return savedRole;
-      }
-    }
-    return "admin"; // Default role
-  });
+  // User role for role-based access control - get from session
+  const [userRole, setUserRole] = useState<string>("admin");
 
+  // Load lease queries from API on component mount
   useEffect(() => {
-    // Load queries
-    setQueries(getAllLeaseQueries());
-  }, []);
+    const fetchLeaseQueries = async () => {
+      console.log("Fetching lease queries...");
+      console.log("Status:", status);
+      console.log("Session token:", session?.user?.token ? "Exists" : "Missing");
+      
+      if (status === "authenticated" && session?.user?.token) {
+        try {
+          setIsLoading(true);
+          const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+          const fullUrl = `${apiUrl}/api/lease_query/get_all_lease_queries`;
+          console.log("API URL:", fullUrl);
+          
+          const response = await axios.get(fullUrl, {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          });
+          
+          console.log("Lease queries API response:", response.data);
+          
+          // Handle the response structure
+          let queriesData: ApiLeaseQuery[] = [];
+          if (response.data && response.data.data && Array.isArray(response.data.data)) {
+            queriesData = response.data.data;
+          } else if (Array.isArray(response.data)) {
+            queriesData = response.data;
+          }
+          
+          console.log("Processed lease queries data:", queriesData);
+          setQueries(queriesData);
+          setFilteredQueries(queriesData);
+        } catch (err) {
+          console.error("Error fetching lease queries:", err);
+          if (err instanceof Error) {
+            console.error("Error message:", err.message);
+          }
+          setQueries([]);
+          setFilteredQueries([]);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        console.log("Not authenticated or no token");
+        setIsLoading(false);
+      }
+    };
+    fetchLeaseQueries();
+  }, [status, session?.user?.token]);
+
+
 
   // Filter queries based on search term
   useEffect(() => {
     const filtered = queries.filter(
       (query) =>
-        query.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        query.leaseQueryId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         query.membershipId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         query.presentLeaseHolder
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        getMemberNameByMembershipId(query.membershipId)
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())
+        query.status.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredQueries(filtered);
     setCurrentPage(1); // Reset to first page when search changes
@@ -93,21 +139,21 @@ export default function LeaseQueryList() {
 
     let valueA, valueB;
 
-    if (sortField === "id") {
-      valueA = a.id;
-      valueB = b.id;
+    if (sortField === "leaseQueryId") {
+      valueA = a.leaseQueryId;
+      valueB = b.leaseQueryId;
     } else if (sortField === "membershipId") {
       valueA = a.membershipId;
       valueB = b.membershipId;
     } else if (sortField === "presentLeaseHolder") {
       valueA = a.presentLeaseHolder;
       valueB = b.presentLeaseHolder;
-    } else if (sortField === "leaseDate") {
-      valueA = new Date(a.leaseDate).getTime();
-      valueB = new Date(b.leaseDate).getTime();
-    } else if (sortField === "expiryDate") {
-      valueA = new Date(a.expiryDate).getTime();
-      valueB = new Date(b.expiryDate).getTime();
+    } else if (sortField === "dateOfLease") {
+      valueA = new Date(a.dateOfLease).getTime();
+      valueB = new Date(b.dateOfLease).getTime();
+    } else if (sortField === "expiryOfLease") {
+      valueA = new Date(a.expiryOfLease).getTime();
+      valueB = new Date(b.expiryOfLease).getTime();
     } else if (sortField === "status") {
       valueA = a.status;
       valueB = b.status;
@@ -134,7 +180,7 @@ export default function LeaseQueryList() {
   const totalPages = Math.ceil(sortedQueries.length / itemsPerPage);
 
   // Handle sorting
-  const handleSort = (field: keyof LeaseQuery) => {
+  const handleSort = (field: keyof ApiLeaseQuery) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -160,25 +206,53 @@ export default function LeaseQueryList() {
   };
 
   // Delete a query
-  const handleDeleteQuery = (queryId: string) => {
+  const handleDeleteQuery = async (queryId: string) => {
     if (
       window.confirm(
         "Are you sure you want to delete this lease query? This action cannot be undone."
       )
     ) {
-      deleteLeaseQuery(queryId);
-      // Refresh the list
-      setQueries(getAllLeaseQueries());
+      try {
+        if (status !== "authenticated" || !session?.user?.token) {
+          alert("Authentication required");
+          return;
+        }
+
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const response = await axios.delete(
+          `${apiUrl}/api/lease_query/delete_lease_query/${queryId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        console.log("Delete response:", response.data);
+        alert("Lease query deleted successfully!");
+        
+        // Refresh the list
+        const refreshResponse = await axios.get(
+          `${apiUrl}/api/lease_query/get_all_lease_queries`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        
+        if (refreshResponse.data && refreshResponse.data.data) {
+          setQueries(refreshResponse.data.data);
+          setFilteredQueries(refreshResponse.data.data);
+        }
+      } catch (error: any) {
+        console.error("Error deleting lease query:", error);
+        alert("Failed to delete lease query. Please try again.");
+      }
     }
   };
 
-  // Change user role (for demo purposes)
-  const handleRoleChange = (role: string) => {
-    setUserRole(role);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("userRole", role);
-    }
-  };
+
 
   return (
     <div className="container mx-auto p-6">
@@ -191,20 +265,6 @@ export default function LeaseQueryList() {
             </CardDescription>
           </div>
           <div className="flex items-center gap-4">
-            {/* Role selector for demo purposes */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Role:</span>
-              <Select value={userRole} onValueChange={handleRoleChange}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="editor">Editor</SelectItem>
-                  <SelectItem value="viewer">Viewer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <Button onClick={addNewQuery}>
               <Plus className="mr-2 h-4 w-4" /> Add Query
             </Button>
@@ -233,10 +293,10 @@ export default function LeaseQueryList() {
                   <TableHead className="w-[100px]">
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("id")}
+                      onClick={() => handleSort("leaseQueryId")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
-                      ID
+                      Query ID
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
@@ -263,7 +323,7 @@ export default function LeaseQueryList() {
                   <TableHead className="hidden md:table-cell">
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("leaseDate")}
+                      onClick={() => handleSort("dateOfLease")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
                       Lease Date
@@ -273,7 +333,7 @@ export default function LeaseQueryList() {
                   <TableHead className="hidden md:table-cell">
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("expiryDate")}
+                      onClick={() => handleSort("expiryOfLease")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
                       Expiry Date
@@ -294,38 +354,44 @@ export default function LeaseQueryList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedQueries.length > 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      Loading lease queries...
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedQueries.length > 0 ? (
                   paginatedQueries.map((query) => (
                     <TableRow
                       key={query.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => viewQueryDetails(query.id)}
+                      onClick={() => viewQueryDetails(query.leaseQueryId)}
                     >
-                      <TableCell className="font-medium">{query.id}</TableCell>
+                      <TableCell className="font-medium">{query.leaseQueryId}</TableCell>
                       <TableCell>{query.membershipId}</TableCell>
                       <TableCell>{query.presentLeaseHolder}</TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {new Date(query.leaseDate).toLocaleDateString()}
+                        {new Date(query.dateOfLease).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        {new Date(query.expiryDate).toLocaleDateString()}
+                        {new Date(query.expiryOfLease).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge
                           variant={
-                            query.status === "resolved"
+                            query.status === "RESOLVED"
                               ? "default"
-                              : query.status === "pending"
+                              : query.status === "PENDING"
                               ? "secondary"
-                              : query.status === "processing"
+                              : query.status === "PROCESSING"
                               ? "secondary"
-                              : query.status === "rejected"
+                              : query.status === "REJECTED"
                               ? "destructive"
                               : "outline"
                           }
                         >
                           {query.status.charAt(0).toUpperCase() +
-                            query.status.slice(1)}
+                            query.status.slice(1).toLowerCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -345,7 +411,7 @@ export default function LeaseQueryList() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                viewQueryDetails(query.id);
+                                viewQueryDetails(query.leaseQueryId);
                               }}
                             >
                               View Details
@@ -357,7 +423,7 @@ export default function LeaseQueryList() {
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  editQuery(query.id);
+                                  editQuery(query.leaseQueryId);
                                 }}
                               >
                                 Edit Query
@@ -370,7 +436,7 @@ export default function LeaseQueryList() {
                                 className="text-destructive focus:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteQuery(query.id);
+                                  handleDeleteQuery(query.leaseQueryId);
                                 }}
                               >
                                 Delete Query

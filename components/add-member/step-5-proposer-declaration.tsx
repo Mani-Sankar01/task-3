@@ -22,6 +22,7 @@ import {
 } from "../ui/select";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function Step5ProposerDeclaration() {
   const { control, setValue, watch } = useFormContext();
@@ -60,7 +61,7 @@ export default function Step5ProposerDeclaration() {
       if (status === "authenticated" && session?.user?.token) {
         try {
           const response1 = await axios.get(
-            `https://tandurmart.com/api/member/get_valid_members`,
+            `${process.env.BACKEND_API_URL}/api/member/get_valid_members`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -68,7 +69,7 @@ export default function Step5ProposerDeclaration() {
             }
           );
           const response2 = await axios.get(
-            `https://tandurmart.com/api/member/get_executive_members`,
+            `${process.env.BACKEND_API_URL}/api/member/get_executive_members`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -129,6 +130,17 @@ export default function Step5ProposerDeclaration() {
       );
       setValue("proposer2.membershipId", memberId);
     }
+  };
+
+  const handleDownload = (filePath: string) => {
+    // Use the download API endpoint
+    const downloadUrl = `/api/download?path=${encodeURIComponent(filePath)}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filePath.split('/').pop() || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -407,18 +419,23 @@ export default function Step5ProposerDeclaration() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormField
               control={control}
-              name="declaration.membershipFormUpload"
+              name="declaration.photoUpload"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Upload copy of membership form</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="photos"
+                      accept=".jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -433,13 +450,18 @@ export default function Step5ProposerDeclaration() {
                 <FormItem>
                   <FormLabel>Signature Upload (Applicant)</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="signatures"
+                      accept=".jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />

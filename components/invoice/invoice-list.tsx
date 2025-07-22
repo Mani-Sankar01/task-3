@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
 import {
   CalendarIcon,
   Download,
@@ -14,6 +17,34 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+
+// Define the invoice type based on API response
+interface ApiInvoice {
+  id: string;
+  invoiceId: string;
+  membershipId: string;
+  invoiceDate: string;
+  cGSTInPercent: number;
+  sGSTInPercent: number;
+  iGSTInPercent: number;
+  subTotal: string;
+  total: string;
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: number;
+  modifiedBy: number | null;
+}
+
+interface ApiMember {
+  id: string;
+  membershipId: string;
+  applicantName: string;
+  firmName: string;
+  complianceDetails?: {
+    fullAddress?: string;
+    gstInNumber?: string;
+  };
+}
 
 import { Button } from "@/components/ui/button";
 import {
@@ -53,20 +84,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  getAllInvoices,
-  getInvoicesByDateRange,
-  deleteInvoice,
-  exportInvoicesToCSV,
-  type Invoice,
-} from "@/data/invoices";
-import { getAllMembers } from "@/data/members";
+
 
 export default function InvoiceList() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const [invoices, setInvoices] = useState<ApiInvoice[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<ApiInvoice[]>([]);
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -75,34 +100,118 @@ export default function InvoiceList() {
     to: undefined,
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<ApiMember[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
 
+  // Fetch invoices from API
   useEffect(() => {
-    // Load all invoices and members initially
-    const allInvoices = getAllInvoices();
-    const allMembers = getAllMembers();
-    setInvoices(allInvoices);
-    setFilteredInvoices(allInvoices);
-    setMembers(allMembers);
-  }, []);
+    console.log("Status:", status);
+    console.log("Session:", session);
+    console.log("BACKEND_API_URL:", process.env.BACKEND_API_URL);
+    
+    if (status !== "authenticated" || !session?.user?.token) {
+      console.log("Not authenticated or no token");
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+        
+        console.log("API URL:", fullUrl);
+        console.log("Token:", session.user.token ? "Token exists" : "No token");
+        
+        const response = await axios.get(
+          fullUrl,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        console.log("Full API response:", response.data);
+        console.log("Response status:", response.status);
+        
+        // Handle different possible response structures
+        let responseData;
+        if (response.data && Array.isArray(response.data)) {
+          responseData = response.data;
+        } else if (response.data && response.data.taxInvoices && Array.isArray(response.data.taxInvoices)) {
+          responseData = response.data.taxInvoices;
+        } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          responseData = response.data.data;
+        } else {
+          responseData = [];
+        }
+        
+        setInvoices(responseData);
+        setFilteredInvoices(responseData);
+        console.log("Invoices data:", responseData);
+        console.log("Number of invoices:", responseData.length);
+      } catch (err: unknown) {
+        console.error("Error fetching invoice data:", err);
+        if (err instanceof Error) {
+          console.error("Error message:", err.message);
+          console.error("Error stack:", err.stack);
+        }
+        alert("Failed to load invoice data");
+        setInvoices([]);
+        setFilteredInvoices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [status, session?.user?.token]);
+
+  // Load members from API
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchMembers = async () => {
+      try {
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const response = await axios.get(
+          `${apiUrl}/api/member/get_members`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        setMembers(response.data || []);
+      } catch (err: unknown) {
+        console.error("Error fetching members:", err);
+        setMembers([]);
+      }
+    };
+
+    fetchMembers();
+  }, [status, session?.user?.token]);
 
   useEffect(() => {
     let filtered = invoices;
 
     // Filter by date range
     if (dateRange.from && dateRange.to) {
-      filtered = getInvoicesByDateRange(
-        dateRange.from.toISOString().split("T")[0],
-        dateRange.to.toISOString().split("T")[0]
-      );
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        const start = dateRange.from!;
+        const end = dateRange.to!;
+        return invoiceDate >= start && invoiceDate <= end;
+      });
     }
 
     // Filter by member
     if (selectedMemberId) {
       filtered = filtered.filter(
-        (invoice) => invoice.memberId === selectedMemberId
+        (invoice) => invoice.membershipId === selectedMemberId
       );
     }
 
@@ -110,11 +219,10 @@ export default function InvoiceList() {
     if (searchTerm) {
       filtered = filtered.filter(
         (invoice) =>
-          invoice.invoiceNumber
+          invoice.invoiceId
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          invoice.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          invoice.firmName.toLowerCase().includes(searchTerm.toLowerCase())
+          invoice.membershipId.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -143,138 +251,76 @@ export default function InvoiceList() {
     router.push(`/admin/invoices/edit/${id}`);
   };
 
-  const handleDeleteInvoice = (id: string) => {
+  const handleDeleteInvoice = async (invoiceId: string) => {
     if (
       window.confirm(
         "Are you sure you want to delete this invoice? This action cannot be undone."
       )
     ) {
-      deleteInvoice(id);
-      // Refresh the list
-      setInvoices(getAllInvoices());
+      if (status !== "authenticated" || !session?.user?.token) {
+        alert("Authentication required");
+        return;
+      }
+
+      try {
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        await axios.delete(
+          `${apiUrl}/api/tax_invoice/delete_tax_invoice/${invoiceId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        // Remove from local state after successful API call
+        setInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceId !== invoiceId));
+        setFilteredInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceId !== invoiceId));
+        
+        alert("Invoice deleted successfully!");
+      } catch (error: any) {
+        console.error("Error deleting invoice:", error);
+        console.error("Error response:", error.response?.data);
+        console.error("Error status:", error.response?.status);
+        
+        if (error.response?.status === 404) {
+          alert("Invoice not found or already deleted");
+        } else {
+          alert("Failed to delete invoice. Please try again.");
+        }
+      }
     }
   };
 
-  const handleDownloadInvoice = (id: string) => {
+  const handleDownloadInvoice = async (id: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      alert("Authentication required");
+      return;
+    }
+
+    try {
+      // Find the invoice from the current list
     const invoice = invoices.find((inv) => inv.id === id);
     if (!invoice) {
       alert("Invoice not found");
       return;
     }
 
-    try {
-      // Create a printable version in a new window
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(`
-        <html>
-          <head>
-            <title>Invoice ${invoice.invoiceNumber}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              .invoice-header { text-align: center; margin-bottom: 20px; }
-              .invoice-title { font-size: 24px; font-weight: bold; }
-              .invoice-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .totals { margin-left: auto; width: 300px; }
-              .note { margin-top: 30px; font-style: italic; }
-            </style>
-          </head>
-          <body>
-            <div class="invoice-header">
-             
-              <div style="border: 1px solid black; display: inline-block; padding: 5px 15px; margin-top: 10px;">
-                <p style="font-weight: bold; margin: 0;">TAX INVOICE</p>
-              </div>
-            </div>
-            
-            <div class="invoice-details">
-              <div>
-                <p><strong>Invoice No:</strong> ${invoice.invoiceNumber}</p>
-                <p><strong>Member Name:</strong> ${invoice.memberName}</p>
-                <p><strong>Firm Name:</strong> ${invoice.firmName}</p>
-                <p><strong>Address:</strong> ${invoice.firmAddress}</p>
-                <p><strong>GSTIN:</strong> ${invoice.gstNumber}</p>
-              </div>
-              <div>
-                <p><strong>Date:</strong> ${new Date(
-                  invoice.invoiceDate
-                ).toLocaleDateString()}</p>
-              </div>
-            </div>
-            
-            <table>
-              <thead>
-                <tr>
-                  <th>HSN Code</th>
-                  <th>Particulars</th>
-                  <th>No. of Stones</th>
-                  <th>Sizes</th>
-                  <th>Total Sq. Ft.</th>
-                  <th>Rate (₹)</th>
-                  <th>Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${invoice.items
-                  .map(
-                    (item) => `
-                  <tr>
-                    <td>${item.hsnCode}</td>
-                    <td>${item.particulars}</td>
-                    <td>${item.noOfStones}</td>
-                    <td>${item.sizes}</td>
-                    <td>${item.totalSqFeet}</td>
-                    <td>${item.ratePerSqFt.toLocaleString()}</td>
-                    <td>${item.amount.toLocaleString()}</td>
-                  </tr>
-                `
-                  )
-                  .join("")}
-              </tbody>
-            </table>
-            
-            <div class="totals">
-              <p><strong>Sub Total:</strong> ₹${invoice.subTotal.toLocaleString()}</p>
-              ${
-                invoice.cgstPercentage > 0
-                  ? `<p><strong>CGST (${
-                      invoice.cgstPercentage
-                    }%):</strong> ₹${invoice.cgstAmount.toLocaleString()}</p>`
-                  : ""
-              }
-              ${
-                invoice.sgstPercentage > 0
-                  ? `<p><strong>SGST (${
-                      invoice.sgstPercentage
-                    }%):</strong> ₹${invoice.sgstAmount.toLocaleString()}</p>`
-                  : ""
-              }
-              ${
-                invoice.igstPercentage > 0
-                  ? `<p><strong>IGST (${
-                      invoice.igstPercentage
-                    }%):</strong> ₹${invoice.igstAmount.toLocaleString()}</p>`
-                  : ""
-              }
-              <p style="font-weight: bold; font-size: 18px;"><strong>Total:</strong> ₹${invoice.totalAmount.toLocaleString()}</p>
-            </div>
-            
-            <div class="note">
-              <p>Note: This is a computer-generated invoice and does not require signature or stamp.</p>
-            </div>
-          </body>
-        </html>
-      `);
-        printWindow.document.close();
-        printWindow.print();
-      } else {
-        alert(
-          "Unable to open print window. Please check your browser settings."
-        );
-      }
+      // Fetch member details for the invoice
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const memberResponse = await axios.get(
+        `${apiUrl}/api/member/get_member/${invoice.membershipId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      const member = memberResponse.data;
+
+      // Generate and download PDF
+      generateTaxInvoicePDF(invoice, member);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
@@ -282,8 +328,31 @@ export default function InvoiceList() {
   };
 
   const handleExportCSV = () => {
-    // Generate CSV content
-    const csvContent = exportInvoicesToCSV(filteredInvoices);
+    // Generate CSV content for API invoices
+    const csvHeaders = [
+      "Invoice ID",
+      "Membership ID", 
+      "Date",
+      "CGST %",
+      "SGST %",
+      "IGST %",
+      "Sub Total",
+      "Total"
+    ];
+    
+    const csvContent = [
+      csvHeaders.join(","),
+      ...filteredInvoices.map(invoice => [
+        invoice.invoiceId,
+        invoice.membershipId,
+        new Date(invoice.invoiceDate).toLocaleDateString(),
+        invoice.cGSTInPercent,
+        invoice.sGSTInPercent,
+        invoice.iGSTInPercent,
+        invoice.subTotal,
+        invoice.total
+      ].join(","))
+    ].join("\n");
 
     // Create a Blob with the CSV content
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -312,6 +381,21 @@ export default function InvoiceList() {
   const clearMemberFilter = () => {
     setSelectedMemberId("");
   };
+
+  if (isLoading || status === "loading") {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">
+              Loading invoice data...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -354,8 +438,8 @@ export default function InvoiceList() {
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {members.map((member) => (
-                    <SelectItem key={member.id} value={member.id}>
-                      {member.firmDetails.firmName}
+                    <SelectItem key={member.membershipId} value={member.membershipId}>
+                      {member.applicantName} - {member.firmName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -394,8 +478,18 @@ export default function InvoiceList() {
                     initialFocus
                     mode="range"
                     defaultMonth={dateRange.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
+                    selected={{
+                      from: dateRange.from,
+                      to: dateRange.to
+                    }}
+                    onSelect={(range) => {
+                      if (range) {
+                        setDateRange({
+                          from: range.from,
+                          to: range.to
+                        });
+                      }
+                    }}
                     numberOfMonths={2}
                   />
                 </PopoverContent>
@@ -422,9 +516,12 @@ export default function InvoiceList() {
                 <TableRow>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Firm</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Membership ID</TableHead>
+                  <TableHead>CGST %</TableHead>
+                  <TableHead>SGST %</TableHead>
+                  <TableHead>IGST %</TableHead>
+                  <TableHead className="text-right">Sub Total</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -434,18 +531,23 @@ export default function InvoiceList() {
                     <TableRow
                       key={invoice.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleViewInvoice(invoice.id)}
+                      onClick={() => handleViewInvoice(invoice.invoiceId)}
                     >
                       <TableCell className="font-medium">
-                        {invoice.invoiceNumber}
+                        {invoice.invoiceId}
                       </TableCell>
                       <TableCell>
                         {new Date(invoice.invoiceDate).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{invoice.memberName}</TableCell>
-                      <TableCell>{invoice.firmName}</TableCell>
+                      <TableCell>{invoice.membershipId}</TableCell>
+                      <TableCell>{invoice.cGSTInPercent}%</TableCell>
+                      <TableCell>{invoice.sGSTInPercent}%</TableCell>
+                      <TableCell>{invoice.iGSTInPercent}%</TableCell>
                       <TableCell className="text-right">
-                        ₹{invoice.totalAmount.toLocaleString()}
+                        ₹{parseFloat(invoice.subTotal).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{parseFloat(invoice.total).toLocaleString()}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -464,7 +566,7 @@ export default function InvoiceList() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleViewInvoice(invoice.id);
+                                handleViewInvoice(invoice.invoiceId);
                               }}
                             >
                               <Eye className="mr-2 h-4 w-4" /> View
@@ -472,7 +574,7 @@ export default function InvoiceList() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditInvoice(invoice.id);
+                                handleEditInvoice(invoice.invoiceId);
                               }}
                             >
                               <Edit className="mr-2 h-4 w-4" /> Edit
@@ -490,7 +592,7 @@ export default function InvoiceList() {
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteInvoice(invoice.id);
+                                handleDeleteInvoice(invoice.invoiceId);
                               }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -502,7 +604,7 @@ export default function InvoiceList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={9} className="h-24 text-center">
                       No invoices found.
                     </TableCell>
                   </TableRow>

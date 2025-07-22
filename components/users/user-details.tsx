@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,8 +22,24 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, AlertTriangle } from "lucide-react";
-import { type User, UserStatus, deleteUser, getUserById } from "@/data/users";
+import { UserStatus } from "@/data/users";
 import { formatDate } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+
+// User interface
+interface User {
+  id: number;
+  fullName: string;
+  gender: "MALE" | "FEMALE" | "OTHER";
+  email: string;
+  phone: string;
+  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  status: "ACTIVE" | "INACTIVE";
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 type UserDetailsProps = {
   userId: string;
@@ -31,11 +47,74 @@ type UserDetailsProps = {
 
 export default function UserDetails({ userId }: UserDetailsProps) {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(
-    () => getUserById(userId) || null
-  );
+  const { toast } = useToast();
+  const { data: session, status } = useSession();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Load user data
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchUser = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/user/get_user_id/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        const userData = response.data;
+        console.log("User details loaded:", userData);
+        setUser(userData);
+      } catch (error: any) {
+        console.error("Error loading user:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load user data",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId, status, session?.user?.token, toast]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-2"
+              onClick={() => router.back()}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle>Loading User...</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-600">Loading user data...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (!user) {
     return (
@@ -70,17 +149,38 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   };
 
   const handleDelete = async () => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsDeleting(true);
     try {
-      const deletedUser = deleteUser(userId);
-      if (deletedUser) {
-        router.push("/admin/users");
-      } else {
-        throw new Error("Failed to delete user");
-      }
-    } catch (error) {
+      await axios.delete(
+        `${process.env.BACKEND_API_URL}/api/user/delete_user/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+      
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+      router.push("/admin/users");
+    } catch (error: any) {
       console.error("Error deleting user:", error);
-      // In a real app, you would show an error message to the user
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
     } finally {
       setIsDeleting(false);
       setIsDeleteDialogOpen(false);
@@ -91,9 +191,9 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   const renderStatusBadge = (status: UserStatus) => {
     return (
       <Badge
-        variant={status === UserStatus.Active ? "default" : "destructive"}
+        variant={status === UserStatus.ACTIVE ? "default" : "destructive"}
         className={
-          status === UserStatus.Active
+          status === UserStatus.ACTIVE
             ? "bg-green-100 text-green-800 hover:bg-green-100"
             : "bg-red-100 text-red-800 hover:bg-red-100"
         }
@@ -117,7 +217,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <CardTitle>{user.name}</CardTitle>
+              <CardTitle>{user.fullName}</CardTitle>
               <CardDescription>{user.email}</CardDescription>
             </div>
           </div>
@@ -180,19 +280,19 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">Status</p>
-            <p>{renderStatusBadge(user.status)}</p>
+            <p>{renderStatusBadge(user.status as UserStatus)}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">
               Created At
             </p>
-            <p>{formatDate(user.createdAt)}</p>
+            <p>{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">
               Last Updated
             </p>
-            <p>{formatDate(user.updatedAt)}</p>
+            <p>{user.updatedAt ? formatDate(user.updatedAt) : 'N/A'}</p>
           </div>
         </div>
       </CardContent>

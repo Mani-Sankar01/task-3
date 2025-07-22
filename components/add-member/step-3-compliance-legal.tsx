@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Card, CardContent } from "@/components/ui/card";
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function Step3ComplianceLegal() {
   const { control } = useFormContext();
@@ -25,6 +26,17 @@ export default function Step3ComplianceLegal() {
     name: "representativeDetails.partners",
   });
 
+  const handleDownload = (filePath: string) => {
+    // Use the download API endpoint
+    const downloadUrl = `/api/download?path=${encodeURIComponent(filePath)}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filePath.split('/').pop() || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-8">
       {/* Section 1: Registration & Compliance Numbers */}
@@ -32,8 +44,10 @@ export default function Step3ComplianceLegal() {
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
           Registration & Compliance Numbers
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-x-2 flex">
+        <div className="space-y-6">
+          {/* GSTIN */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
             <FormField
               control={control}
               name="complianceDetails.gstinNo"
@@ -47,6 +61,23 @@ export default function Step3ComplianceLegal() {
                 </FormItem>
               )}
             />
+              <FormField
+                control={control}
+                name="complianceDetails.gstinExpiredAt"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>GSTIN Expiry Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={control}
               name="complianceDetails.gstinDoc"
@@ -54,13 +85,18 @@ export default function Step3ComplianceLegal() {
                 <FormItem>
                   <FormLabel>GSTIN Certificate</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="documents"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -69,12 +105,14 @@ export default function Step3ComplianceLegal() {
             />
           </div>
 
-          <div className="space-x-2 flex">
+          {/* Factory License */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
             <FormField
               control={control}
               name="complianceDetails.factoryLicenseNo"
               render={({ field }) => (
-                <FormItem>
+                  <FormItem className="flex-1">
                   <FormLabel>Factory License No</FormLabel>
                   <FormControl>
                     <Input
@@ -86,20 +124,42 @@ export default function Step3ComplianceLegal() {
                 </FormItem>
               )}
             />
+              <FormField
+                control={control}
+                name="complianceDetails.factoryLicenseExpiredAt"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>Factory License Expiry Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={control}
               name="complianceDetails.factoryLicenseDoc"
               render={({ field }) => (
-                <FormItem className="flex-1">
-                  <FormLabel>Upload Doc</FormLabel>
+                <FormItem>
+                  <FormLabel>Factory License Document</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="documents"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -108,7 +168,9 @@ export default function Step3ComplianceLegal() {
             />
           </div>
 
-          <div className="space-x-2 flex">
+          {/* TSPCB Order */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
             <FormField
               control={control}
               name="complianceDetails.tspcbOrderNo"
@@ -122,20 +184,42 @@ export default function Step3ComplianceLegal() {
                 </FormItem>
               )}
             />
+              <FormField
+                control={control}
+                name="complianceDetails.tspcbExpiredAt"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>TSPCB Expiry Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={control}
               name="complianceDetails.tspcbOrderDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Upload Doc</FormLabel>
+                  <FormLabel>TSPCB Certificate</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="documents"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -144,7 +228,9 @@ export default function Step3ComplianceLegal() {
             />
           </div>
 
-          <div className="space-x-2 flex">
+          {/* MDL */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
             <FormField
               control={control}
               name="complianceDetails.mdlNo"
@@ -158,20 +244,42 @@ export default function Step3ComplianceLegal() {
                 </FormItem>
               )}
             />
+              <FormField
+                control={control}
+                name="complianceDetails.mdlExpiredAt"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>MDL Expiry Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={control}
               name="complianceDetails.mdlDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Upload Doc</FormLabel>
+                  <FormLabel>MDL Certificate</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="documents"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -180,7 +288,9 @@ export default function Step3ComplianceLegal() {
             />
           </div>
 
-          <div className="space-x-2 flex">
+          {/* Udyam Certificate */}
+          <div className="space-y-4">
+            <div className="flex items-end gap-4">
             <FormField
               control={control}
               name="complianceDetails.udyamCertificateNo"
@@ -197,20 +307,42 @@ export default function Step3ComplianceLegal() {
                 </FormItem>
               )}
             />
+              <FormField
+                control={control}
+                name="complianceDetails.udyamCertificateExpiredAt"
+                render={({ field }) => (
+                  <FormItem className="flex-1">
+                    <FormLabel>Udyam Certificate Expiry Date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={control}
               name="complianceDetails.udyamCertificateDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Upload Doc</FormLabel>
+                  <FormLabel>Udyam Certificate</FormLabel>
                   <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        field.onChange(file);
+                    <FileUpload
+                      onFileSelect={(file) => field.onChange(file)}
+                      onUploadComplete={(filePath) => {
+                        // File is already uploaded, just store the file object for later processing
                       }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                      }}
+                      subfolder="documents"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      existingFilePath={field.value?.existingPath}
+                      onDownload={handleDownload}
                     />
                   </FormControl>
                   <FormMessage />
@@ -221,12 +353,11 @@ export default function Step3ComplianceLegal() {
         </div>
       </div>
 
-      {/* Section 2: Address for Communication */}
+      {/* Section 2: Communication Details */}
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
-          Address for Communication
+          Communication Details
         </h3>
-        <div className="grid grid-cols-1 gap-6">
           <FormField
             control={control}
             name="communicationDetails.fullAddress"
@@ -235,7 +366,7 @@ export default function Step3ComplianceLegal() {
                 <FormLabel>Full Address</FormLabel>
                 <FormControl>
                   <Textarea
-                    placeholder="Enter complete address for communication"
+                  placeholder="Enter complete address"
                     className="min-h-[100px]"
                     {...field}
                   />
@@ -244,40 +375,45 @@ export default function Step3ComplianceLegal() {
               </FormItem>
             )}
           />
-        </div>
       </div>
 
-      {/* Section 3: Representative/Partner Details */}
+      {/* Section 3: Representative Details */}
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium">
-            Representative/Partner Details
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium border-b pb-2 w-full">
+            Representative Details
           </h3>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() =>
-              partnerArray.append({ name: "", contactNo: "", aadharNo: "" })
+              partnerArray.append({
+                name: "",
+                contactNo: "",
+                aadharNo: "",
+                email: "",
+                pan: "",
+              })
             }
           >
-            <Plus className="h-4 w-4 mr-2" /> Add
+            <Plus className="h-4 w-4 mr-2" /> Add Partner
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {partnerArray.fields.map((field, index) => (
             <Card key={field.id}>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={control}
                     name={`representativeDetails.partners.${index}.name`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Representative/Partner Name</FormLabel>
+                        <FormLabel>Partner Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter name" {...field} />
+                          <Input placeholder="Enter partner name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -289,7 +425,7 @@ export default function Step3ComplianceLegal() {
                     name={`representativeDetails.partners.${index}.contactNo`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contact No</FormLabel>
+                        <FormLabel>Contact Number</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Enter contact number"
@@ -306,9 +442,12 @@ export default function Step3ComplianceLegal() {
                     name={`representativeDetails.partners.${index}.aadharNo`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Aadhar No</FormLabel>
+                        <FormLabel>Aadhar Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter Aadhar number" {...field} />
+                          <Input
+                            placeholder="Enter Aadhar number"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -322,7 +461,11 @@ export default function Step3ComplianceLegal() {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter email" {...field} />
+                          <Input
+                            type="email"
+                            placeholder="Enter email address"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -334,35 +477,30 @@ export default function Step3ComplianceLegal() {
                     name={`representativeDetails.partners.${index}.pan`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>PAN</FormLabel>
+                        <FormLabel>PAN Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter PAN no" {...field} />
+                          <Input placeholder="Enter PAN number" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
 
+                  <div className="flex items-end">
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="mt-4 text-destructive"
+                      size="icon"
+                      className="text-destructive"
                   onClick={() => partnerArray.remove(index)}
                 >
-                  <Trash2 className="h-4 w-4 mr-2" /> Remove
+                      <Trash2 className="h-4 w-4" />
                 </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           ))}
-
-          {partnerArray.fields.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No partners added yet. Click the button above to add partner
-              details.
-            </p>
-          )}
         </div>
       </div>
     </div>

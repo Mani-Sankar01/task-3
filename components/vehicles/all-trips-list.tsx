@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -36,21 +38,104 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getAllTrips, getVehicleById, type Trip } from "@/data/vehicles";
+import { getVehicleById } from "@/data/vehicles";
+
+// Define the trip type based on API response
+interface ApiTrip {
+  id: number;
+  tripId: string;
+  vehicleId: string;
+  tripDate: string;
+  amountPerTrip: number;
+  numberOfTrips: number;
+  totalAmount: number;
+  amountPaid: number;
+  balanceAmount: number;
+  paymentStatus: string;
+  notes: string;
+  receiptPath: string | null;
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: number;
+  modifiedBy: number | null;
+}
 
 export default function AllTripsList() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof Trip | null>(null);
+  const [sortField, setSortField] = useState<keyof ApiTrip | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [trips, setTrips] = useState(() => getAllTrips());
+  const [trips, setTrips] = useState<ApiTrip[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
+
+  // Fetch trips from API
+  useEffect(() => {
+    console.log("Status:", status);
+    console.log("Session:", session);
+    console.log("BACKEND_API_URL:", process.env.BACKEND_API_URL);
+    
+    if (status !== "authenticated" || !session?.user?.token) {
+      console.log("Not authenticated or no token");
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const fullUrl = `${apiUrl}/api/vehicle/get_all_trip`;
+        
+        console.log("API URL:", fullUrl);
+        console.log("Token:", session.user.token ? "Token exists" : "No token");
+        
+        const response = await axios.get(
+          fullUrl,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        console.log("Full API response:", response.data);
+        console.log("Response status:", response.status);
+        
+        // Handle different possible response structures
+        let responseData;
+        if (response.data && response.data.trips && Array.isArray(response.data.trips)) {
+          responseData = response.data.trips;
+        } else if (response.data && Array.isArray(response.data)) {
+          responseData = response.data;
+        } else {
+          responseData = [];
+        }
+        
+        setTrips(responseData);
+        console.log("Trips data:", responseData);
+        console.log("Number of trips:", responseData.length);
+      } catch (err: unknown) {
+        console.error("Error fetching trip data:", err);
+        if (err instanceof Error) {
+          console.error("Error message:", err.message);
+          console.error("Error stack:", err.stack);
+        }
+        alert("Failed to load trip data");
+        setTrips([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [status, session?.user?.token]);
 
   // Filter trips based on search term
   const filteredTrips = trips.filter(
     (trip) =>
-      trip.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      trip.tripId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getVehicleById(trip.vehicleId)
         ?.vehicleNumber.toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
@@ -71,21 +156,25 @@ export default function AllTripsList() {
         valueA = a.id;
         valueB = b.id;
         break;
-      case "date":
-        valueA = new Date(a.date);
-        valueB = new Date(b.date);
+      case "tripId":
+        valueA = a.tripId;
+        valueB = b.tripId;
         break;
-      case "totalRounds":
-        valueA = a.totalRounds;
-        valueB = b.totalRounds;
+      case "tripDate":
+        valueA = new Date(a.tripDate);
+        valueB = new Date(b.tripDate);
         break;
-      case "pricePerRound":
-        valueA = a.pricePerRound;
-        valueB = b.pricePerRound;
+      case "numberOfTrips":
+        valueA = a.numberOfTrips;
+        valueB = b.numberOfTrips;
         break;
-      case "totalAmountToPay":
-        valueA = a.totalAmountToPay;
-        valueB = b.totalAmountToPay;
+      case "amountPerTrip":
+        valueA = a.amountPerTrip;
+        valueB = b.amountPerTrip;
+        break;
+      case "totalAmount":
+        valueA = a.totalAmount;
+        valueB = b.totalAmount;
         break;
       case "amountPaid":
         valueA = a.amountPaid;
@@ -122,7 +211,7 @@ export default function AllTripsList() {
   const totalPages = Math.ceil(sortedTrips.length / itemsPerPage);
 
   // Handle sorting
-  const handleSort = (field: keyof Trip) => {
+  const handleSort = (field: keyof ApiTrip) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -166,20 +255,31 @@ export default function AllTripsList() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search trips..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
+          {isLoading || status === "loading" ? (
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <p className="mt-4 text-muted-foreground">
+                  Loading trip data...
+                </p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search trips..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+              </div>
 
           <div className="rounded-md border">
             <Table>
@@ -188,17 +288,17 @@ export default function AllTripsList() {
                   <TableHead className="w-[100px]">
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("id")}
+                      onClick={() => handleSort("tripId")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
-                      ID
+                      Trip ID
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("date")}
+                      onClick={() => handleSort("tripDate")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
                       Date
@@ -210,27 +310,27 @@ export default function AllTripsList() {
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("totalRounds")}
+                      onClick={() => handleSort("numberOfTrips")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
-                      Rounds
+                      Trips
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("pricePerRound")}
+                      onClick={() => handleSort("amountPerTrip")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
-                      Price/Round
+                      Amount/Trip
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
                   <TableHead>
                     <Button
                       variant="ghost"
-                      onClick={() => handleSort("totalAmountToPay")}
+                      onClick={() => handleSort("totalAmount")}
                       className="flex items-center p-0 h-auto font-medium"
                     >
                       Total
@@ -256,12 +356,12 @@ export default function AllTripsList() {
                     const vehicle = getVehicleDetails(trip.vehicleId);
                     return (
                       <TableRow key={trip.id}>
-                        <TableCell className="font-medium">{trip.id}</TableCell>
+                        <TableCell className="font-medium">{trip.tripId}</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                             <span>
-                              {new Date(trip.date).toLocaleDateString()}
+                              {new Date(trip.tripDate).toLocaleDateString()}
                             </span>
                           </div>
                         </TableCell>
@@ -271,21 +371,21 @@ export default function AllTripsList() {
                         <TableCell>
                           {vehicle?.driverName || "Unknown"}
                         </TableCell>
-                        <TableCell>{trip.totalRounds}</TableCell>
-                        <TableCell>₹{trip.pricePerRound}</TableCell>
-                        <TableCell>₹{trip.totalAmountToPay}</TableCell>
+                        <TableCell>{trip.numberOfTrips}</TableCell>
+                        <TableCell>₹{trip.amountPerTrip}</TableCell>
+                        <TableCell>₹{trip.totalAmount}</TableCell>
                         <TableCell>
                           <Badge
                             variant={
-                              trip.paymentStatus === "paid"
+                              trip.paymentStatus === "PAID"
                                 ? "default"
-                                : trip.paymentStatus === "partial"
+                                : trip.paymentStatus === "PARTIAL"
                                 ? "secondary"
                                 : "destructive"
                             }
                           >
                             {trip.paymentStatus.charAt(0).toUpperCase() +
-                              trip.paymentStatus.slice(1)}
+                              trip.paymentStatus.slice(1).toLowerCase()}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -310,7 +410,7 @@ export default function AllTripsList() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() =>
-                                  editTrip(trip.vehicleId, trip.id)
+                                  editTrip(trip.vehicleId, trip.tripId)
                                 }
                               >
                                 Edit Trip
@@ -361,6 +461,8 @@ export default function AllTripsList() {
               </Button>
             </div>
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -23,6 +23,8 @@ import Step4MembershipDocs from "@/components/add-member/step-4-membership-docs"
 import Step5ProposerDeclaration from "@/components/add-member/step-5-proposer-declaration";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import { uploadFile } from "@/lib/client-file-upload";
+import { useToast } from "@/hooks/use-toast";
 // import { addMemberAction } from "@/app/actions/member-actions";
 
 // Define the form schema
@@ -123,6 +125,16 @@ const formSchema = z.object({
     tspcbOrderNo: z.string(),
     mdlNo: z.string(),
     udyamCertificateNo: z.string(),
+    gstinDoc: z.any().optional(),
+    gstinExpiredAt: z.string().optional(),
+    factoryLicenseDoc: z.any().optional(),
+    factoryLicenseExpiredAt: z.string().optional(),
+    tspcbOrderDoc: z.any().optional(),
+    tspcbExpiredAt: z.string().optional(),
+    mdlDoc: z.any().optional(),
+    mdlExpiredAt: z.string().optional(),
+    udyamCertificateDoc: z.any().optional(),
+    udyamCertificateExpiredAt: z.string().optional(),
   }),
   communicationDetails: z.object({
     fullAddress: z.string().min(10, "Full Address is required"),
@@ -155,10 +167,14 @@ const formSchema = z.object({
       .min(1, "Select is an Executive member or not"),
   }),
   documentDetails: z.object({
-    saleDeedElectricityBill: z.any().optional(),
-    rentalDeed: z.any().optional(),
-    partnershipDeed: z.any().optional(),
     additionalDocuments: z.any().optional(),
+    additionalAttachments: z.array(
+      z.object({
+        name: z.string(),
+        file: z.any().optional(),
+        expiredAt: z.string().optional(),
+      })
+    ).default([]),
   }),
   proposer1: z.object({
     name: z.string(),
@@ -191,6 +207,17 @@ const AddMemberForm = () => {
   const [formData, setFormData] = useState<FormValues | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status } = useSession();
+  const { toast } = useToast();
+  const [validationErrors, setValidationErrors] = useState<{
+    electricalUscNumber?: string;
+    scNumber?: string;
+  }>({});
+  const [validationSuccess, setValidationSuccess] = useState<{
+    electricalUscNumber?: string;
+    scNumber?: string;
+  }>({});
+  const [isValidating, setIsValidating] = useState(false);
+
   useEffect(() => {
     if (status == "loading" || status === "authenticated") {
       setIsLoading(true);
@@ -246,6 +273,16 @@ const AddMemberForm = () => {
         tspcbOrderNo: "",
         mdlNo: "",
         udyamCertificateNo: "",
+        gstinDoc: null,
+        gstinExpiredAt: undefined,
+        factoryLicenseDoc: null,
+        factoryLicenseExpiredAt: undefined,
+        tspcbOrderDoc: null,
+        tspcbExpiredAt: undefined,
+        mdlDoc: null,
+        mdlExpiredAt: undefined,
+        udyamCertificateDoc: null,
+        udyamCertificateExpiredAt: undefined,
       },
       communicationDetails: {
         fullAddress: "",
@@ -257,7 +294,9 @@ const AddMemberForm = () => {
         isMemberOfOrg: "",
         hasAppliedEarlier: "",
       },
-      documentDetails: {},
+      documentDetails: {
+        additionalAttachments: [],
+      },
       proposer1: {
         name: "",
         firmName: "",
@@ -299,10 +338,121 @@ const AddMemberForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Call the server action to add a new member
-      //   const result = await addMemberAction(data);
-      // console.log(JSON.stringify(data));
-      const reqData = {
+      // Validate USC/SC numbers before proceeding
+      const isValid = await validateUscScNumbers(
+        data.applicationDetails.electricalUscNumber,
+        data.applicationDetails.scNumber
+      );
+
+      if (!isValid) {
+        setIsSubmitting(false);
+        return; // Stop submission if validation fails
+      }
+
+      // Upload new files first
+      const uploadedFiles: Record<string, string> = {};
+
+      // Upload compliance documents from step 3
+      if (data.complianceDetails.gstinDoc) {
+        const result = await uploadFile(data.complianceDetails.gstinDoc, 'documents');
+        if (result.success && result.filePath) {
+          uploadedFiles.gstinDoc = result.filePath;
+        } else {
+          alert(`Failed to upload GSTIN Certificate: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (data.complianceDetails.factoryLicenseDoc) {
+        const result = await uploadFile(data.complianceDetails.factoryLicenseDoc, 'documents');
+        if (result.success && result.filePath) {
+          uploadedFiles.factoryLicenseDoc = result.filePath;
+        } else {
+          alert(`Failed to upload Factory License: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (data.complianceDetails.tspcbOrderDoc) {
+        const result = await uploadFile(data.complianceDetails.tspcbOrderDoc, 'documents');
+        if (result.success && result.filePath) {
+          uploadedFiles.tspcbOrderDoc = result.filePath;
+        } else {
+          alert(`Failed to upload TSPCB Certificate: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (data.complianceDetails.mdlDoc) {
+        const result = await uploadFile(data.complianceDetails.mdlDoc, 'documents');
+        if (result.success && result.filePath) {
+          uploadedFiles.mdlDoc = result.filePath;
+        } else {
+          alert(`Failed to upload MDL Certificate: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (data.complianceDetails.udyamCertificateDoc) {
+        const result = await uploadFile(data.complianceDetails.udyamCertificateDoc, 'documents');
+        if (result.success && result.filePath) {
+          uploadedFiles.udyamCertificateDoc = result.filePath;
+        } else {
+          alert(`Failed to upload Udyam Certificate: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Upload new declaration files
+      if (data.declaration.photoUpload) {
+        const result = await uploadFile(data.declaration.photoUpload, 'photos');
+        if (result.success && result.filePath) {
+          uploadedFiles.photoUpload = result.filePath;
+        } else {
+          alert(`Failed to upload Photo: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      if (data.declaration.signatureUpload) {
+        const result = await uploadFile(data.declaration.signatureUpload, 'signatures');
+        if (result.success && result.filePath) {
+          uploadedFiles.signatureUpload = result.filePath;
+        } else {
+          alert(`Failed to upload Signature: ${result.error}`);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      // Upload additional attachments
+      const additionalAttachments = [];
+      for (let i = 0; i < data.documentDetails.additionalAttachments.length; i++) {
+        const attachment = data.documentDetails.additionalAttachments[i];
+        if (attachment.file) {
+          const result = await uploadFile(attachment.file, 'documents');
+          if (result.success && result.filePath) {
+            additionalAttachments.push({
+              documentName: attachment.name,
+              documentPath: result.filePath,
+              expiredAt: attachment.expiredAt ? new Date(attachment.expiredAt).toISOString() : null,
+            });
+          } else {
+            alert(`Failed to upload ${attachment.name}: ${result.error}`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
+
+      // Build the request data
+      const requestData = {
         electricalUscNumber: data.applicationDetails.electricalUscNumber,
         scNumber: data.applicationDetails.scNumber,
         applicantName: data.memberDetails.applicantName,
@@ -334,9 +484,9 @@ const AddMemberForm = () => {
         partnerDetails: data.representativeDetails.partners.map((partner) => ({
           partnerName: partner.name,
           partnerAadharNo: partner.aadharNo,
-          partnerPanNo: partner.pan, // Replace with actual PAN from form
+          partnerPanNo: partner.pan,
           contactNumber: partner.contactNo,
-          emailId: partner.email, // Replace with actual email
+          emailId: partner.email,
         })),
 
         estimatedMaleWorker: parseInt(data.labourDetails.estimatedMaleWorkers),
@@ -367,19 +517,23 @@ const AddMemberForm = () => {
 
         complianceDetails: {
           gstInNumber: data.complianceDetails.gstinNo,
-          gstInCertificatePath: "/uploads/gstin.pdf",
+          gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
+          gstExpiredAt: data.complianceDetails.gstinExpiredAt ? new Date(data.complianceDetails.gstinExpiredAt).toISOString() : null,
           factoryLicenseNumber: data.complianceDetails.factoryLicenseNo,
-          factoryLicensePath: "/uploads/factory-license.pdf",
+          factoryLicensePath: uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
+          factoryLicenseExpiredAt: data.complianceDetails.factoryLicenseExpiredAt ? new Date(data.complianceDetails.factoryLicenseExpiredAt).toISOString() : null,
           tspcbOrderNumber: data.complianceDetails.tspcbOrderNo,
-          tspcbCertificatePath: "/uploads/tspcb.pdf",
+          tspcbCertificatePath: uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
+          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString() : null,
           mdlNumber: data.complianceDetails.mdlNo,
-          mdlCertificatePath: "/uploads/mdl.pdf",
+          mdlCertificatePath: uploadedFiles.mdlDoc || "/uploads/mdl.pdf",
+          mdlExpiredAt: data.complianceDetails.mdlExpiredAt ? new Date(data.complianceDetails.mdlExpiredAt).toISOString() : null,
           udyamCertificateNumber: data.complianceDetails.udyamCertificateNo,
-          udyamCertificatePath: "/uploads/udyam.pdf",
+          udyamCertificatePath: uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
+          udyamCertificateExpiredAt: data.complianceDetails.udyamCertificateExpiredAt ? new Date(data.complianceDetails.udyamCertificateExpiredAt).toISOString() : null,
           fullAddress: data.communicationDetails.fullAddress,
           partnerName: data.representativeDetails.partners[0]?.name || "",
-          contactNumber:
-            data.representativeDetails.partners[0]?.contactNo || "",
+          contactNumber: data.representativeDetails.partners[0]?.contactNo || "",
           AadharNumber: data.representativeDetails.partners[0]?.aadharNo || "",
           emailId: data.representativeDetails.partners[0]?.email,
           panNumber: data.representativeDetails.partners[0]?.pan,
@@ -401,18 +555,7 @@ const AddMemberForm = () => {
         },
 
         attachments: [
-          {
-            documentName: "Sale Deed or Electricity Bill",
-            documentPath: "/uploads/sale-deed.pdf",
-          },
-          {
-            documentName: "Rental Deed",
-            documentPath: "/uploads/rental-deed.pdf",
-          },
-          {
-            documentName: "Partnership Deed",
-            documentPath: "/uploads/partnership-deed.pdf",
-          },
+          ...additionalAttachments,
         ],
 
         proposer: {
@@ -427,18 +570,18 @@ const AddMemberForm = () => {
 
         declarations: {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
-          membershipFormPath: "/uploads/membership-form.pdf",
-          applicationSignaturePath: "/uploads/app-signature.pdf",
+          membershipFormPath: uploadedFiles.photoUpload || "/uploads/membership-form.pdf",
+          applicationSignaturePath: uploadedFiles.signatureUpload || "/uploads/app-signature.pdf",
         },
       };
 
-      console.log(JSON.stringify(reqData));
+      console.log(JSON.stringify(requestData));
 
       if (session?.user.token) {
         setIsSubmitting(true);
         const response = await axios.post(
-          "https://tandurmart.com/api/member/add_member",
-          reqData,
+         `${process.env.BACKEND_API_URL}/api/member/add_member`,
+          requestData,
           {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
@@ -506,6 +649,149 @@ const AddMemberForm = () => {
 
   const handleBack = () => {
     router.push("/admin/memberships");
+  };
+
+  // Function to validate USC/SC numbers
+  const validateUscScNumbers = async (electricalUscNumber: string, scNumber: string) => {
+    console.log('validateUscScNumbers called with:', { electricalUscNumber, scNumber }); // Debug log
+    
+    if (!session?.user.token) {
+      console.log('No session token found'); // Debug log
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    setIsValidating(true);
+    
+    try {
+      console.log('Making API call to validate numbers...'); // Debug log
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/validate_usc_sc_number`,
+        {
+          electricalUscNumber,
+          scNumber,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      console.log('API response:', response.data); // Debug log
+
+      // Clear previous validation errors and success messages
+      setValidationErrors({});
+      setValidationSuccess({});
+
+      // Check if numbers already exist based on the actual response format
+      const errors: { electricalUscNumber?: string; scNumber?: string } = {};
+      const success: { electricalUscNumber?: string; scNumber?: string } = {};
+      let hasErrors = false;
+      let hasSuccess = false;
+
+      // Check Electrical USC Number
+      if (response.data["Electrical USC number"]) {
+        if (response.data["Electrical USC number"].isMember) {
+          const memberInfo = response.data["Electrical USC number"];
+          errors.electricalUscNumber = `${memberInfo.message} (${memberInfo.member.membershipId} - ${memberInfo.member.firmName})`;
+          hasErrors = true;
+        } else {
+          success.electricalUscNumber = "This USC number is unique and can be used.";
+          hasSuccess = true;
+        }
+      }
+
+      // Check SC Number
+      if (response.data["SC number"]) {
+        if (response.data["SC number"].isMember) {
+          const memberInfo = response.data["SC number"];
+          errors.scNumber = `${memberInfo.message} (${memberInfo.member.membershipId} - ${memberInfo.member.firmName})`;
+          hasErrors = true;
+        } else {
+          success.scNumber = "This SC number is unique and can be used.";
+          hasSuccess = true;
+        }
+      }
+
+      if (hasErrors) {
+        console.log('Numbers exist, setting errors...'); // Debug log
+        setValidationErrors(errors);
+        console.log('Set validation errors:', errors); // Debug log
+      }
+
+      if (hasSuccess) {
+        console.log('Numbers are unique, setting success...'); // Debug log
+        setValidationSuccess(success);
+        console.log('Set validation success:', success); // Debug log
+      }
+
+      return !hasErrors; // Return true if no errors
+    } catch (error) {
+      console.error("Validation error:", error);
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  // Real-time validation function
+  const handleFieldChange = async (fieldName: string, value: string) => {
+    console.log('Field change detected:', fieldName, value); // Debug log
+    
+    const currentData = methods.getValues();
+    
+    // Only validate if both fields have values
+    if (fieldName === 'electricalUscNumber' || fieldName === 'scNumber') {
+      const uscNumber = fieldName === 'electricalUscNumber' ? value : currentData.applicationDetails.electricalUscNumber;
+      const scNumber = fieldName === 'scNumber' ? value : currentData.applicationDetails.scNumber;
+      
+      console.log('Current values:', { uscNumber, scNumber }); // Debug log
+      
+      // Validate each field independently if it has at least 3 characters
+      if (fieldName === 'electricalUscNumber' && value.length >= 3) {
+        console.log('Starting USC validation...'); // Debug log
+        
+        // Add a small delay to avoid too many API calls
+        setTimeout(async () => {
+          console.log('Executing USC validation...'); // Debug log
+          const isValid = await validateUscScNumbers(value, scNumber);
+          console.log('USC validation result:', isValid); // Debug log
+          
+          if (isValid) {
+            // Clear USC error if validation passes
+            setValidationErrors(prev => ({ ...prev, electricalUscNumber: undefined }));
+            setValidationSuccess(prev => ({ ...prev, electricalUscNumber: "This USC number is unique and can be used." }));
+            console.log('USC validation passed, cleared error'); // Debug log
+          }
+        }, 500); // 500ms delay
+      } else if (fieldName === 'scNumber' && value.length >= 3) {
+        console.log('Starting SC validation...'); // Debug log
+        
+        // Add a small delay to avoid too many API calls
+        setTimeout(async () => {
+          console.log('Executing SC validation...'); // Debug log
+          const isValid = await validateUscScNumbers(uscNumber, value);
+          console.log('SC validation result:', isValid); // Debug log
+          
+          if (isValid) {
+            // Clear SC error if validation passes
+            setValidationErrors(prev => ({ ...prev, scNumber: undefined }));
+            setValidationSuccess(prev => ({ ...prev, scNumber: "This SC number is unique and can be used." }));
+            console.log('SC validation passed, cleared error'); // Debug log
+          }
+        }, 500); // 500ms delay
+      } else if (value.length < 3) {
+        // Clear errors if field is too short
+        setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
+        console.log(`${fieldName} too short, cleared error`); // Debug log
+      }
+    }
   };
 
   return (
@@ -577,7 +863,14 @@ const AddMemberForm = () => {
           {/* Form Steps */}
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
-              {currentStep === 1 && <Step1PersonalBusiness />}
+              {currentStep === 1 && (
+                <Step1PersonalBusiness 
+                  validationErrors={validationErrors}
+                  validationSuccess={validationSuccess}
+                  onFieldChange={handleFieldChange}
+                  isValidating={isValidating}
+                />
+              )}
               {currentStep === 2 && <Step2OperationDetails />}
               {currentStep === 3 && <Step3ComplianceLegal />}
               {currentStep === 4 && <Step4MembershipDocs />}

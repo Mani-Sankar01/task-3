@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { CalendarIcon, Plus, Trash2, ArrowLeft, Download } from "lucide-react";
 import { format } from "date-fns";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -41,9 +43,8 @@ import {
   Form,
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
-import { getAllMembers, getMemberById } from "@/data/members";
+
 import {
-  addInvoice,
   updateInvoice,
   calculateInvoiceAmounts,
   type Invoice,
@@ -89,15 +90,37 @@ type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
 interface InvoiceFormProps {
   invoice?: Invoice;
+  invoiceId?: string;
   isEditMode: boolean;
 }
 
-export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
+export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceFormProps) {
   const router = useRouter();
-  const [members, setMembers] = useState<any[]>([]);
+  const { data: session, status } = useSession();
+  const [members, setMembers] = useState<Array<{
+    id: string;
+    membershipId: string;
+    applicantName: string;
+    firmName: string;
+    complianceDetails?: {
+      fullAddress?: string;
+      gstInNumber?: string;
+    };
+  }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<Array<{
+    id: string;
+    membershipId: string;
+    applicantName: string;
+    firmName: string;
+    complianceDetails?: {
+      fullAddress?: string;
+      gstInNumber?: string;
+    };
+  }>>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
+  const [apiInvoice, setApiInvoice] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(isEditMode);
 
   // Initialize form with default values or invoice data if editing
   const form = useForm<InvoiceFormValues>({
@@ -163,22 +186,134 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
     name: "items",
   });
 
-  // Load members on component mount
+  // Fetch invoice data from API if in edit mode
   useEffect(() => {
-    const allMembers = getAllMembers();
-    setMembers(allMembers);
-    setFilteredMembers(allMembers);
-  }, []);
+    if (isEditMode && invoiceId && status === "authenticated" && session?.user?.token) {
+      const fetchInvoice = async () => {
+        try {
+          setIsLoading(true);
+          const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+          const response = await axios.get(
+            `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${invoiceId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+
+          console.log("Invoice API response:", response.data);
+          
+          // Handle the response structure with taxInvoice array
+          let invoiceData: any = null;
+          if (response.data && response.data.taxInvoice && Array.isArray(response.data.taxInvoice)) {
+            invoiceData = response.data.taxInvoice[0];
+          } else if (response.data && !response.data.taxInvoice) {
+            invoiceData = response.data;
+          }
+          
+          if (invoiceData) {
+            setApiInvoice(invoiceData);
+            
+            // Fetch member details
+            const memberResponse = await axios.get(
+              `${apiUrl}/api/member/get_member/${invoiceData.membershipId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${session.user.token}`,
+                },
+              }
+            );
+            
+            const member = memberResponse.data;
+            
+            // Update form with API data
+            form.reset({
+              invoiceDate: invoiceData.invoiceDate.split('T')[0],
+              memberId: invoiceData.membershipId,
+              memberName: member.applicantName || "",
+              firmName: member.firmName || "",
+              firmAddress: member.complianceDetails?.fullAddress || "",
+              gstNumber: member.complianceDetails?.gstInNumber || "",
+              state: "telangana", // Default state
+              companyName: "TSMWA",
+              companyAddress: "Telangana State Mineral Workers Association",
+              companyGstin: "36AIMPT1151B1ZG",
+              items: invoiceData.invoiceItems?.map((item: any) => ({
+                id: item.id?.toString(),
+                hsnCode: item.hsnCode,
+                particulars: item.particular,
+                noOfStones: item.stoneCount,
+                sizes: item.size.toString(),
+                totalSqFeet: parseFloat(item.totalSqFeet),
+                ratePerSqFt: parseFloat(item.ratePerSqFeet),
+                amount: parseFloat(item.amount),
+              })) || [{
+                hsnCode: "",
+                particulars: "",
+                noOfStones: 0,
+                sizes: "",
+                totalSqFeet: 0,
+                ratePerSqFt: 0,
+                amount: 0,
+              }],
+              cgstPercentage: invoiceData.cGSTInPercent,
+              sgstPercentage: invoiceData.sGSTInPercent,
+              igstPercentage: invoiceData.iGSTInPercent,
+              subTotal: parseFloat(invoiceData.subTotal),
+              cgstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.cGSTInPercent) / 100,
+              sgstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.sGSTInPercent) / 100,
+              igstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.iGSTInPercent) / 100,
+              totalAmount: parseFloat(invoiceData.total),
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching invoice:", error);
+          alert("Failed to load invoice data");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      fetchInvoice();
+    }
+  }, [isEditMode, invoiceId, status, session?.user?.token, form]);
+
+  // Load members from API on component mount
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (status === "authenticated" && session?.user?.token) {
+        try {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_members`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          console.log(response.data);
+          setMembers(response.data);
+          setFilteredMembers(response.data);
+        } catch (err) {
+          console.error("Error fetching members:", err);
+          setMembers([]);
+          setFilteredMembers([]);
+        }
+      }
+    };
+    fetchMembers();
+  }, [status, session?.user?.token]);
 
   // Filter members based on search term
   useEffect(() => {
     if (memberSearchTerm) {
       const filtered = members.filter(
         (member) =>
-          member.memberDetails.applicantName
+          member.applicantName
             .toLowerCase()
             .includes(memberSearchTerm.toLowerCase()) ||
-          member.firmDetails.firmName
+          member.firmName
             .toLowerCase()
             .includes(memberSearchTerm.toLowerCase())
       );
@@ -189,23 +324,35 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
   }, [memberSearchTerm, members]);
 
   // Handle member selection
-  const handleMemberSelect = (memberId: string) => {
-    const member = getMemberById(memberId);
-    if (member) {
-      form.setValue("memberId", member.id);
-      form.setValue("memberName", member.memberDetails.applicantName);
-      form.setValue("firmName", member.firmDetails.firmName);
+  const handleMemberSelect = async (membershipId: string) => {
+    if (!membershipId) return;
+    if (status !== "authenticated" || !session?.user?.token) return;
+    try {
+      const response = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/member/get_member/${membershipId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+      const member = response.data;
+      form.setValue("memberId", member.membershipId);
+      form.setValue("memberName", member.applicantName || "Unknown");
+      form.setValue("firmName", member.firmName || "Unknown");
       form.setValue(
         "firmAddress",
-        member.communicationDetails?.fullAddress || ""
+        member.complianceDetails?.fullAddress || ""
       );
-      form.setValue("gstNumber", member.complianceDetails?.gstinNo || "");
-      form.setValue("state", member.businessDetails?.state || "");
-      form.setValue("companyName", member.firmDetails.firmName);
+      form.setValue("gstNumber", member.complianceDetails?.gstInNumber || "");
+      form.setValue("state", member.state || "");
+      form.setValue("companyName", member.firmName || "Unknown");
       form.setValue(
         "companyAddress",
-        member.communicationDetails?.fullAddress || ""
+        member.complianceDetails?.fullAddress || ""
       );
+    } catch (err) {
+      console.error("Error fetching member details:", err);
     }
   };
 
@@ -262,37 +409,121 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
 
   // Handle form submission
   const onSubmit = async (data: InvoiceFormValues, download = false) => {
+    console.log("onSubmit called", data);
     setIsSubmitting(true);
     try {
-      if (isEditMode && invoice) {
-        // Update existing invoice
-        const updatedInvoice = updateInvoice(invoice.id, data);
-        console.log("Invoice updated:", updatedInvoice);
+      if (isEditMode && invoiceId) {
+        // Update existing invoice using API
+        if (status !== "authenticated" || !session?.user?.token) {
+          alert("Authentication required");
+          setIsSubmitting(false);
+          return;
+        }
 
-        // Show success message
+        // Prepare update payload
+        const updatePayload = {
+          invoiceId: invoiceId,
+          membershipId: data.memberId,
+          invoiceDate: data.invoiceDate,
+          cGSTInPercent: data.cgstPercentage,
+          sGSTInPercent: data.sgstPercentage,
+          iGSTInPercent: data.igstPercentage,
+          subTotal: data.subTotal,
+          total: data.totalAmount,
+          newInvoiceItem: data.items
+            .filter(item => !item.id) // Only new items (no id)
+            .map((item) => ({
+              hsnCode: item.hsnCode,
+              particular: item.particulars,
+              stoneCount: item.noOfStones,
+              size: parseFloat(item.sizes),
+              totalSqFeet: item.totalSqFeet,
+              ratePerSqFeet: item.ratePerSqFt,
+              amount: item.amount,
+            })),
+          updateInvoiceItem: data.items
+            .filter(item => item.id) // Only existing items (has id)
+            .map((item) => ({
+              id: parseInt(item.id!),
+              hsnCode: item.hsnCode,
+              particular: item.particulars,
+              stoneCount: item.noOfStones,
+              size: parseFloat(item.sizes),
+              totalSqFeet: item.totalSqFeet,
+              ratePerSqFeet: item.ratePerSqFt,
+              amount: item.amount,
+            })),
+          deleteInvoiceItem: [], // You can add logic to track deleted items if needed
+        };
+
+        console.log("Update payload:", JSON.stringify(updatePayload));
+        
+        
+        try {
+          const response = await axios.post(
+            `${process.env.BACKEND_API_URL}/api/tax_invoice/update_tax_invoice`,
+            updatePayload,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          console.log("Update API response:", response.data);
+        } catch (error: any) {
+          console.error("Update API error:", error);
+          console.error("Error response:", error.response?.data);
+          console.error("Error status:", error.response?.status);
+          throw error;
+        }
+
         alert("Invoice updated successfully!");
 
         // If download is requested, trigger download
         if (download) {
-          handleDownloadInvoice(invoice.id);
+          handleDownloadInvoice(invoiceId);
         }
 
         // Redirect to invoice details page
-        router.push(`/admin/invoices/${invoice.id}`);
+        router.push(`/admin/invoices/${invoiceId}`);
       } else {
-        // Add new invoice
-        const newInvoice = addInvoice(data);
-        console.log("Invoice created:", newInvoice);
-
-        // Show success message
-        alert("Invoice created successfully!");
-
-        // If download is requested, trigger download
-        if (download) {
-          handleDownloadInvoice(newInvoice.id);
+        // Add new invoice using API
+        if (status !== "authenticated" || !session?.user?.token) {
+          alert("Authentication required");
+          setIsSubmitting(false);
+          return;
         }
-
-        // Redirect to invoices page
+        const addPayload = {
+          membershipId: data.memberId,
+          invoiceDate: data.invoiceDate,
+          cGSTInPercent: data.cgstPercentage,
+          sGSTInPercent: data.sgstPercentage,
+          iGSTInPercent: data.igstPercentage,
+          subTotal: data.subTotal,
+          total: data.totalAmount,
+          invoiceItem: data.items.map((item) => ({
+            hsnCode: item.hsnCode,
+            particular: item.particulars,
+            stoneCount: item.noOfStones,
+            size: parseFloat(item.sizes),
+            totalSqFeet: item.totalSqFeet,
+            ratePerSqFeet: item.ratePerSqFt,
+            amount: item.amount,
+          })),
+        };
+        console.log(addPayload);
+        await axios.post(
+          `${process.env.BACKEND_API_URL}/api/tax_invoice/add_tax_invoice`,
+          addPayload,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        alert("Invoice created successfully!");
         router.push("/admin/invoices");
       }
     } catch (error) {
@@ -456,13 +687,26 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
         "Are you sure you want to cancel? All unsaved changes will be lost."
       )
     ) {
-      if (isEditMode && invoice) {
-        router.push(`/admin/invoices/${invoice.id}`);
+      if (isEditMode && invoiceId) {
+        router.push(`/admin/invoices/${invoiceId}`);
       } else {
         router.push("/admin/invoices");
       }
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p>Loading invoice data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-10 px-4">
@@ -472,13 +716,13 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
         </Button>
         <h1 className="text-2xl font-bold">
           {isEditMode
-            ? `Edit Invoice #${invoice?.invoiceNumber}`
+            ? `Edit Invoice #${invoiceId}`
             : "Create New Invoice"}
         </h1>
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit((data) => onSubmit(data, false))}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card className="max-w-5xl mx-auto">
             <CardHeader>
               <CardTitle className="text-2xl">TAX INVOICE</CardTitle>
@@ -555,7 +799,7 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
                                 field.onChange(value);
                                 handleMemberSelect(value);
                               }}
-                              value={field.value}
+                              value={field.value || ""}
                               disabled={isEditMode}
                             >
                               <FormControl>
@@ -574,9 +818,8 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
                                   className="w-full mb-2"
                                 />
                                 {filteredMembers.map((member) => (
-                                  <SelectItem key={member.id} value={member.id}>
-                                    {member.memberDetails.applicantName} -{" "}
-                                    {member.firmDetails.firmName}
+                                  <SelectItem key={member.membershipId} value={member.membershipId}>
+                                    {(member.applicantName || "Unknown") + " - " + (member.firmName || "Unknown")}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -959,7 +1202,7 @@ export default function InvoiceForm({ invoice, isEditMode }: InvoiceFormProps) {
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Saving..." : isEditMode ? "Update" : "Save"}
+                  {isEditMode ? "Update Invoice" : "Create Invoice"}
                 </Button>
                 <Button
                   type="button"

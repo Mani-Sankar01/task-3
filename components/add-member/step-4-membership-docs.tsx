@@ -14,16 +14,13 @@ import {
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "../ui/button";
-import { DownloadCloudIcon, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function Step4MembershipDocs() {
   const { control, watch } = useFormContext();
   const isMemberOfOrg = watch("membershipDetails.isMemberOfOrg");
   const hasAppliedEarlier = watch("membershipDetails.hasAppliedEarlier");
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>(
-    {}
-  );
 
   // Add field array for dynamic attachments
   const attachmentsArray = useFieldArray({
@@ -31,29 +28,23 @@ export default function Step4MembershipDocs() {
     name: "documentDetails.additionalAttachments",
   });
 
-  const mockUploadToS3 = (
-    file: File,
-    onProgress: (percent: number) => void
-  ): Promise<string> => {
-    return new Promise((resolve) => {
-      let percent = 0;
-      const interval = setInterval(() => {
-        percent += 10;
-        onProgress(percent);
-        if (percent >= 100) {
-          clearInterval(interval);
-          resolve(`/upload/${file.name}`);
-        }
-      }, 100);
-    });
+  const handleDownload = (filePath: string) => {
+    // Use the download API endpoint
+    const downloadUrl = `/api/download?path=${encodeURIComponent(filePath)}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = filePath.split('/').pop() || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
     <div className="space-y-8">
-      {/* Section 1: Membership Inquiry */}
+      {/* Section 1: Membership Details */}
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
-          Membership Inquiry
+          Membership Details
         </h3>
         <div className="space-y-6">
           <FormField
@@ -61,9 +52,7 @@ export default function Step4MembershipDocs() {
             name="membershipDetails.isMemberOfOrg"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel>
-                  Are you a member of any similar organization?
-                </FormLabel>
+                <FormLabel>Are you a member of any similar organization?</FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -95,7 +84,6 @@ export default function Step4MembershipDocs() {
                   <FormControl>
                     <Textarea
                       placeholder="Please provide details about the organization"
-                      className="min-h-[80px]"
                       {...field}
                     />
                   </FormControl>
@@ -142,7 +130,6 @@ export default function Step4MembershipDocs() {
                   <FormControl>
                     <Textarea
                       placeholder="Please provide details about your previous application"
-                      className="min-h-[80px]"
                       {...field}
                     />
                   </FormControl>
@@ -152,13 +139,12 @@ export default function Step4MembershipDocs() {
             />
           )}
 
-          {/* New fields for valid member and executive member */}
           <FormField
             control={control}
             name="membershipDetails.isValidMember"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel>Is this a valid member?</FormLabel>
+                <FormLabel>Is this a Valid member?</FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
@@ -209,89 +195,27 @@ export default function Step4MembershipDocs() {
         </div>
       </div>
 
-      {/* Section 2: Required Attachments */}
+      {/* Section 2: Additional Attachments */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium border-b pb-2 w-full">
-            Required Attachments
+            Additional Attachments
           </h3>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => attachmentsArray.append({ name: "", file: null })}
+            onClick={() => attachmentsArray.append({ name: "", file: null, expiredAt: "" })}
           >
             <Plus className="h-4 w-4 mr-2" /> Add Attachment
           </Button>
         </div>
 
         <div className="space-y-6">
-          <FormField
-            control={control}
-            name="documentDetails.saleDeedElectricityBill"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Sale Deed & Electricity Bill (If Owner)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      field.onChange(file);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="documentDetails.rentalDeed"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Valid Rental Deed (If Tenant)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      field.onChange(file);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="documentDetails.partnershipDeed"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Partnership Deed (If Partnership Firm)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      field.onChange(file);
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           {/* Dynamic attachments */}
           {attachmentsArray.fields.map((field, index) => (
-            <div key={field.id} className="flex items-end gap-4">
+            <div key={field.id} className="space-y-4 border rounded-lg p-4">
+              <div className="flex items-end gap-4">
               <FormField
                 control={control}
                 name={`documentDetails.additionalAttachments.${index}.name`}
@@ -308,58 +232,15 @@ export default function Step4MembershipDocs() {
 
               <FormField
                 control={control}
-                name={`documentDetails.additionalAttachments.${index}.file`}
+                  name={`documentDetails.additionalAttachments.${index}.expiredAt`}
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Upload File</FormLabel>
+                      <FormLabel>Expiry Date</FormLabel>
                     <FormControl>
-                      <>
                         <Input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const key = `attachment-${index}`;
-                              setUploadProgress((prev) => ({
-                                ...prev,
-                                [key]: 0,
-                              }));
-                              const uploadedPath = await mockUploadToS3(
-                                file,
-                                (percent) =>
-                                  setUploadProgress((prev) => ({
-                                    ...prev,
-                                    [key]: percent,
-                                  }))
-                              );
-                              field.onChange(uploadedPath);
-                            }
-                          }}
+                          type="date"
+                          {...field}
                         />
-                        {uploadProgress[`attachment-${index}`] >= 0 &&
-                          uploadProgress[`attachment-${index}`] < 100 && (
-                            <div className="h-2 bg-muted mt-2 rounded">
-                              <div
-                                className="bg-primary h-2 rounded transition-all"
-                                style={{
-                                  width: `${
-                                    uploadProgress[`attachment-${index}`]
-                                  }%`,
-                                }}
-                              />
-                            </div>
-                          )}
-                        {
-                          <div
-                            onClick={() => {
-                              alert("");
-                            }}
-                          >
-                            <DownloadCloudIcon />
-                          </div>
-                        }
-                      </>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -370,11 +251,38 @@ export default function Step4MembershipDocs() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-destructive mb-2"
+                  className="text-destructive"
                 onClick={() => attachmentsArray.remove(index)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
+              </div>
+
+              <FormField
+                control={control}
+                name={`documentDetails.additionalAttachments.${index}.file`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Upload File</FormLabel>
+                    <FormControl>
+                      <FileUpload
+                        onFileSelect={(file) => field.onChange(file)}
+                        onUploadComplete={(filePath) => {
+                          // File is already uploaded, just store the file object for later processing
+                        }}
+                        onUploadError={(error) => {
+                          console.error('Upload error:', error);
+                        }}
+                        subfolder="documents"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        existingFilePath={field.value?.existingPath}
+                        onDownload={handleDownload}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           ))}
         </div>

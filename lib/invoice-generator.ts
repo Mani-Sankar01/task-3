@@ -18,8 +18,6 @@ export function generateGstInvoice(
     creator: "TSMWA Management System",
   });
 
-  // Add organization logo and header
-  addHeader(doc);
 
   // Add invoice information
   addInvoiceInfo(doc, filing, memberName);
@@ -39,33 +37,231 @@ export function generateGstInvoice(
   );
 }
 
-// Function to add the header with logo and organization name
-function addHeader(doc: jsPDF): void {
-  // Add organization name
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.text("Tandur Stone Merchant Welfare Association", 105, 20, {
-    align: "center",
+// Function to generate and download a tax invoice PDF
+export function generateTaxInvoicePDF(
+  invoice: any,
+  member: any
+): void {
+  // Create a new PDF document
+  const doc = new jsPDF();
+
+  // Set document properties
+  doc.setProperties({
+    title: `Tax Invoice - ${invoice.invoiceId}`,
+    subject: `Tax Invoice for ${member?.applicantName || "Member"}`,
+    author: "TSMWA Management System",
+    creator: "TSMWA Management System",
   });
 
-  // Add address
+  // Add organization header
+  addTaxInvoiceHeader(doc, member);
+
+  // Add invoice information
+  addTaxInvoiceInfo(doc, invoice, member);
+
+
+
+  // Add invoice items table if available
+  if (invoice.invoiceItems && invoice.invoiceItems.length > 0) {
+    addTaxInvoiceItemsTable(doc, invoice);
+  }
+
+  // Add totals section
+  addTaxInvoiceTotals(doc, invoice);
+
+  // Add footer
+  addTaxInvoiceFooter(doc);
+
+  // Save the PDF with a filename
+  doc.save(`Tax_Invoice_${invoice.invoiceId}_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// Function to add tax invoice header
+function addTaxInvoiceHeader(doc: jsPDF, member: any): void {
+  // Add member firm name
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.text(member?.firmName || "Firm Name", 105, 20, { align: "center" });
+
+  // Add member address and GST
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text("123 Transport Nagar, Hyderabad, Telangana - 500001", 105, 27, {
-    align: "center",
-  });
-  doc.text(
-    "Phone: +91 234567890 | Email: info@example.org | GSTIN: 36AABCT1234Z1ZA",
-    105,
-    32,
-    { align: "center" }
-  );
+  doc.text(member?.complianceDetails?.fullAddress || "Address not available", 105, 27, { align: "center" });
+  doc.text(`GSTIN: ${member?.complianceDetails?.gstInNumber || "GST Number not available"}`, 105, 34, { align: "center" });
+
+  // Add invoice title box
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.rect(85, 40, 40, 10);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("TAX INVOICE", 105, 47, { align: "center" });
+}
+
+// Function to add tax invoice information
+function addTaxInvoiceInfo(doc: jsPDF, invoice: any, member: any): void {
+  const startY = 65;
+
+  // Invoice details on the left
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("Invoice Details:", 15, startY);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Invoice No: ${invoice.invoiceId}`, 15, startY + 7);
+  doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, 15, startY + 14);
+
+  // Member details on the right
+  doc.setFont("helvetica", "bold");
+  doc.text("Member Details:", 120, startY);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Member ID: ${invoice.membershipId}`, 120, startY + 7);
+  doc.text(`Member Name: ${member?.applicantName || "N/A"}`, 120, startY + 14);
 
   // Add horizontal line
   doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.line(15, 35, 195, 35);
+  doc.setLineWidth(0.3);
+  doc.line(15, startY + 20, 195, startY + 20);
 }
+
+
+
+// Function to add tax invoice items table
+function addTaxInvoiceItemsTable(doc: jsPDF, invoice: any): void {
+  const startY = 100;
+
+  // Items title
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Invoice Items", 15, startY);
+
+  // Prepare table data
+  const headers = [
+    "HSN Code",
+    "Particulars", 
+    "No. of Stones",
+    "Size",
+    "Total Sq. Ft.",
+    "Rate (₹)",
+    "Amount (₹)"
+  ];
+
+  const data = invoice.invoiceItems.map((item: any) => [
+    item.hsnCode,
+    item.particular,
+    item.stoneCount.toString(),
+    item.size,
+    item.totalSqFeet,
+    `₹${parseFloat(item.ratePerSqFeet).toLocaleString()}`,
+    `₹${parseFloat(item.amount).toLocaleString()}`
+  ]);
+
+  // Create table
+  autoTable(doc, {
+    head: [headers],
+    body: data,
+    startY: startY + 5,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+      fontStyle: 'bold',
+      fontSize: 7
+    },
+    styles: {
+      fontSize: 7,
+      cellPadding: 2
+    },
+    columnStyles: {
+      0: { cellWidth: 18 }, // HSN Code
+      1: { cellWidth: 32 }, // Particulars
+      2: { cellWidth: 22, halign: 'center' }, // No. of Stones
+      3: { cellWidth: 18, halign: 'center' }, // Size
+      4: { cellWidth: 22, halign: 'center' }, // Total Sq. Ft.
+      5: { cellWidth: 22, halign: 'right' }, // Rate
+      6: { cellWidth: 22, halign: 'right' }  // Amount
+    }
+  });
+}
+
+// Function to add tax invoice totals
+function addTaxInvoiceTotals(doc: jsPDF, invoice: any): void {
+  // Get the Y position after the items table
+  const finalY = (doc as any).lastAutoTable.finalY || 250;
+  const startY = finalY + 10;
+
+  // Calculate GST amounts
+  const subTotal = parseFloat(invoice.subTotal || 0);
+  const total = parseFloat(invoice.total || 0);
+  const cgstAmount = (subTotal * (invoice.cGSTInPercent || 0)) / 100;
+  const sgstAmount = (subTotal * (invoice.sGSTInPercent || 0)) / 100;
+  const igstAmount = (subTotal * (invoice.iGSTInPercent || 0)) / 100;
+
+  // Totals section
+  const totalsX = 115;
+  const totalsWidth = 80;
+  
+  // Create totals box
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.rect(totalsX, startY, totalsWidth, 40);
+
+  // Totals content
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+
+  let currentY = startY + 5;
+
+  // Sub Total
+  doc.text("Sub Total:", totalsX + 3, currentY);
+  doc.text(`₹${subTotal.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+  currentY += 5;
+
+  // CGST
+  if (invoice.cGSTInPercent > 0) {
+    doc.text(`CGST (${invoice.cGSTInPercent}%):`, totalsX + 3, currentY);
+    doc.text(`₹${cgstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+    currentY += 5;
+  }
+
+  // SGST
+  if (invoice.sGSTInPercent > 0) {
+    doc.text(`SGST (${invoice.sGSTInPercent}%):`, totalsX + 3, currentY);
+    doc.text(`₹${sgstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+    currentY += 5;
+  }
+
+  // IGST
+  if (invoice.iGSTInPercent > 0) {
+    doc.text(`IGST (${invoice.iGSTInPercent}%):`, totalsX + 3, currentY);
+    doc.text(`₹${igstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+    currentY += 5;
+  }
+
+  // Separator line
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.line(totalsX + 3, currentY, totalsX + totalsWidth - 3, currentY);
+  currentY += 5;
+
+  // Total
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Total:", totalsX + 3, currentY);
+  doc.text(`₹${total.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+}
+
+// Function to add tax invoice footer
+function addTaxInvoiceFooter(doc: jsPDF): void {
+  const pageHeight = doc.internal.pageSize.height;
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "italic");
+  doc.text("Note: This is a computer-generated invoice and does not require signature or stamp.", 15, pageHeight - 20);
+  
+  doc.setFont("helvetica", "normal");
+  doc.text("Generated on: " + new Date().toLocaleString(), 15, pageHeight - 15);
+}
+
 
 // Function to add invoice information
 function addInvoiceInfo(

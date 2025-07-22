@@ -16,19 +16,24 @@ export interface Vehicle {
   modifiedAt: string;
 }
 
-// Update the Trip interface to include pricePerRound
+// Update the Trip interface to match API response
 export interface Trip {
-  id: string;
+  id: number;
+  tripId: string;
   vehicleId: string;
-  date: string;
-  totalRounds: number;
-  pricePerRound: number; // Added price per round
-  totalAmountToPay: number;
+  tripDate: string;
+  amountPerTrip: number;
+  numberOfTrips: number;
+  totalAmount: number;
   amountPaid: number;
-  paymentStatus: PaymentStatus;
-  notes?: string;
+  balanceAmount: number;
+  paymentStatus: string;
+  notes: string;
+  receiptPath: string | null;
   createdAt: string;
-  updatedAt: string;
+  modifiedAt: string;
+  createdBy: number;
+  modifiedBy: number | null;
 }
 
 // Update the dummy data for vehicles
@@ -59,131 +64,97 @@ export const vehicles: Vehicle[] = [
   },
 ];
 
-// Update the dummy data for trips to include pricePerRound
+// Update the dummy data for trips to match API response structure
 export const trips: Trip[] = [
   {
-    id: "TRP001",
-    vehicleId: "VEH001",
-    date: "2024-03-01",
-    totalRounds: 5,
-    pricePerRound: 500,
-    totalAmountToPay: 2500,
+    id: 1,
+    tripId: "TRP2025-001",
+    vehicleId: "VEH2025-001",
+    tripDate: "2024-03-01T00:00:00.000Z",
+    amountPerTrip: 500,
+    numberOfTrips: 5,
+    totalAmount: 2500,
     amountPaid: 2500,
-    paymentStatus: "paid",
+    balanceAmount: 0,
+    paymentStatus: "PAID",
     notes: "All rounds completed on time",
+    receiptPath: null,
     createdAt: "2024-03-01T18:00:00Z",
-    updatedAt: "2024-03-01T18:00:00Z",
+    modifiedAt: "2024-03-01T18:00:00Z",
+    createdBy: 1,
+    modifiedBy: null,
   },
   {
-    id: "TRP002",
-    vehicleId: "VEH001",
-    date: "2024-03-05",
-    totalRounds: 4,
-    pricePerRound: 500,
-    totalAmountToPay: 2000,
+    id: 2,
+    tripId: "TRP2025-002",
+    vehicleId: "VEH2025-001",
+    tripDate: "2024-03-05T00:00:00.000Z",
+    amountPerTrip: 500,
+    numberOfTrips: 4,
+    totalAmount: 2000,
     amountPaid: 2000,
-    paymentStatus: "paid",
+    balanceAmount: 0,
+    paymentStatus: "PAID",
+    notes: "",
+    receiptPath: null,
     createdAt: "2024-03-05T17:30:00Z",
-    updatedAt: "2024-03-05T17:30:00Z",
+    modifiedAt: "2024-03-05T17:30:00Z",
+    createdBy: 1,
+    modifiedBy: null,
   },
   {
-    id: "TRP003",
-    vehicleId: "VEH002",
-    date: "2024-03-02",
-    totalRounds: 6,
-    pricePerRound: 450,
-    totalAmountToPay: 2700,
+    id: 3,
+    tripId: "TRP2025-003",
+    vehicleId: "VEH2025-002",
+    tripDate: "2024-03-02T00:00:00.000Z",
+    amountPerTrip: 450,
+    numberOfTrips: 6,
+    totalAmount: 2700,
     amountPaid: 1350,
-    paymentStatus: "partial",
+    balanceAmount: 1350,
+    paymentStatus: "PARTIAL",
     notes: "Partial payment received",
+    receiptPath: null,
     createdAt: "2024-03-02T19:15:00Z",
-    updatedAt: "2024-03-02T19:15:00Z",
+    modifiedAt: "2024-03-02T19:15:00Z",
+    createdBy: 1,
+    modifiedBy: null,
   },
   {
-    id: "TRP004",
-    vehicleId: "VEH003",
-    date: "2024-03-03",
-    totalRounds: 3,
-    pricePerRound: 550,
-    totalAmountToPay: 1650,
+    id: 4,
+    tripId: "TRP2025-004",
+    vehicleId: "VEH2025-003",
+    tripDate: "2024-03-03T00:00:00.000Z",
+    amountPerTrip: 550,
+    numberOfTrips: 3,
+    totalAmount: 1650,
     amountPaid: 0,
-    paymentStatus: "unpaid",
+    balanceAmount: 1650,
+    paymentStatus: "UNPAID",
     notes: "Vehicle broke down",
+    receiptPath: null,
     createdAt: "2024-03-03T08:00:00Z",
-    updatedAt: "2024-03-03T10:30:00Z",
+    modifiedAt: "2024-03-03T10:30:00Z",
+    createdBy: 1,
+    modifiedBy: null,
   },
   {
-    id: "TRP005",
-    vehicleId: "VEH005",
-    date: "2024-03-04",
-    totalRounds: 5,
-    pricePerRound: 475,
-    totalAmountToPay: 2375,
+    id: 5,
+    tripId: "TRP2025-005",
+    vehicleId: "VEH2025-005",
+    tripDate: "2024-03-04T00:00:00.000Z",
+    amountPerTrip: 475,
+    numberOfTrips: 5,
+    totalAmount: 2375,
     amountPaid: 2375,
-    paymentStatus: "paid",
+    balanceAmount: 0,
+    paymentStatus: "PAID",
+    notes: "",
+    receiptPath: null,
     createdAt: "2024-03-04T18:45:00Z",
-    updatedAt: "2024-03-04T18:45:00Z",
-  },
-  {
-    id: "TRP006",
-    vehicleId: "VEH001",
-    date: "2024-03-10",
-    totalRounds: 6,
-    pricePerRound: 500,
-    totalAmountToPay: 3000,
-    amountPaid: 1500,
-    paymentStatus: "partial",
-    notes: "Remaining payment due next week",
-    createdAt: "2024-03-10T19:00:00Z",
-    updatedAt: "2024-03-10T19:00:00Z",
-  },
-  {
-    id: "TRP007",
-    vehicleId: "VEH001",
-    date: new Date().toISOString().split("T")[0],
-    totalRounds: 3,
-    pricePerRound: 500,
-    totalAmountToPay: 1500,
-    amountPaid: 1500,
-    paymentStatus: "paid",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "TRP008",
-    vehicleId: "VEH002",
-    date: new Date().toISOString().split("T")[0],
-    totalRounds: 4,
-    pricePerRound: 450,
-    totalAmountToPay: 1800,
-    amountPaid: 0,
-    paymentStatus: "unpaid",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "TRP009",
-    vehicleId: "VEH001",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-    totalRounds: 5,
-    pricePerRound: 500,
-    totalAmountToPay: 2500,
-    amountPaid: 1000,
-    paymentStatus: "partial",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-  },
-  {
-    id: "TRP010",
-    vehicleId: "VEH001",
-    date: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-    totalRounds: 2,
-    pricePerRound: 500,
-    totalAmountToPay: 1000,
-    amountPaid: 1000,
-    paymentStatus: "paid",
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
+    modifiedAt: "2024-03-04T18:45:00Z",
+    createdBy: 1,
+    modifiedBy: null,
   },
 ];
 
@@ -200,7 +171,7 @@ export function getAllActiveVehicles(): Vehicle[] {
 }
 
 export function getVehicleById(id: string): Vehicle | undefined {
-  return vehicles.find((vehicle) => vehicle.id === id);
+  return vehicles.find((vehicle) => vehicle.vehicleId === id);
 }
 
 export function addVehicle(
@@ -253,18 +224,20 @@ export function getTripsByVehicleId(vehicleId: string): Trip[] {
   return trips.filter((trip) => trip.vehicleId === vehicleId);
 }
 
-export function getTripById(id: string): Trip | undefined {
+export function getTripById(id: number): Trip | undefined {
   return trips.find((trip) => trip.id === id);
 }
 
-// Update the addTrip function to accept pricePerRound
+// Update the addTrip function to match new interface
 export function addTrip(
-  trip: Omit<Trip, "id" | "createdAt" | "updatedAt">
+  trip: Omit<Trip, "id" | "tripId" | "createdAt" | "modifiedAt" | "createdBy">
 ): Trip {
   const newTrip: Trip = {
-    id: `TRP${String(trips.length + 1).padStart(3, "0")}`,
+    id: trips.length + 1,
+    tripId: `TRP2025-${String(trips.length + 1).padStart(3, "0")}`,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    modifiedAt: new Date().toISOString(),
+    createdBy: 1,
     ...trip,
   };
   trips.push(newTrip);
@@ -273,8 +246,8 @@ export function addTrip(
 
 // Update the updateTrip function
 export function updateTrip(
-  id: string,
-  trip: Omit<Trip, "id" | "createdAt">
+  id: number,
+  trip: Omit<Trip, "id" | "createdAt" | "createdBy">
 ): Trip | null {
   const index = trips.findIndex((t) => t.id === id);
   if (index !== -1) {
@@ -282,7 +255,8 @@ export function updateTrip(
       ...trip,
       id,
       createdAt: trips[index].createdAt,
-      updatedAt: new Date().toISOString(),
+      createdBy: trips[index].createdBy,
+      modifiedAt: new Date().toISOString(),
     };
     trips[index] = updatedTrip;
     return updatedTrip;
@@ -290,7 +264,7 @@ export function updateTrip(
   return null;
 }
 
-export function deleteTrip(id: string): boolean {
+export function deleteTrip(id: number): boolean {
   const index = trips.findIndex((trip) => trip.id === id);
   if (index !== -1) {
     trips.splice(index, 1);
@@ -309,26 +283,26 @@ export function getTripStatistics(vehicleId?: string) {
   const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   // Count trips by date
-  const todayTrips = filteredTrips.filter((trip) => trip.date === today);
+  const todayTrips = filteredTrips.filter((trip) => trip.tripDate.split("T")[0] === today);
   const yesterdayTrips = filteredTrips.filter(
-    (trip) => trip.date === yesterday
+    (trip) => trip.tripDate.split("T")[0] === yesterday
   );
 
   // Count trips by payment status
   const paidTrips = filteredTrips.filter(
-    (trip) => trip.paymentStatus === "paid"
+    (trip) => trip.paymentStatus === "PAID"
   );
   const partialTrips = filteredTrips.filter(
-    (trip) => trip.paymentStatus === "partial"
+    (trip) => trip.paymentStatus === "PARTIAL"
   );
   const unpaidTrips = filteredTrips.filter(
-    (trip) => trip.paymentStatus === "unpaid"
+    (trip) => trip.paymentStatus === "UNPAID"
   );
 
   // Calculate totals
   const totalTrips = filteredTrips.length;
   const totalAmountToPay = filteredTrips.reduce(
-    (sum, trip) => sum + trip.totalAmountToPay,
+    (sum, trip) => sum + trip.totalAmount,
     0
   );
   const totalAmountPaid = filteredTrips.reduce(
@@ -346,10 +320,10 @@ export function getTripStatistics(vehicleId?: string) {
 
   const tripsByDate = last7Days.map((date) => ({
     date,
-    count: filteredTrips.filter((trip) => trip.date === date).length,
+    count: filteredTrips.filter((trip) => trip.tripDate.split("T")[0] === date).length,
     amount: filteredTrips
-      .filter((trip) => trip.date === date)
-      .reduce((sum, trip) => sum + trip.totalAmountToPay, 0),
+      .filter((trip) => trip.tripDate.split("T")[0] === date)
+      .reduce((sum, trip) => sum + trip.totalAmount, 0),
   }));
 
   return {
@@ -377,7 +351,7 @@ export function getTripsByDateRange(
   vehicleId?: string
 ) {
   return trips.filter((trip) => {
-    const tripDate = trip.date;
+    const tripDate = trip.tripDate.split("T")[0];
     const matchesVehicle = vehicleId ? trip.vehicleId === vehicleId : true;
     return matchesVehicle && tripDate >= startDate && tripDate <= endDate;
   });

@@ -73,7 +73,7 @@ import {
 import { cn } from "@/lib/utils";
 
 interface MembershipsTableType {
-  id: Number;
+  id: number;
   meterNumber: string;
   industryName: string;
   email: string | null;
