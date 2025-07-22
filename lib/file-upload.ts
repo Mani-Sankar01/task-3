@@ -76,7 +76,7 @@ export async function uploadFile(file: File, subfolder: string = ''): Promise<Fi
     }
 
     // Create uploads directory if it doesn't exist
-    const uploadsDir = join(process.cwd(), 'uploads', subfolder);
+    const uploadsDir = join(process.cwd(), 'public', 'uploads', subfolder);
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true });
     }
