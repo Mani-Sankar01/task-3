@@ -1,11 +1,7 @@
+"use client";
 import InvoiceForm from "@/components/invoice/invoice-form";
 
-export default async function EditInvoicePage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const invoiceId = await params.id;
-
+export default function EditInvoicePage({ params }: { params: { id: string } }) {
+  const invoiceId = params.id;
   return <InvoiceForm invoiceId={invoiceId} isEditMode={true} />;
 }
