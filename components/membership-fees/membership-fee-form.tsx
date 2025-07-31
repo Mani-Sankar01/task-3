@@ -48,7 +48,6 @@ import {
 } from "@/data/membership-fees";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { FileUpload } from "@/components/ui/file-upload";
 
 const formSchema = z.object({
   memberId: z.string().min(1, "Member is required"),
@@ -63,7 +62,6 @@ const formSchema = z.object({
   }),
   status: z.string(), // Allow any string from API
   notes: z.string().optional(),
-  receiptNumber: z.string().optional(),
   paymentMethod: z.string().optional(),
 });
 
@@ -86,9 +84,6 @@ export default function MembershipFeeForm({
   const [members, setMembers] = useState<any[]>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
   const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPath, setReceiptPath] = useState<string>("");
-  const [receiptError, setReceiptError] = useState<string>("");
   const [isLoadingFee, setIsLoadingFee] = useState(false);
   const [originalFee, setOriginalFee] = useState<any>(null);
 
@@ -144,7 +139,6 @@ export default function MembershipFeeForm({
           periodTo: new Date(fee.periodTo),
           status: fee.status,
           notes: fee.notes || "",
-          receiptNumber: fee.receiptNumber || "",
           paymentMethod: fee.paymentMethod || "",
         }
       : {
@@ -156,7 +150,6 @@ export default function MembershipFeeForm({
           periodTo: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months period
           status: "due",
           notes: "",
-          receiptNumber: "",
           paymentMethod: "",
         },
   });
@@ -191,20 +184,19 @@ export default function MembershipFeeForm({
       )
         .then((response) => {
           const feeData = response.data;
+          console.log(feeData);
           setOriginalFee(feeData);
           form.reset({
             memberId: feeData.membershipId,
             amount: parseFloat(feeData.totalAmount),
             paidAmount: parseFloat(feeData.paidAmount),
-            paidDate: undefined, // Not in API
+            paidDate: feeData.paymentDate ? new Date(feeData.paymentDate) : undefined,
             periodFrom: new Date(feeData.fromDate),
             periodTo: new Date(feeData.toDate),
             status: feeData.paymentStatus || "",
             notes: feeData.notes || "",
-            receiptNumber: "",
-            paymentMethod: "",
+            paymentMethod: feeData.paymentMode || "",
           });
-          setReceiptPath(feeData.receiptPath || "");
         })
         .finally(() => setIsLoadingFee(false));
     }
@@ -219,26 +211,6 @@ export default function MembershipFeeForm({
         setIsSubmitting(false);
         return;
       }
-      // Upload receipt if present
-      let uploadedReceiptPath = receiptPath;
-      if (receiptFile) {
-        const result = await axios.post(
-          "/api/upload",
-          (() => {
-            const formData = new FormData();
-            formData.append("file", receiptFile);
-            formData.append("subfolder", `receipts/${data.memberId}`);
-            return formData;
-          })(),
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
-        uploadedReceiptPath = result.data.filePath;
-      }
       if (isEditMode && billingId && originalFee) {
         // Only send changed fields
         const payload: any = { billingId };
@@ -246,7 +218,8 @@ export default function MembershipFeeForm({
         if (data.amount !== parseFloat(originalFee.totalAmount)) payload.totalAmount = data.amount;
         if (data.paidAmount !== parseFloat(originalFee.paidAmount)) payload.paidAmount = data.paidAmount;
         if (data.notes !== originalFee.notes) payload.notes = data.notes;
-        if (uploadedReceiptPath && uploadedReceiptPath !== originalFee.receiptPath) payload.receiptPath = uploadedReceiptPath;
+        if (data.paidDate && new Date(data.paidDate).toISOString() !== originalFee.paymentDate) payload.paymentDate = new Date(data.paidDate).toISOString();
+        if (data.paymentMethod !== originalFee.paymentMode) payload.paymentMode = data.paymentMethod;
         if (data.periodFrom && new Date(data.periodFrom).toISOString() !== originalFee.fromDate) payload.fromDate = new Date(data.periodFrom).toISOString();
         if (data.periodTo && new Date(data.periodTo).toISOString() !== originalFee.toDate) payload.toDate = new Date(data.periodTo).toISOString();
         await axios.post(
@@ -273,8 +246,11 @@ export default function MembershipFeeForm({
         paidAmount: data.paidAmount,
         notes: data.notes,
       };
-      if (uploadedReceiptPath) {
-        payload.receiptPath = uploadedReceiptPath;
+      if (data.paidDate) {
+        payload.paymentDate = data.paidDate.toISOString();
+      }
+      if (data.paymentMethod) {
+        payload.paymentMode = data.paymentMethod;
       }
       await axios.post(
         `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/bill/add_bill`,
@@ -511,7 +487,8 @@ export default function MembershipFeeForm({
                 />
 
                 {(status === "paid" ||
-                  (status === "due" && paidAmount > 0)) && (
+                  (status === "due" && paidAmount > 0) ||
+                  (isEditMode && (form.watch("paidDate") || form.watch("paymentMethod") || originalFee?.paymentDate || originalFee?.paymentMode))) && (
                   <FormField
                     control={form.control}
                     name="paidDate"
@@ -552,7 +529,8 @@ export default function MembershipFeeForm({
                 )}
 
                 {(status === "paid" ||
-                  (status === "due" && paidAmount > 0)) && (
+                  (status === "due" && paidAmount > 0) ||
+                  (isEditMode && (form.watch("paidDate") || form.watch("paymentMethod") || originalFee?.paymentDate || originalFee?.paymentMode))) && (
                   <FormField
                     control={form.control}
                     name="paymentMethod"
@@ -569,13 +547,13 @@ export default function MembershipFeeForm({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Cash">Cash</SelectItem>
-                            <SelectItem value="Bank Transfer">
+                            <SelectItem value="CASH">Cash</SelectItem>
+                            <SelectItem value="NET_BANKING">
                               Bank Transfer
                             </SelectItem>
-                            <SelectItem value="Cheque">Cheque</SelectItem>
+                            <SelectItem value="CHEQUE">Cheque</SelectItem>
                             <SelectItem value="UPI">UPI</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="CARD">Card</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -584,40 +562,10 @@ export default function MembershipFeeForm({
                   />
                 )}
 
-                {status === "paid" && (
-                  <FormField
-                    control={form.control}
-                    name="receiptNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Receipt Number</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter receipt number"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+
               </div>
 
-              {/* Receipt Upload */}
-              <div>
-                <FormLabel>Receipt (optional)</FormLabel>
-                <FileUpload
-                  onFileSelect={setReceiptFile}
-                  onUploadComplete={setReceiptPath}
-                  onUploadError={setReceiptError}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  maxSize={6 * 1024 * 1024}
-                  subfolder={form.watch("memberId") ? `receipts/${form.watch("memberId")}` : "receipts"}
-                  existingFilePath={receiptPath}
-                />
-                {receiptError && <p className="text-sm text-destructive">{receiptError}</p>}
-              </div>
+
 
               <div className="bg-muted p-4 rounded-md">
                 <div className="flex justify-between items-center">

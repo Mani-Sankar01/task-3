@@ -61,9 +61,11 @@ const formSchema = z.object({
     machinery: z
       .array(
         z.object({
-          name: z.string(),
-          quantity: z.string(),
+          id: z.number().optional(),
           type: z.string(),
+          machineName: z.string().optional(),
+          isOther: z.boolean().default(false),
+          quantity: z.string(),
         })
       )
       .default([]),
@@ -84,7 +86,8 @@ const formSchema = z.object({
             .array(
               z.object({
                 type: z.string().min(4, "Machinery Type is required"),
-                customName: z.string().optional(),
+                machineName: z.string().optional(),
+                isOther: z.boolean().default(false),
                 quantity: z.string().min(1, "Machinery quantity is required"),
               })
             )
@@ -452,7 +455,19 @@ const AddMemberForm = () => {
       }
 
       // Build the request data
-      const requestData = {
+      const shouldSendCompliance =
+        data.complianceDetails.gstinNo ||
+        data.complianceDetails.factoryLicenseNo ||
+        data.complianceDetails.tspcbOrderNo ||
+        data.complianceDetails.mdlNo ||
+        data.complianceDetails.udyamCertificateNo ||
+        uploadedFiles.gstinDoc ||
+        uploadedFiles.factoryLicenseDoc ||
+        uploadedFiles.tspcbOrderDoc ||
+        uploadedFiles.mdlDoc ||
+        uploadedFiles.udyamCertificateDoc;
+
+      const requestData: any = {
         electricalUscNumber: data.applicationDetails.electricalUscNumber,
         scNumber: data.applicationDetails.scNumber,
         applicantName: data.memberDetails.applicantName,
@@ -496,7 +511,8 @@ const AddMemberForm = () => {
 
         machineryInformations: data.electricalDetails.machinery.map(
           (machine) => ({
-            machineName: machine.name || machine.type || "Unknown",
+            machineName: machine.isOther ? machine.machineName || "Custom" : machine.type,
+            isOther: machine.isOther ? "TRUE" : "FALSE",
             machineCount: parseInt(machine.quantity),
           })
         ),
@@ -509,35 +525,11 @@ const AddMemberForm = () => {
           sanctionedHP: parseFloat(branch.sanctionedHP),
           placeOfBusiness: branch.placeOfBusiness,
           machineryInformations: branch.machinery.map((m) => ({
-            machineName: m.type || m.customName || "Custom",
-            customName: m.customName || "",
+            machineName: m.isOther ? m.machineName || "Custom" : m.type,
+            isOther: m.isOther ? "TRUE" : "FALSE",
             machineCount: parseInt(m.quantity),
           })),
         })),
-
-        complianceDetails: {
-          gstInNumber: data.complianceDetails.gstinNo,
-          gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
-          gstExpiredAt: data.complianceDetails.gstinExpiredAt ? new Date(data.complianceDetails.gstinExpiredAt).toISOString() : null,
-          factoryLicenseNumber: data.complianceDetails.factoryLicenseNo,
-          factoryLicensePath: uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
-          factoryLicenseExpiredAt: data.complianceDetails.factoryLicenseExpiredAt ? new Date(data.complianceDetails.factoryLicenseExpiredAt).toISOString() : null,
-          tspcbOrderNumber: data.complianceDetails.tspcbOrderNo,
-          tspcbCertificatePath: uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
-          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString() : null,
-          mdlNumber: data.complianceDetails.mdlNo,
-          mdlCertificatePath: uploadedFiles.mdlDoc || "/uploads/mdl.pdf",
-          mdlExpiredAt: data.complianceDetails.mdlExpiredAt ? new Date(data.complianceDetails.mdlExpiredAt).toISOString() : null,
-          udyamCertificateNumber: data.complianceDetails.udyamCertificateNo,
-          udyamCertificatePath: uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
-          udyamCertificateExpiredAt: data.complianceDetails.udyamCertificateExpiredAt ? new Date(data.complianceDetails.udyamCertificateExpiredAt).toISOString() : null,
-          fullAddress: data.communicationDetails.fullAddress,
-          partnerName: data.representativeDetails.partners[0]?.name || "",
-          contactNumber: data.representativeDetails.partners[0]?.contactNo || "",
-          AadharNumber: data.representativeDetails.partners[0]?.aadharNo || "",
-          emailId: data.representativeDetails.partners[0]?.email,
-          panNumber: data.representativeDetails.partners[0]?.pan,
-        },
 
         similarMembershipInquiry: {
           is_member_of_similar_org:
@@ -559,12 +551,12 @@ const AddMemberForm = () => {
         ],
 
         proposer: {
-          proposerID: data.proposer1.membershipId,
+          proposerID: data.proposer1.membershipId || null,
           signaturePath: "/uploads/proposer-signature.png",
         },
 
         executiveProposer: {
-          proposerID: data.proposer2.membershipId,
+          proposerID: data.proposer2.membershipId || null,
           signaturePath: "/uploads/executive-signature.png",
         },
 
@@ -574,6 +566,32 @@ const AddMemberForm = () => {
           applicationSignaturePath: uploadedFiles.signatureUpload || "/uploads/app-signature.pdf",
         },
       };
+
+      if (shouldSendCompliance) {
+        requestData.complianceDetails = {
+          gstInNumber: data.complianceDetails.gstinNo,
+          gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
+          gstExpiredAt: data.complianceDetails.gstinExpiredAt ? new Date(data.complianceDetails.gstinExpiredAt).toISOString() : null,
+          factoryLicenseNumber: data.complianceDetails.factoryLicenseNo,
+          factoryLicensePath: uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
+          factoryLicenseExpiredAt: data.complianceDetails.factoryLicenseExpiredAt ? new Date(data.complianceDetails.factoryLicenseExpiredAt).toISOString() : null,
+          tspcbOrderNumber: data.complianceDetails.tspcbOrderNo,
+          tspcbCertificatePath: uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
+          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString() : null,
+          mdlNumber: data.complianceDetails.mdlNo,
+          mdlCertificatePath: uploadedFiles.mdlDoc || "/uploads/mdl.pdf",
+          mdlExpiredAt: data.complianceDetails.mdlExpiredAt ? new Date(data.complianceDetails.mdlExpiredAt).toISOString() : null,
+          udyamCertificateNumber: data.complianceDetails.udyamCertificateNo,
+          udyamCertificatePath: uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
+          udyamCertificateExpiredAt: data.complianceDetails.udyamCertificateExpiredAt ? new Date(data.complianceDetails.udyamCertificateExpiredAt).toISOString() : null,
+          fullAddress: data.communicationDetails.fullAddress,
+          partnerName: data.representativeDetails.partners[0]?.name || "",
+          contactNumber: data.representativeDetails.partners[0]?.contactNo || "",
+          AadharNumber: data.representativeDetails.partners[0]?.aadharNo || "",
+          emailId: data.representativeDetails.partners[0]?.email,
+          panNumber: data.representativeDetails.partners[0]?.pan,
+        };
+      }
 
       console.log(JSON.stringify(requestData));
 

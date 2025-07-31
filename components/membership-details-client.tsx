@@ -12,6 +12,10 @@ import {
   LayoutDashboard,
   CopyrightIcon as License,
   WashingMachineIcon as Machinery,
+  Trash2,
+  Download,
+  Edit2,
+  User2,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,7 +54,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateMember, type Member } from "@/services/api";
+import { updateMember, type Member, Attachment } from "@/services/api";
+import { useForm } from "react-hook-form";
+import { uploadFile } from "@/lib/client-file-upload";
+import { getAuthToken } from "@/services/api";
+import axios from "axios";
+import { useSession } from "next-auth/react";
+import { FileUpload } from "@/components/ui/file-upload";
+import { useToast } from "@/hooks/use-toast";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -58,10 +69,14 @@ function generateOTP() {
 
 interface MembershipDetailsClientProps {
   member: Member;
+  refetchMember: () => Promise<void>;
 }
+
+type AttachmentWithExpiry = Attachment & { expiredAt?: string };
 
 export default function MembershipDetailsClient({
   member,
+  refetchMember,
 }: MembershipDetailsClientProps) {
   const router = useRouter();
   const [status, setStatus] = useState(member.membershipStatus);
@@ -117,7 +132,7 @@ export default function MembershipDetailsClient({
       setIsStatusEditing(false);
       setShowConfirmDialog(false);
       // In a real app, you would refresh the data here
-      window.location.reload(); // Simple refresh for now
+      await refetchMember();
     } catch (error) {
       console.error("Error updating status:", error);
       alert("Failed to update status. Please try again.");
@@ -137,7 +152,7 @@ export default function MembershipDetailsClient({
         setEnteredOtp("");
         setOtpError("");
         // In a real app, you would refresh the data here
-        window.location.reload(); // Simple refresh for now
+        await refetchMember();
       } catch (error) {
         console.error("Error updating status:", error);
         alert("Failed to update status. Please try again.");
@@ -147,6 +162,343 @@ export default function MembershipDetailsClient({
     } else {
       setOtpError("Invalid OTP. Please try again.");
     }
+  };
+
+  const DOCUMENT_TYPES = [
+    { value: "additional", label: "Additional" },
+  ];
+
+  const [showDocDialog, setShowDocDialog] = useState(false);
+  const [editDoc, setEditDoc] = useState<AttachmentWithExpiry | null>(null); // null for add, or doc object for edit
+  const [docType, setDocType] = useState("additional");
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docName, setDocName] = useState("");
+  const [docExpiry, setDocExpiry] = useState("");
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState("");
+  const [filePathForUpload, setFilePathForUpload] = useState<string | null>(null);
+
+  const { data: session } = useSession();
+  const { toast } = useToast();
+
+  // Add or Edit Document
+  const handleDocSubmit = async () => {
+    setDocLoading(true);
+    setDocError("");
+    try {
+      let filePath = editDoc?.documentPath || "";
+      if (docFile) {
+        const upload = await uploadFile(docFile, "documents");
+        if (!upload.success || !upload.filePath) {
+          setDocError(upload.error || "File upload failed");
+          setDocLoading(false);
+          return;
+        }
+        filePath = upload.filePath;
+      }
+      let payload: any = { membershipId: member.membershipId };
+      // Handle compliance document types
+      if (["gst", "factory", "tspcb", "mdl", "udyam"].includes(docType)) {
+        payload.complianceDetails = { ...member.complianceDetails };
+        switch (docType) {
+          case "gst":
+            payload.complianceDetails.gstInCertificatePath = filePath;
+            if (docExpiry) payload.complianceDetails.gstExpiredAt = new Date(docExpiry).toISOString();
+            if (docName) payload.complianceDetails.gstInNumber = docName;
+            break;
+          case "factory":
+            payload.complianceDetails.factoryLicensePath = filePath;
+            if (docExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(docExpiry).toISOString();
+            if (docName) payload.complianceDetails.factoryLicenseNumber = docName;
+            break;
+          case "tspcb":
+            payload.complianceDetails.tspcbCertificatePath = filePath;
+            if (docExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(docExpiry).toISOString();
+            if (docName) payload.complianceDetails.tspcbOrderNumber = docName;
+            break;
+          case "mdl":
+            payload.complianceDetails.mdlCertificatePath = filePath;
+            if (docExpiry) payload.complianceDetails.mdlExpiredAt = new Date(docExpiry).toISOString();
+            if (docName) payload.complianceDetails.mdlNumber = docName;
+            break;
+          case "udyam":
+            payload.complianceDetails.udyamCertificatePath = filePath;
+            if (docExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(docExpiry).toISOString();
+            if (docName) payload.complianceDetails.udyamCertificateNumber = docName;
+            break;
+        }
+      } else {
+        // Additional document logic (attachments)
+        payload.attachments = {};
+        if (!editDoc) {
+          // Add
+          payload.attachments.newAttachments = [{
+            documentName: docName,
+            documentPath: filePath,
+            expiredAt: docExpiry ? new Date(docExpiry).toISOString() : undefined,
+          }];
+        } else {
+          // Edit
+          const update: any = { id: editDoc.id };
+          if (docName && docName !== editDoc.documentName) update.documentName = docName;
+          if (filePath && filePath !== editDoc.documentPath) update.documentPath = filePath;
+          if (docExpiry) update.expiredAt = new Date(docExpiry).toISOString();
+          payload.attachments.updateAttachments = [update];
+        }
+      }
+      if (!session?.user.token) throw new Error("No auth token");
+      console.log("Update payload:", payload);
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Update response:", response);
+      if (response.status !== 200 && response.status !== 201) throw new Error("Failed to update member");
+      setShowDocDialog(false);
+      toast({ title: editDoc ? "Document updated" : "Document added", description: `The document was successfully ${editDoc ? "updated" : "added"}.`, variant: "sucess" });
+      await refetchMember();
+    } catch (err: any) {
+      setDocError(err.message || "Failed to update document");
+      alert(err.message || "Failed to update document");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  // Delete Document
+  const handleDeleteDoc = async (doc: Attachment) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    setDocLoading(true);
+    setDocError("");
+    if (!session?.user.token) {
+      alert("No auth token found. Please login again.");
+      setDocLoading(false);
+      return;
+    }
+    try {
+      const payload = {
+        membershipId: member.membershipId,
+        attachments: { deleteAttachments: [{ id: doc.id }] },
+      };
+      console.log("Delete payload:", JSON.stringify(payload));
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Delete response:", response);
+      if (response.status !== 200 && response.status !== 201) throw new Error("Failed to delete document");
+      await refetchMember();
+      toast({ title: "Document deleted", description: "The document was successfully deleted.", variant: "sucess" });
+    } catch (err: any) {
+      setDocError(err.message || "Failed to delete document");
+      alert(err.message || "Failed to delete document");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const openAddDoc = () => {
+    setEditDoc(null);
+    setDocType("additional");
+    setDocName("");
+    setDocFile(null);
+    setDocExpiry("");
+    setFilePathForUpload(null);
+    setShowDocDialog(true);
+  };
+  const openEditDoc = (doc: AttachmentWithExpiry, type: string) => {
+    setEditDoc(doc);
+    setDocType(type);
+    setDocName(doc.documentName || "");
+    setDocFile(null);
+    setDocExpiry(doc.expiredAt ? doc.expiredAt.split("T")[0] : "");
+    setFilePathForUpload(doc.documentPath || null);
+    setShowDocDialog(true);
+  };
+  const closeDocDialog = () => setShowDocDialog(false);
+
+  // Map attachments to include expiredAt if present
+  const attachmentsWithExpiry: AttachmentWithExpiry[] = member.attachments.map(a => ({
+    ...a,
+    expiredAt: (a as any).expiredAt,
+  }));
+
+  // Helper for pretty date
+  const prettyDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  // License Management
+  const [editLicenseType, setEditLicenseType] = useState<string | null>(null);
+  const [editLicenseNumber, setEditLicenseNumber] = useState("");
+  const [editLicenseFilePath, setEditLicenseFilePath] = useState<string | null>(null);
+  const [editLicenseExpiry, setEditLicenseExpiry] = useState("");
+  const [editLicenseFile, setEditLicenseFile] = useState<File | null>(null);
+  const [editLicenseDocError, setEditLicenseDocError] = useState("");
+
+  const handleEditLicenseSubmit = async () => {
+    setDocLoading(true);
+    setEditLicenseDocError("");
+    try {
+      let filePath = editLicenseFilePath || "";
+      if (editLicenseFile) {
+        const upload = await uploadFile(editLicenseFile, "documents");
+        if (!upload.success || !upload.filePath) {
+          setEditLicenseDocError(upload.error || "File upload failed");
+          setDocLoading(false);
+          return;
+        }
+        filePath = upload.filePath;
+      }
+      let payload: any = { membershipId: member.membershipId };
+      if (editLicenseType) {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (editLicenseType === "gst") {
+          payload.complianceDetails.gstInCertificatePath = filePath;
+          if (editLicenseExpiry) payload.complianceDetails.gstExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber) payload.complianceDetails.gstInNumber = editLicenseNumber;
+        } else if (editLicenseType === "factory") {
+          payload.complianceDetails.factoryLicensePath = filePath;
+          if (editLicenseExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber) payload.complianceDetails.factoryLicenseNumber = editLicenseNumber;
+        } else if (editLicenseType === "tspcb") {
+          payload.complianceDetails.tspcbCertificatePath = filePath;
+          if (editLicenseExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber) payload.complianceDetails.tspcbOrderNumber = editLicenseNumber;
+        } else if (editLicenseType === "mdl") {
+          payload.complianceDetails.mdlCertificatePath = filePath;
+          if (editLicenseExpiry) payload.complianceDetails.mdlExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber) payload.complianceDetails.mdlNumber = editLicenseNumber;
+        } else if (editLicenseType === "udyam") {
+          payload.complianceDetails.udyamCertificatePath = filePath;
+          if (editLicenseExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber) payload.complianceDetails.udyamCertificateNumber = editLicenseNumber;
+        }
+      }
+      if (!session?.user.token) throw new Error("No auth token");
+      console.log("Update payload:", payload);
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Update response:", response);
+      if (response.status !== 200 && response.status !== 201) throw new Error("Failed to update member");
+      setEditLicenseType(null);
+      toast({ title: "License updated", description: "The license was successfully updated.", variant: "sucess" });
+      await refetchMember();
+    } catch (err: any) {
+      setEditLicenseDocError(err.message || "Failed to update license");
+      alert(err.message || "Failed to update license");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const handleDeleteLicense = async (type: string) => {
+    if (!window.confirm("Are you sure you want to delete this license?")) return;
+    setDocLoading(true);
+    setDocError("");
+    if (!session?.user.token) {
+      alert("No auth token found. Please login again.");
+      setDocLoading(false);
+      return;
+    }
+    try {
+      let payload: any = { membershipId: member.membershipId };
+      if (type === "gst") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails.gstInCertificatePath = null;
+        payload.complianceDetails.gstExpiredAt = null;
+        payload.complianceDetails.gstInNumber = null;
+      } else if (type === "factory") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails.factoryLicensePath = null;
+        payload.complianceDetails.factoryLicenseExpiredAt = null;
+        payload.complianceDetails.factoryLicenseNumber = null;
+      } else if (type === "tspcb") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails.tspcbCertificatePath = null;
+        payload.complianceDetails.tspcbExpiredAt = null;
+        payload.complianceDetails.tspcbOrderNumber = null;
+      } else if (type === "mdl") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails.mdlCertificatePath = null;
+        payload.complianceDetails.mdlExpiredAt = null;
+        payload.complianceDetails.mdlNumber = null;
+      } else if (type === "udyam") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails.udyamCertificatePath = null;
+        payload.complianceDetails.udyamCertificateExpiredAt = null;
+        payload.complianceDetails.udyamCertificateNumber = null;
+      }
+      console.log("Delete payload:", JSON.stringify(payload));
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("Delete response:", response);
+      if (response.status !== 200 && response.status !== 201) throw new Error("Failed to delete license");
+      setEditLicenseType(null);
+      toast({ title: "License deleted", description: "The license was successfully deleted.", variant: "sucess" });
+      await refetchMember();
+    } catch (err: any) {
+      setDocError(err.message || "Failed to delete license");
+      alert(err.message || "Failed to delete license");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const openEditLicenseDialog = (type: string) => {
+    setEditLicenseType(type);
+    if (type === "gst") {
+      setEditLicenseNumber(member.complianceDetails.gstInNumber || "");
+      setEditLicenseFilePath(member.complianceDetails.gstInCertificatePath || null);
+      setEditLicenseExpiry(member.complianceDetails.gstExpiredAt ? new Date(member.complianceDetails.gstExpiredAt).toISOString().split("T")[0] : "");
+    } else if (type === "factory") {
+      setEditLicenseNumber(member.complianceDetails.factoryLicenseNumber || "");
+      setEditLicenseFilePath(member.complianceDetails.factoryLicensePath || null);
+      setEditLicenseExpiry(member.complianceDetails.factoryLicenseExpiredAt ? new Date(member.complianceDetails.factoryLicenseExpiredAt).toISOString().split("T")[0] : "");
+    } else if (type === "tspcb") {
+      setEditLicenseNumber(member.complianceDetails.tspcbOrderNumber || "");
+      setEditLicenseFilePath(member.complianceDetails.tspcbCertificatePath || null);
+      setEditLicenseExpiry(member.complianceDetails.tspcbExpiredAt ? new Date(member.complianceDetails.tspcbExpiredAt).toISOString().split("T")[0] : "");
+    } else if (type === "mdl") {
+      setEditLicenseNumber(member.complianceDetails.mdlNumber || "");
+      setEditLicenseFilePath(member.complianceDetails.mdlCertificatePath || null);
+      setEditLicenseExpiry(member.complianceDetails.mdlExpiredAt ? new Date(member.complianceDetails.mdlExpiredAt).toISOString().split("T")[0] : "");
+    } else if (type === "udyam") {
+      setEditLicenseNumber(member.complianceDetails.udyamCertificateNumber || "");
+      setEditLicenseFilePath(member.complianceDetails.udyamCertificatePath || null);
+      setEditLicenseExpiry(member.complianceDetails.udyamCertificateExpiredAt ? new Date(member.complianceDetails.udyamCertificateExpiredAt).toISOString().split("T")[0] : "");
+    }
+    setEditLicenseFile(null); // Clear file selection for new upload
   };
 
   return (
@@ -306,55 +658,76 @@ export default function MembershipDetailsClient({
       </Dialog>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="flex min-w-full gap-2 overflow-auto p-1 md:grid md:grid-cols-7">
+        <TabsList className="flex gap-2 overflow-auto p-1 md:grid md:grid-cols-7">
           <TabsTrigger
             value="overview"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
+            className=""
           >
-            <LayoutDashboard className="h-4 w-4" />
-            Overview
+            <div className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Overview
+            </div>
+            
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
-          >
-            <History className="h-4 w-4" />
-            History
+            
+          > <div className="flex items-center gap-2">
+              <History className="h-4 w-4" />
+              History
+            </div>
+            
           </TabsTrigger>
           <TabsTrigger
             value="transactions"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
+           
           >
-            <CreditCard className="h-4 w-4" />
-            Transactions
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Transactions
+            </div>
+            
           </TabsTrigger>
-          <TabsTrigger
-            value="gst"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
-          >
-            <FileText className="h-4 w-4" />
-            GST Fillings
-          </TabsTrigger>
+         
           <TabsTrigger
             value="licenses"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
+           
           >
-            <License className="h-4 w-4" />
-            Licenses
+            <div className="flex items-center gap-2">
+              <License className="h-4 w-4" />
+              Licenses
+            </div>
+            
           </TabsTrigger>
           <TabsTrigger
             value="machineries"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
+          
           >
-            <Machinery className="h-4 w-4" />
-            Machineries
+            <div className="flex items-center gap-2">
+              <Machinery className="h-4 w-4" />
+              Machineries
+            </div>
+            
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
+           
           >
+           <div className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Documents
+           Documents
+           </div>
+           
+          </TabsTrigger>
+          <TabsTrigger
+            value="labour"
+           
+          >
+           <div className="flex items-center gap-2">
+            <User2 className="h-4 w-4" />
+           Labours
+           </div>
+           
           </TabsTrigger>
         </TabsList>
 
@@ -676,12 +1049,12 @@ export default function MembershipDetailsClient({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Documents</CardTitle>
+                <CardTitle>Licenses & Documents</CardTitle>
                 <CardDescription>
                   All uploaded documents and certificates
                 </CardDescription>
               </div>
-              <Button>
+              <Button onClick={openAddDoc}>
                 <FileText className="h-4 w-4 mr-2" />
                 Add Document
               </Button>
@@ -692,162 +1065,88 @@ export default function MembershipDetailsClient({
                   <TableRow>
                     <TableHead>Document Name</TableHead>
                     <TableHead>File Path</TableHead>
-                    <TableHead>Upload Date</TableHead>
+                     <TableHead>Status</TableHead>
+                    <TableHead>Expiry Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {/* Compliance documents */}
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      GST Certificate
-                    </TableCell>
-                    <TableCell>
-                      {member.complianceDetails.gstInCertificatePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.complianceDetails.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Factory License
-                    </TableCell>
-                    <TableCell>
-                      {member.complianceDetails.factoryLicensePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.complianceDetails.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      TSPCB Certificate
-                    </TableCell>
-                    <TableCell>
-                      {member.complianceDetails.tspcbCertificatePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.complianceDetails.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      MDL Certificate
-                    </TableCell>
-                    <TableCell>
-                      {member.complianceDetails.mdlCertificatePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.complianceDetails.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Udyam Certificate
-                    </TableCell>
-                    <TableCell>
-                      {member.complianceDetails.udyamCertificatePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.complianceDetails.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-
+                 
                   {/* Additional attachments */}
-                  {member.attachments.map((attachment) => (
+                  {attachmentsWithExpiry.map((attachment) => (
                     <TableRow key={attachment.id}>
-                      <TableCell className="font-medium">
-                        {attachment.documentName}
-                      </TableCell>
-                      <TableCell>{attachment.documentPath}</TableCell>
+                      <TableCell className="font-medium">{attachment.documentName}</TableCell>
+                      <TableCell>{attachment.documentPath || "-"}</TableCell>
                       <TableCell>
-                        {new Date(attachment.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
+                        {attachment.expiredAt ? (
+                          new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="destructive">Expired</Badge>
+                          )
+                        ) : (
+                          <Badge variant="secondary">No Expiry</Badge>
+                        )}
+                        </TableCell>
+                      <TableCell>{attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
+                      <TableCell className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteDoc(attachment)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm"><Download className="h-4 w-4" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
-
-                  {/* Declaration documents */}
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Membership Form
-                    </TableCell>
-                    <TableCell>
-                      {member.declarations.membershipFormPath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.declarations.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">
-                      Applicant Signature
-                    </TableCell>
-                    <TableCell>
-                      {member.declarations.applicationSignaturePath}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(
-                        member.declarations.createdAt
-                      ).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" size="sm">
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
+          {/* Add/Edit Document Dialog */}
+          <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editDoc ? "Edit Document" : "Add Document"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Label>Document Type</Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(docType === "additional" || docType === "") && (
+                  <div>
+                    <Label>Document Name</Label>
+                    <Input value={docName} onChange={e => setDocName(e.target.value)} placeholder="Enter document name" />
+                  </div>
+                )}
+                <Label>File</Label>
+                <FileUpload
+                  onFileSelect={setDocFile}
+                  onUploadComplete={() => {}}
+                  onUploadError={setDocError}
+                  subfolder="documents"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  existingFilePath={filePathForUpload ?? undefined}
+                  onDownload={filePath => window.open(filePath, '_blank')}
+                  onRemoveFile={() => setFilePathForUpload(null)}
+                />
+                <div>
+                  <Label>Expiry Date</Label>
+                  <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>Cancel</Button>
+                <Button onClick={handleDocSubmit} disabled={docLoading}>{editDoc ? "Save Changes" : "Add Document"}</Button>
+                {docError && <div className="text-red-500 text-sm mt-2">{docError}</div>}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Other tabs content remains the same */}
@@ -914,79 +1213,127 @@ export default function MembershipDetailsClient({
           </Card>
         </TabsContent>
 
-        <TabsContent value="gst">
-          <Card>
-            <CardHeader>
-              <CardTitle>GST Fillings</CardTitle>
-              <CardDescription>
-                Track and manage GST filling history
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-10 text-muted-foreground">
-                <p>No GST filing records available</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+       
 
         <TabsContent value="licenses">
           <Card>
             <CardHeader>
-              <CardTitle>Active Licenses</CardTitle>
+              <CardTitle>Licenses & Certificates</CardTitle>
               <CardDescription>View and manage member licenses</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="space-y-1">
-                      <CardTitle className="text-base">
-                        Factory License
-                      </CardTitle>
-                      <CardDescription>
-                        License Number:{" "}
-                        {member.complianceDetails.factoryLicenseNumber}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="default">Active</Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Issued:</span>
-                      <span>
-                        {new Date(
-                          member.complianceDetails.createdAt
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <div className="space-y-1">
-                      <CardTitle className="text-base">TSPCB Order</CardTitle>
-                      <CardDescription>
-                        Order Number:{" "}
-                        {member.complianceDetails.tspcbOrderNumber}
-                      </CardDescription>
-                    </div>
-                    <Badge variant="default">Active</Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Issued:</span>
-                      <span>
-                        {new Date(
-                          member.complianceDetails.createdAt
-                        ).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>Number</TableHead>
+                    <TableHead>File Path</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Expiry Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[
+                    {
+                      type: "gst",
+                      label: "GST Certificate",
+                      number: member.complianceDetails.gstInNumber,
+                      path: member.complianceDetails.gstInCertificatePath,
+                      expiredAt: member.complianceDetails.gstExpiredAt,
+                    },
+                    {
+                      type: "factory",
+                      label: "Factory License",
+                      number: member.complianceDetails.factoryLicenseNumber,
+                      path: member.complianceDetails.factoryLicensePath,
+                      expiredAt: member.complianceDetails.factoryLicenseExpiredAt,
+                    },
+                    {
+                      type: "tspcb",
+                      label: "TSPCB Certificate",
+                      number: member.complianceDetails.tspcbOrderNumber,
+                      path: member.complianceDetails.tspcbCertificatePath,
+                      expiredAt: member.complianceDetails.tspcbExpiredAt,
+                    },
+                    {
+                      type: "mdl",
+                      label: "MDL Certificate",
+                      number: member.complianceDetails.mdlNumber,
+                      path: member.complianceDetails.mdlCertificatePath,
+                      expiredAt: member.complianceDetails.mdlExpiredAt,
+                    },
+                    {
+                      type: "udyam",
+                      label: "Udyam Certificate",
+                      number: member.complianceDetails.udyamCertificateNumber,
+                      path: member.complianceDetails.udyamCertificatePath,
+                      expiredAt: member.complianceDetails.udyamCertificateExpiredAt,
+                    },
+                  ].filter(doc => doc.path).map((doc) => (
+                    <TableRow key={doc.type}>
+                      <TableCell className="font-medium">{doc.label}</TableCell>
+                      <TableCell>{doc.number || "-"}</TableCell>
+                      <TableCell>{doc.path || "-"}</TableCell>
+                      <TableCell>
+                        {doc.expiredAt ? (
+                          new Date(doc.expiredAt) >= new Date(new Date().toDateString()) ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="destructive">Expired</Badge>
+                          )
+                        ) : (
+                          <Badge variant="secondary">No Expiry</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
+                      <TableCell className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditLicenseDialog(doc.type)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteLicense(doc.type)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm"><Download className="h-4 w-4" /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
+          {/* Edit License Dialog */}
+          <Dialog open={!!editLicenseType} onOpenChange={val => { if (!val) setEditLicenseType(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit License</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Label>Number</Label>
+                <Input value={editLicenseNumber} onChange={e => setEditLicenseNumber(e.target.value)} />
+                <Label>File</Label>
+                <FileUpload
+                  onFileSelect={setEditLicenseFile}
+                  onUploadComplete={() => {}}
+                  onUploadError={setEditLicenseDocError}
+                  subfolder="documents"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  existingFilePath={editLicenseFilePath ?? undefined}
+                  onDownload={filePath => window.open(filePath, '_blank')}
+                  onRemoveFile={() => setEditLicenseFilePath(null)}
+                />
+                <Label>Expiry Date</Label>
+                <Input type="date" value={editLicenseExpiry} onChange={e => setEditLicenseExpiry(e.target.value)} />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditLicenseType(null)} disabled={docLoading}>Cancel</Button>
+                <Button onClick={handleEditLicenseSubmit} disabled={docLoading}>Save Changes</Button>
+                {editLicenseDocError && <div className="text-red-500 text-sm mt-2">{editLicenseDocError}</div>}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>

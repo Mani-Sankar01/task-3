@@ -17,6 +17,7 @@ interface FileUploadProps {
   disabled?: boolean;
   existingFilePath?: string;
   onDownload?: (filePath: string) => void;
+  onRemoveFile?: () => void;
 }
 
 export function FileUpload({
@@ -29,7 +30,8 @@ export function FileUpload({
   className = "",
   disabled = false,
   existingFilePath,
-  onDownload
+  onDownload,
+  onRemoveFile
 }: FileUploadProps) {
   const uniqueId = useId();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -92,6 +94,7 @@ export function FileUpload({
     setError(null);
     setUploadProgress(0);
     onFileSelect(null);
+    if (typeof onRemoveFile === 'function') onRemoveFile();
   };
 
   const handleDownload = () => {

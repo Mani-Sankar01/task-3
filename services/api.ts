@@ -273,14 +273,19 @@ export interface ComplianceDetails {
   membershipId: string;
   gstInNumber: string;
   gstInCertificatePath: string;
+  gstExpiredAt?: string; // <-- Add this
   factoryLicenseNumber: string;
   factoryLicensePath: string;
+  factoryLicenseExpiredAt?: string; // <-- Add this
   tspcbOrderNumber: string;
   tspcbCertificatePath: string;
+  tspcbExpiredAt?: string; // <-- Add this
   mdlNumber: string;
   mdlCertificatePath: string;
+  mdlExpiredAt?: string; // <-- Add this
   udyamCertificateNumber: string;
   udyamCertificatePath: string;
+  udyamCertificateExpiredAt?: string;
   fullAddress: string;
   partnerName: string;
   contactNumber: string;

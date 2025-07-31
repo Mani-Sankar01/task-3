@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -9,6 +11,7 @@ import {
   Search,
   Phone,
   User,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -46,23 +49,84 @@ import {
   type Labour,
   type LabourStatus,
 } from "@/data/labour";
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
 export default function LabourList() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<keyof Labour | null>(null);
+  const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
-  const [labourList, setLabourList] = useState<Labour[]>([]);
+  const [labourList, setLabourList] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedMember, setSelectedMember] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string>("");
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const itemsPerPage = 10;
 
-  // Load labour list on component mount
+  // Load labour list from API
   useEffect(() => {
-    setLabourList(getAllLabour());
-  }, []);
+    const fetchLabourList = async () => {
+      if (sessionStatus === "authenticated" && session?.user?.token) {
+        setIsLoading(true);
+        setError("");
+        try {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_active_labours`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          setLabourList(response.data);
+          setHasLoaded(true);
+          console.log(response.data);
+        } catch (err: any) {
+          console.error("Error fetching labour list:", err);
+          setError("Failed to load labour data");
+          setLabourList([]);
+          setHasLoaded(true);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (sessionStatus === "unauthenticated") {
+        setError("Please login to view labour data");
+        setHasLoaded(true);
+        setIsLoading(false);
+      }
+    };
+    fetchLabourList();
+  }, [sessionStatus, session?.user?.token]);
+
+  // Load all members for filter dropdown
+  useEffect(() => {
+    const fetchAllMembers = async () => {
+      if (sessionStatus === "authenticated" && session?.user?.token) {
+        try {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_members`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          setAllMembers(response.data);
+        } catch (err: any) {
+          console.error("Error fetching members:", err);
+          setAllMembers([]);
+        }
+      }
+    };
+    fetchAllMembers();
+  }, [sessionStatus, session?.user?.token]);
 
   // Apply all filters
   const applyFilters = () => {
@@ -71,14 +135,14 @@ export default function LabourList() {
     // Filter by status
     if (selectedStatus && selectedStatus !== "all") {
       filtered = filtered.filter(
-        (labour) => labour.status === (selectedStatus as LabourStatus)
+        (labour) => labour.labourStatus === selectedStatus.toUpperCase()
       );
     }
 
     // Filter by member/industry
     if (selectedMember && selectedMember !== "all") {
       filtered = filtered.filter(
-        (labour) => labour.currentMemberId === selectedMember
+        (labour) => labour.assignedTo === selectedMember
       );
     }
 
@@ -86,13 +150,10 @@ export default function LabourList() {
     if (searchTerm) {
       filtered = filtered.filter(
         (labour) =>
-          labour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          labour.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          labour.aadharNumber
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (labour.email &&
-            labour.email.toLowerCase().includes(searchTerm.toLowerCase()))
+          (labour.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+          (labour.phoneNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+          (labour.aadharNumber?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+          (labour.emailId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
       );
     }
 
@@ -109,29 +170,25 @@ export default function LabourList() {
     let valueB: string | number | undefined = "";
 
     switch (sortField) {
-      case "name":
-        valueA = a.name;
-        valueB = b.name;
+      case "fullName":
+        valueA = a.fullName || "";
+        valueB = b.fullName || "";
         break;
-      case "phone":
-        valueA = a.phone;
-        valueB = b.phone;
+      case "phoneNumber":
+        valueA = a.phoneNumber || "";
+        valueB = b.phoneNumber || "";
         break;
-      case "currentMemberId":
-        valueA = getMemberNameById(a.currentMemberId || "");
-        valueB = getMemberNameById(b.currentMemberId || "");
+      case "assignedTo":
+        valueA = a.labourAssignedTo?.firmName || "";
+        valueB = b.labourAssignedTo?.firmName || "";
         break;
-      case "status":
-        valueA = a.status;
-        valueB = b.status;
+      case "labourStatus":
+        valueA = a.labourStatus || "";
+        valueB = b.labourStatus || "";
         break;
-      case "dateOfBirth":
-        valueA = a.dateOfBirth;
-        valueB = b.dateOfBirth;
-        break;
-      case "employedFrom":
-        valueA = a.employedFrom;
-        valueB = b.employedFrom;
+      case "dob":
+        valueA = a.dob || "";
+        valueB = b.dob || "";
         break;
       default:
         return 0;
@@ -159,7 +216,7 @@ export default function LabourList() {
   const totalPages = Math.ceil(sortedLabour.length / itemsPerPage);
 
   // Handle sorting
-  const handleSort = (field: keyof Labour) => {
+  const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -185,21 +242,57 @@ export default function LabourList() {
   };
 
   // Delete a labour
-  const handleDeleteLabour = (labourId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this labour record? This action cannot be undone."
-      )
-    ) {
-      deleteLabour(labourId);
-      setLabourList(getAllLabour());
+  const handleDeleteLabour = async (labourId: string) => {
+    if (!window.confirm("Are you sure you want to delete this labour?")) {
+      return;
+    }
 
-      if (
-        currentPage > 1 &&
-        (currentPage - 1) * itemsPerPage >= sortedLabour.length - 1
-      ) {
-        setCurrentPage(currentPage - 1);
+    if (!session?.user.token) {
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeleting(labourId);
+    try {
+      const response = await axios.delete(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_labour_id/${labourId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 204) {
+        toast({
+          title: "Success",
+          description: "Labour deleted successfully.",
+          variant: "default",
+        });
+        // Refresh the labour list
+        const updatedResponse = await axios.get(
+          `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_active_labours`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        setLabourList(updatedResponse.data);
       }
+    } catch (err: any) {
+      console.error("Error deleting labour:", err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to delete labour.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -254,9 +347,9 @@ export default function LabourList() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="bench">Bench</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="ACTIVE">Active</SelectItem>
+              <SelectItem value="BENCH">Bench</SelectItem>
+              <SelectItem value="INACTIVE">Inactive</SelectItem>
             </SelectContent>
           </Select>
 
@@ -268,21 +361,15 @@ export default function LabourList() {
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="All Industries" />
+              <SelectValue placeholder="All Members" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Industries</SelectItem>
-              {labourList
-                .map((labour) => labour.currentMemberId)
-                .filter(
-                  (memberId, index, self) =>
-                    memberId && self.indexOf(memberId) === index
-                )
-                .map((memberId) => (
-                  <SelectItem key={memberId} value={memberId || ""}>
-                    {getMemberNameById(memberId || "")}
-                  </SelectItem>
-                ))}
+              <SelectItem value="all">All Members</SelectItem>
+              {allMembers.map((member) => (
+                <SelectItem key={member.membershipId} value={member.membershipId}>
+                  {(member.applicantName || "Unknown") + " - " + (member.firmName || "Unknown")}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline" onClick={resetFilters}>
@@ -292,188 +379,218 @@ export default function LabourList() {
 
         <div className="flex justify-end"></div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Photo</TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("name")}
-                    className="flex items-center p-0 h-auto font-medium"
-                  >
-                    Name
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("phone")}
-                    className="flex items-center p-0 h-auto font-medium"
-                  >
-                    Phone
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
-                  Aadhar Number
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("currentMemberId")}
-                    className="flex items-center p-0 h-auto font-medium"
-                  >
-                    Current Industry
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead className="hidden md:table-cell">
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleSort("status")}
-                    className="flex items-center p-0 h-auto font-medium"
-                  >
-                    Status
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                  </Button>
-                </TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedLabour.length > 0 ? (
-                paginatedLabour.map((labour) => (
-                  <TableRow
-                    key={labour.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => viewLabourDetails(labour.id)}
-                  >
-                    <TableCell>
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={labour.photoUrl} alt={labour.name} />
-                        <AvatarFallback>{labour.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <span>{labour.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <span>{labour.phone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {labour.aadharNumber}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {labour.currentMemberId
-                        ? getMemberNameById(labour.currentMemberId)
-                        : "Not Assigned"}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge
-                        variant={
-                          labour.status === "active"
-                            ? "default"
-                            : labour.status === "bench"
-                            ? "secondary"
-                            : "destructive"
-                        }
-                      >
-                        {labour.status.charAt(0).toUpperCase() +
-                          labour.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          asChild
-                          onClick={(e) => e.stopPropagation()}
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+              <p className="text-muted-foreground">Loading labour data...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <p className="text-destructive mb-2">{error}</p>
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+            </div>
+          </div>
+        ) : hasLoaded && (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Photo</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("fullName")}
+                      className="flex items-center p-0 h-auto font-medium"
+                    >
+                      Name
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("phoneNumber")}
+                      className="flex items-center p-0 h-auto font-medium"
+                    >
+                      Phone
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Aadhar Number
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("assignedTo")}
+                      className="flex items-center p-0 h-auto font-medium"
+                    >
+                      Assigned To
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSort("labourStatus")}
+                      className="flex items-center p-0 h-auto font-medium"
+                    >
+                      Status
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedLabour.length > 0 ? (
+                  paginatedLabour.map((labour) => (
+                    <TableRow
+                      key={labour.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => viewLabourDetails(labour.id)}
+                    >
+                      <TableCell>
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage 
+                            src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath}`} 
+                            alt={labour.fullName} 
+                            onError={(e) => {
+                              e.currentTarget.src = "/placeholder.svg";
+                            }}
+                          />
+                          <AvatarFallback>{labour.fullName?.charAt(0) || "?"}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <span>{labour.fullName || "N/A"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <span>{labour.phoneNumber || "N/A"}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {labour.aadharNumber || "N/A"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {labour.labourAssignedTo?.firmName || "Not Assigned"}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge
+                          variant={
+                            labour.labourStatus === "ACTIVE"
+                              ? "default"
+                              : labour.labourStatus === "BENCH"
+                              ? "secondary"
+                              : "destructive"
+                          }
                         >
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              viewLabourDetails(labour.id);
-                            }}
+                          {labour.labourStatus?.charAt(0).toUpperCase() +
+                            labour.labourStatus?.slice(1).toLowerCase() || "Unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            asChild
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              editLabour(labour.id);
-                            }}
-                          >
-                            Edit Labour
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteLabour(labour.id);
-                            }}
-                          >
-                            Delete Labour
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                viewLabourDetails(labour.labourId);
+                              }}
+                            >
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editLabour(labour.labourId);
+                              }}
+                            >
+                              Edit Labour
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteLabour(labour.labourId);
+                              }}
+                              disabled={isDeleting === labour.labourId}
+                            >
+                              {isDeleting === labour.labourId ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete Labour"
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      No labour records found.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    No labour records found.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {paginatedLabour.length} of {sortedLabour.length} records
-          </p>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <div className="flex items-center justify-center text-sm font-medium">
-              Page {currentPage} of {totalPages || 1}
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages || totalPages === 0}
-            >
-              Next
-            </Button>
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </div>
+        )}
+
+        {hasLoaded && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {paginatedLabour.length} of {sortedLabour.length} records
+            </p>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <div className="flex items-center justify-center text-sm font-medium">
+                Page {currentPage} of {totalPages || 1}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages || totalPages === 0}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

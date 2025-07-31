@@ -46,7 +46,8 @@ export default function Step2OperationDetails() {
     }
     currentBranches[branchIndex].machinery.push({
       type: "",
-      customName: "",
+      machineName: "",
+      isOther: false,
       quantity: "",
     });
     setValue("branchDetails.branches", [...currentBranches]);
@@ -84,6 +85,25 @@ export default function Step2OperationDetails() {
     setValue("branchDetails.branches", [...currentBranches]);
   };
 
+  // Function to add a new machinery to electrical details
+  const addMainMachinery = () => {
+    const currentMachinery = getValues("electricalDetails.machinery") || [];
+    currentMachinery.push({
+      type: "",
+      machineName: "",
+      isOther: false,
+      quantity: "",
+    });
+    setValue("electricalDetails.machinery", [...currentMachinery]);
+  };
+
+  // Function to remove a machinery from electrical details
+  const removeMainMachinery = (machineryIndex: number) => {
+    const currentMachinery = getValues("electricalDetails.machinery") || [];
+    currentMachinery.splice(machineryIndex, 1);
+    setValue("electricalDetails.machinery", [...currentMachinery]);
+  };
+
   return (
     <div className="space-y-8">
       {/* Section 1: Electrical & Power Details */}
@@ -109,6 +129,140 @@ export default function Step2OperationDetails() {
               </FormItem>
             )}
           />
+        </div>
+
+        {/* Main Machinery Section */}
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-base font-medium">Main Machinery Information</h4>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addMainMachinery}
+            >
+              <Plus className="h-4 w-4 mr-2" /> Add Machine
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            {(getValues("electricalDetails.machinery") || []).map((machine: any, machineryIndex: number) => (
+              <Card key={machineryIndex}>
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={control}
+                      name={`electricalDetails.machinery.${machineryIndex}.type`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Machine Type</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Update isOther based on selection
+                              const isOther = value === "Others";
+                              setValue(
+                                `electricalDetails.machinery.${machineryIndex}.isOther`,
+                                isOther
+                              );
+                              // Clear machineName if not "Others"
+                              if (!isOther) {
+                                setValue(
+                                  `electricalDetails.machinery.${machineryIndex}.machineName`,
+                                  ""
+                                );
+                              }
+                            }}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select machine type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="High Polish">
+                                High Polish
+                              </SelectItem>
+                              <SelectItem value="Slice">
+                                Slice
+                              </SelectItem>
+                              <SelectItem value="Cutting">
+                                Cutting
+                              </SelectItem>
+                              <SelectItem value="Others">
+                                Others
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {(watch(
+                      `electricalDetails.machinery.${machineryIndex}.type`
+                    ) === "Others" || 
+                    getValues(
+                      `electricalDetails.machinery.${machineryIndex}.isOther`
+                    )) && (
+                      <FormField
+                        control={control}
+                        name={`electricalDetails.machinery.${machineryIndex}.machineName`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Machine Name</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter machine name"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={control}
+                      name={`electricalDetails.machinery.${machineryIndex}.quantity`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Enter quantity"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-4 text-destructive"
+                    onClick={() => removeMainMachinery(machineryIndex)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Remove
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+
+            {(!getValues("electricalDetails.machinery") ||
+              getValues("electricalDetails.machinery").length === 0) && (
+              <p className="text-sm text-muted-foreground">
+                No machinery added yet. Click the button above to add machinery.
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -314,7 +468,22 @@ export default function Step2OperationDetails() {
                                     <FormItem>
                                       <FormLabel>Machine Type</FormLabel>
                                       <Select
-                                        onValueChange={field.onChange}
+                                        onValueChange={(value) => {
+                                          field.onChange(value);
+                                          // Update isOther based on selection
+                                          const isOther = value === "Others";
+                                          setValue(
+                                            `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.isOther`,
+                                            isOther
+                                          );
+                                          // Clear machineName if not "Others"
+                                          if (!isOther) {
+                                            setValue(
+                                              `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.machineName`,
+                                              ""
+                                            );
+                                          }
+                                        }}
                                         defaultValue={field.value}
                                       >
                                         <FormControl>
@@ -342,12 +511,15 @@ export default function Step2OperationDetails() {
                                   )}
                                 />
 
-                                {watch(
+                                {(watch(
                                   `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.type`
-                                ) === "Others" && (
+                                ) === "Others" || 
+                                getValues(
+                                  `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.isOther`
+                                )) && (
                                   <FormField
                                     control={control}
-                                    name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.customName`}
+                                    name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.machineName`}
                                     render={({ field }) => (
                                       <FormItem>
                                         <FormLabel>Machine Name</FormLabel>

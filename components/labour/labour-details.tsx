@@ -1,6 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 import {
   Calendar,
   Phone,
@@ -10,6 +13,10 @@ import {
   ArrowLeft,
   MapPin,
   FileText,
+  Plus,
+  Trash2,
+  Download,
+  Edit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,22 +37,244 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { type Labour, getMemberNameById } from "@/data/labour";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FileUpload } from "@/components/ui/file-upload";
+import { useToast } from "@/hooks/use-toast";
+import { uploadFile } from "@/lib/client-file-upload";
 import Link from "next/link";
 
 interface LabourDetailsProps {
-  labour: Labour;
+  labour: any;
+  refetchLabour?: () => Promise<void>;
 }
 
-export default function LabourDetails({ labour }: LabourDetailsProps) {
+export default function LabourDetails({ labour, refetchLabour }: LabourDetailsProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const { toast } = useToast();
+
+  // Debug: Log labour data structure
+  useEffect(() => {
+    console.log("Labour data:", labour);
+    console.log("Additional documents:", labour?.laboursAdditionalDocs);
+  }, [labour]);
+
+  // Document management state
+  const [showDocDialog, setShowDocDialog] = useState(false);
+  const [editDoc, setEditDoc] = useState<any>(null);
+  const [editPrimaryDoc, setEditPrimaryDoc] = useState<{type: string, path: string} | null>(null);
+  const [docName, setDocName] = useState("");
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState("");
+  const [filePathForUpload, setFilePathForUpload] = useState<string | null>(null);
 
   const handleEdit = () => {
-    router.push(`/admin/labour/${labour.id}/edit`);
+    router.push(`/admin/labour/${labour.labourId}/edit`);
   };
 
   const handleBack = () => {
     router.push("/admin/labour");
+  };
+
+  // Add or Edit Document
+  const handleDocSubmit = async () => {
+    setDocLoading(true);
+    setDocError("");
+    try {
+      let filePath = editDoc?.documentPath || "";
+      if (docFile) {
+        const upload = await uploadFile(docFile, "documents");
+        if (!upload.success || !upload.filePath) {
+          setDocError(upload.error || "File upload failed");
+          setDocLoading(false);
+          return;
+        }
+        filePath = upload.filePath;
+      }
+
+      let payload: any = { labourId: labour.labourId };
+
+      if (editPrimaryDoc) {
+        // Editing primary document (photo or aadhar)
+        if (editPrimaryDoc.type === "photo") {
+          payload.photoPath = filePath;
+        } else if (editPrimaryDoc.type === "aadhar") {
+          payload.aadharPath = filePath;
+        }
+      } else if (editDoc) {
+        // Editing additional document
+        payload.updateAdditionalDocs = [{
+          id: editDoc.id,
+          docName: docName,
+          docFilePath: filePath,
+        }];
+      } else {
+        // Adding new additional document
+        payload.newAdditionalDocs = [{
+          docName: docName,
+          docFilePath: filePath,
+        }];
+      }
+
+      if (!session?.user.token) throw new Error("No auth token");
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Failed to update labour document");
+      }
+
+      setShowDocDialog(false);
+      setEditPrimaryDoc(null);
+      toast({ 
+        title: editDoc || editPrimaryDoc ? "Document updated" : "Document added", 
+        description: `The document was successfully ${editDoc || editPrimaryDoc ? "updated" : "added"}.`, 
+        variant: "default" 
+      });
+      
+      if (refetchLabour) {
+        await refetchLabour();
+      }
+    } catch (err: any) {
+      setDocError(err.message || "Failed to update document");
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to update document", 
+        variant: "destructive" 
+      });
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  // Delete Document
+  const handleDeleteDoc = async (doc: any) => {
+    if (!window.confirm("Are you sure you want to delete this document?")) return;
+    
+    setDocLoading(true);
+    setDocError("");
+    
+    if (!session?.user.token) {
+      toast({ 
+        title: "Error", 
+        description: "No auth token found. Please login again.", 
+        variant: "destructive" 
+      });
+      setDocLoading(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        labourId: labour.labourId,
+        deleteAdditionalDocs: [{ id: doc.id }]
+      };
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Failed to delete document");
+      }
+
+      toast({ 
+        title: "Document deleted", 
+        description: "The document was successfully deleted.", 
+        variant: "default" 
+      });
+      
+      if (refetchLabour) {
+        await refetchLabour();
+      }
+    } catch (err: any) {
+      setDocError(err.message || "Failed to delete document");
+      toast({ 
+        title: "Error", 
+        description: err.message || "Failed to delete document", 
+        variant: "destructive" 
+      });
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  const openAddDoc = () => {
+    setEditDoc(null);
+    setEditPrimaryDoc(null);
+    setDocName("");
+    setDocFile(null);
+    setFilePathForUpload(null);
+    setShowDocDialog(true);
+  };
+
+  const openEditDoc = (doc: any) => {
+    console.log("Editing document:", doc);
+    setEditDoc(doc);
+    setEditPrimaryDoc(null);
+    // Try different possible field names for document name
+    const docName = doc.documentName || doc.docName || doc.name || "";
+    setDocName(docName);
+    setDocFile(null);
+    // Try different possible field names for document path
+    const docPath = doc.documentPath || doc.docFilePath || doc.filePath || doc.path || "";
+    setFilePathForUpload(docPath || null);
+    setShowDocDialog(true);
+  };
+
+  const openEditPrimaryDoc = (type: string, path: string) => {
+    setEditPrimaryDoc({ type, path });
+    setEditDoc(null);
+    setDocName(type === "photo" ? "Photo" : "Aadhar Card");
+    setDocFile(null);
+    setFilePathForUpload(path || null);
+    setShowDocDialog(true);
+  };
+
+  const closeDocDialog = () => {
+    setShowDocDialog(false);
+    setEditDoc(null);
+    setEditPrimaryDoc(null);
+  };
+
+  // Helper for pretty date
+  const prettyDate = (dateStr?: string) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   };
 
   return (
@@ -57,7 +286,7 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
           </Button>
           <h1 className="text-2xl font-bold">Labour Details</h1>
         </div>
-        <Link href={`/admin/labour/${labour.id}/edit`}>
+        <Link href={`/admin/labour/${labour.labourId}/edit`}>
           <Button>
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
@@ -68,31 +297,32 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
         <Card>
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={labour.photoUrl} alt={labour.name} />
-              <AvatarFallback>{labour.name.charAt(0)}</AvatarFallback>
+              <AvatarImage 
+                src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath}`} 
+                alt={labour.fullName} 
+              />
+              <AvatarFallback>{labour.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div>
                 <div className="flex items-center gap-2">
-                  <CardTitle className="text-2xl">{labour.name}</CardTitle>
+                  <CardTitle className="text-2xl">{labour.fullName}</CardTitle>
                   <Badge
                     variant={
-                      labour.status === "active"
+                      labour.labourStatus === "ACTIVE"
                         ? "default"
-                        : labour.status === "bench"
+                        : labour.labourStatus === "BENCH"
                         ? "secondary"
                         : "destructive"
                     }
                   >
-                    {labour.status.charAt(0).toUpperCase() +
-                      labour.status.slice(1)}
+                    {labour.labourStatus?.charAt(0).toUpperCase() +
+                      labour.labourStatus?.slice(1).toLowerCase()}
                   </Badge>
                 </div>
                 <CardDescription>
-                  {labour.currentMemberId
-                    ? `Currently working at ${getMemberNameById(
-                        labour.currentMemberId
-                      )}`
+                  {labour.labourAssignedTo?.firmName
+                    ? `Currently working at ${labour.labourAssignedTo.firmName}`
                     : "Not currently assigned"}
                 </CardDescription>
               </div>
@@ -109,17 +339,17 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>
                     Date of Birth:{" "}
-                    {new Date(labour.dateOfBirth).toLocaleDateString()}
+                    {labour.dob ? new Date(labour.dob).toLocaleDateString() : "Not provided"}
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span>Phone: {labour.phone}</span>
+                  <span>Phone: {labour.phoneNumber}</span>
                 </div>
-                {labour.email && (
+                {labour.emailId && (
                   <div className="flex items-center space-x-2">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>Email: {labour.email}</span>
+                    <span>Email: {labour.emailId}</span>
                   </div>
                 )}
               </div>
@@ -140,18 +370,10 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                     <span>ESI Number: {labour.esiNumber}</span>
                   </div>
                 )}
-                {labour.employedFrom && (
+                {labour.eShramId && (
                   <div className="flex items-center space-x-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      Employed From:{" "}
-                      {new Date(labour.employedFrom).toLocaleDateString()}
-                      {labour.employedTo
-                        ? ` to ${new Date(
-                            labour.employedTo
-                          ).toLocaleDateString()}`
-                        : " (Current)"}
-                    </span>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>E-Shram ID: {labour.eShramId}</span>
                   </div>
                 )}
               </div>
@@ -182,14 +404,15 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                       <TableHead>From Date</TableHead>
                       <TableHead>To Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Reason</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {labour.employmentHistory.length > 0 ? (
-                      labour.employmentHistory.map((employment) => (
-                        <TableRow key={employment.id}>
+                    {labour.LabourHistory && labour.LabourHistory.length > 0 ? (
+                      labour.LabourHistory.map((employment: any) => (
+                        <TableRow key={employment.Id}>
                           <TableCell className="font-medium">
-                            {employment.memberName}
+                            {employment.assignedTo}
                           </TableCell>
                           <TableCell>
                             {new Date(employment.fromDate).toLocaleDateString()}
@@ -202,23 +425,26 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                           <TableCell>
                             <Badge
                               variant={
-                                employment.status === "active"
+                                employment.labourStatus === "ACTIVE"
                                   ? "default"
-                                  : employment.status === "bench"
+                                  : employment.labourStatus === "BENCH"
                                   ? "secondary"
                                   : "destructive"
                               }
                             >
-                              {employment.status.charAt(0).toUpperCase() +
-                                employment.status.slice(1)}
+                              {employment.labourStatus?.charAt(0).toUpperCase() +
+                                employment.labourStatus?.slice(1).toLowerCase()}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {employment.reasonForTransfer || "N/A"}
                           </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell
-                          colSpan={4}
+                          colSpan={5}
                           className="text-center py-4 text-muted-foreground"
                         >
                           No employment history found
@@ -246,7 +472,7 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                       <MapPin className="mr-2 h-4 w-4" /> Permanent Address
                     </h3>
                     <p className="text-muted-foreground">
-                      {labour.permanentAddress}
+                      {labour.permanentAddress || "Not provided"}
                     </p>
                   </div>
                   <div>
@@ -254,7 +480,7 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
                       <MapPin className="mr-2 h-4 w-4" /> Present Address
                     </h3>
                     <p className="text-muted-foreground">
-                      {labour.presentAddress}
+                      {labour.presentAddress || "Not provided"}
                     </p>
                   </div>
                 </div>
@@ -264,69 +490,199 @@ export default function LabourDetails({ labour }: LabourDetailsProps) {
 
           <TabsContent value="documents">
             <Card>
-              <CardHeader>
-                <CardTitle>Documents</CardTitle>
-                <CardDescription>
-                  Uploaded documents and identification
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Documents</CardTitle>
+                  <CardDescription>
+                    All uploaded documents and identification
+                  </CardDescription>
+                </div>
+                <Button onClick={openAddDoc}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Document
+                </Button>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div>
-                      <h3 className="font-medium mb-2">Aadhar Card</h3>
-                      <div className="border rounded-md p-2">
-                        <img
-                          src={labour.aadharCardUrl || "/placeholder.svg"}
-                          alt="Aadhar Card"
-                          className="w-full h-auto max-h-48 object-contain"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Photo</h3>
-                      <div className="border rounded-md p-2">
-                        <img
-                          src={labour.photoUrl || "/placeholder.svg"}
-                          alt="Photo"
-                          className="w-full h-auto max-h-48 object-contain"
-                        />
-                      </div>
-                    </div>
+                  {/* Primary Documents */}
+                  <div>
+                    <h3 className="font-medium mb-4">Primary Documents</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Document Name</TableHead>
+                          <TableHead>File Path</TableHead>
+                          <TableHead>Upload Date</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {/* Photo */}
+                        <TableRow>
+                          <TableCell className="font-medium">Photo</TableCell>
+                          <TableCell>{labour.photoPath || "-"}</TableCell>
+                          <TableCell>{labour.createdAt ? prettyDate(labour.createdAt) : "-"}</TableCell>
+                          <TableCell className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => openEditPrimaryDoc("photo", labour.photoPath)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath}`, '_blank')}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {/* Aadhar Card */}
+                        <TableRow>
+                          <TableCell className="font-medium">Aadhar Card</TableCell>
+                          <TableCell>{labour.aadharPath || "-"}</TableCell>
+                          <TableCell>{labour.createdAt ? prettyDate(labour.createdAt) : "-"}</TableCell>
+                          <TableCell className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => openEditPrimaryDoc("aadhar", labour.aadharPath)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.aadharPath}`, '_blank')}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
                   </div>
 
-                  {labour.additionalDocuments.length > 0 && (
-                    <div>
-                      <h3 className="font-medium mb-4">Additional Documents</h3>
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {labour.additionalDocuments.map((doc) => (
-                          <Card key={doc.id}>
-                            <CardHeader className="pb-2">
-                              <CardTitle className="text-base">
-                                {doc.name}
-                              </CardTitle>
-                              <CardDescription>
-                                Uploaded on:{" "}
-                                {new Date(doc.uploadDate).toLocaleDateString()}
-                              </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                              <div className="border rounded-md p-2">
-                                <img
-                                  src={doc.documentUrl || "/placeholder.svg"}
-                                  alt={doc.name}
-                                  className="w-full h-auto max-h-32 object-contain"
-                                />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
+                  {/* Additional Documents */}
+                  <div>
+                    <h3 className="font-medium mb-4">Additional Documents</h3>
+                    {labour.laboursAdditionalDocs && labour.laboursAdditionalDocs.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Document Name</TableHead>
+                            <TableHead>File Path</TableHead>
+                            <TableHead>Upload Date</TableHead>
+                            <TableHead>Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {labour.laboursAdditionalDocs.map((doc: any) => {
+                            console.log("Document data:", doc);
+                            // Try different possible field names for document name
+                            const docName = doc.documentName || doc.docName || doc.name || "Document";
+                            // Try different possible field names for document path
+                            const docPath = doc.documentPath || doc.docFilePath || doc.filePath || doc.path || "-";
+                            return (
+                              <TableRow key={doc.id}>
+                                <TableCell className="font-medium">
+                                  {docName}
+                                </TableCell>
+                                <TableCell>{docPath}</TableCell>
+                                <TableCell>
+                                  {doc.createdAt ? prettyDate(doc.createdAt) : "-"}
+                                </TableCell>
+                                <TableCell className="flex gap-2">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    onClick={() => openEditDoc(doc)}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    onClick={() => handleDeleteDoc(doc)} 
+                                    disabled={docLoading}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${docPath}`, '_blank')}
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No additional documents uploaded yet.</p>
+                        <p className="text-sm">Click "Add Document" to upload additional files.</p>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Add/Edit Document Dialog */}
+            <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editDoc || editPrimaryDoc ? "Edit Document" : "Add Document"}</DialogTitle>
+                  <DialogDescription>
+                    {editDoc || editPrimaryDoc ? "Update the document information" : "Upload a new document for this labour"}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {!editPrimaryDoc && (
+                    <div>
+                      <Label htmlFor="docName">Document Name</Label>
+                      <Input
+                        id="docName"
+                        value={docName}
+                        onChange={(e) => setDocName(e.target.value)}
+                        placeholder="Enter document name"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <Label>File</Label>
+                    <FileUpload
+                      onFileSelect={setDocFile}
+                      onUploadComplete={() => {}}
+                      onUploadError={setDocError}
+                      subfolder={editPrimaryDoc?.type === "photo" ? "photos" : "documents"}
+                      accept={editPrimaryDoc?.type === "photo" ? ".jpg,.jpeg,.png" : ".pdf,.jpg,.jpeg,.png"}
+                      existingFilePath={filePathForUpload ?? undefined}
+                      onDownload={filePath => window.open(filePath, '_blank')}
+                      onRemoveFile={() => setFilePathForUpload(null)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleDocSubmit} disabled={docLoading}>
+                    {editDoc || editPrimaryDoc ? "Save Changes" : "Add Document"}
+                  </Button>
+                </DialogFooter>
+                {docError && (
+                  <div className="text-red-500 text-sm mt-2">{docError}</div>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
         </Tabs>
       </div>

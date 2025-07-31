@@ -15,29 +15,30 @@ export default function MembershipDetailsWrapper({ id }: { id: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      if (status === "authenticated" && session?.user?.token) {
-        try {
-          const response = await axios.get(
-            `${process.env.BACKEND_API_URL}/api/member/get_member/${id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${session.user.token}`,
-              },
-            }
-          );
-          setMemberData(response.data);
-        } catch (err: any) {
-          console.error("Error fetching member data:", err);
-          setError("Failed to load member data");
-        } finally {
-          setIsLoading(false);
-        }
+  const fetchMemberData = async () => {
+    if (status === "authenticated" && session?.user?.token) {
+      try {
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/member/get_member/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        setMemberData(response.data);
+      } catch (err: any) {
+        console.error("Error fetching member data:", err);
+        setError("Failed to load member data");
+      } finally {
+        setIsLoading(false);
       }
-    };
+    }
+  };
 
-    fetchData();
+  useEffect(() => {
+    fetchMemberData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, session, id]);
 
   // Render loading state
@@ -88,7 +89,7 @@ export default function MembershipDetailsWrapper({ id }: { id: string }) {
       <Header breadcrumbs={[{ label: id }]} />
       <div className="flex flex-1 flex-col gap-4">
         <div>
-          <MembershipDetailsClient member={memberData} />
+          <MembershipDetailsClient member={memberData} refetchMember={fetchMemberData} />
         </div>
       </div>
     </SidebarInset>
