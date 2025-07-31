@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "../ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { FileUpload } from "@/components/ui/file-upload";
+import { downloadFile } from "@/lib/client-file-upload";
 
 interface Step4MembershipDocsProps {
   isEditMode?: boolean;
@@ -32,15 +33,29 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
     name: "documentDetails.additionalAttachments",
   });
 
-  const handleDownload = (filePath: string) => {
-    // Use the download API endpoint
-    const downloadUrl = `/api/download?path=${encodeURIComponent(filePath)}`;
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = filePath.split('/').pop() || 'download';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (filePath: string) => {
+    try {
+      // Extract filename from path
+      const filename = filePath.split('/').pop() || 'document';
+      console.log('Downloading file:', filename, 'from path:', filePath);
+      
+      const blob = await downloadFile(filename);
+      if (blob) {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Download failed: Could not get file blob');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+    }
   };
 
   return (

@@ -55,6 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FileUpload } from "@/components/ui/file-upload";
+import { downloadFile } from "@/lib/client-file-upload";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/lib/client-file-upload";
 import Link from "next/link";
@@ -275,6 +276,32 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
     if (!dateStr) return "-";
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  // Download function
+  const handleDownloadFile = async (filePath: string) => {
+    try {
+      // Extract filename from path
+      const filename = filePath.split('/').pop() || 'document';
+      console.log('Downloading file:', filename, 'from path:', filePath);
+      
+      const blob = await downloadFile(filename);
+      if (blob) {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Download failed: Could not get file blob');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+    }
   };
 
   return (
@@ -613,7 +640,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                                   <Button 
                                     variant="outline" 
                                     size="sm"
-                                    onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${docPath}`, '_blank')}
+                                    onClick={() => handleDownloadFile(docPath)}
                                   >
                                     <Download className="h-4 w-4" />
                                   </Button>
@@ -665,7 +692,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                       subfolder={editPrimaryDoc?.type === "photo" ? "photos" : "documents"}
                       accept={editPrimaryDoc?.type === "photo" ? ".jpg,.jpeg,.png" : ".pdf,.jpg,.jpeg,.png"}
                       existingFilePath={filePathForUpload ?? undefined}
-                      onDownload={filePath => window.open(filePath, '_blank')}
+                      onDownload={handleDownloadFile}
                       onRemoveFile={() => setFilePathForUpload(null)}
                     />
                   </div>

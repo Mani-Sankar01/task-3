@@ -4,7 +4,7 @@ import React, { useState, useId } from 'react';
 import { Upload, X, Check, AlertCircle, Download } from 'lucide-react';
 import { Button } from './button';
 import { Progress } from './progress';
-import { validateFile, uploadFileWithProgress } from '@/lib/client-file-upload';
+import { validateFile, uploadFileWithProgress, downloadFile } from '@/lib/client-file-upload';
 
 interface FileUploadProps {
   onFileSelect: (file: File | null) => void;
@@ -97,18 +97,32 @@ export function FileUpload({
     if (typeof onRemoveFile === 'function') onRemoveFile();
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (existingFilePath && onDownload) {
       onDownload(existingFilePath);
     } else if (existingFilePath) {
-      // Use the download API endpoint
-      const downloadUrl = `/api/download?path=${encodeURIComponent(existingFilePath)}`;
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = existingFilePath.split('/').pop() || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        // Extract filename from path
+        const filename = existingFilePath.split('/').pop() || 'download';
+        console.log('Downloading file:', filename, 'from path:', existingFilePath);
+        
+        const blob = await downloadFile(filename);
+        if (blob) {
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+        } else {
+          console.error('Download failed: Could not get file blob');
+        }
+      } catch (error) {
+        console.error('Download error:', error);
+      }
     }
   };
 

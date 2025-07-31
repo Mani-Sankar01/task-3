@@ -56,7 +56,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { updateMember, type Member, Attachment } from "@/services/api";
 import { useForm } from "react-hook-form";
-import { uploadFile } from "@/lib/client-file-upload";
+import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 import { getAuthToken } from "@/services/api";
 import axios from "axios";
 import { useSession } from "next-auth/react";
@@ -340,6 +340,52 @@ export default function MembershipDetailsClient({
     if (!dateStr) return "-";
     const d = new Date(dateStr);
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  };
+
+  // Download functions
+  const handleDownloadDocument = async (filePath: string) => {
+    try {
+      // Extract filename from path
+      const filename = filePath.split('/').pop() || 'document';
+      console.log('Downloading file:', filename, 'from path:', filePath);
+      
+      const blob = await downloadFile(filename);
+      if (blob) {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Download Successful",
+          description: `File ${filename} downloaded successfully.`,
+        });
+      } else {
+        toast({
+          title: "Download Failed",
+          description: "Could not download the file. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "An error occurred while downloading the file.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadAttachment = async (attachment: Attachment) => {
+    if (attachment.documentPath) {
+      await handleDownloadDocument(attachment.documentPath);
+    }
   };
 
   // License Management
@@ -1092,7 +1138,7 @@ export default function MembershipDetailsClient({
                       <TableCell className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteDoc(attachment)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm"><Download className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1132,7 +1178,7 @@ export default function MembershipDetailsClient({
                   subfolder="documents"
                   accept=".pdf,.jpg,.jpeg,.png"
                   existingFilePath={filePathForUpload ?? undefined}
-                  onDownload={filePath => window.open(filePath, '_blank')}
+                  onDownload={filePath => handleDownloadDocument(filePath)}
                   onRemoveFile={() => setFilePathForUpload(null)}
                 />
                 <div>
@@ -1296,7 +1342,7 @@ export default function MembershipDetailsClient({
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteLicense(doc.type)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm"><Download className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1321,7 +1367,7 @@ export default function MembershipDetailsClient({
                   subfolder="documents"
                   accept=".pdf,.jpg,.jpeg,.png"
                   existingFilePath={editLicenseFilePath ?? undefined}
-                  onDownload={filePath => window.open(filePath, '_blank')}
+                  onDownload={filePath => handleDownloadDocument(filePath)}
                   onRemoveFile={() => setEditLicenseFilePath(null)}
                 />
                 <Label>Expiry Date</Label>

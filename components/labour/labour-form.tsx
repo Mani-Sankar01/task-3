@@ -43,7 +43,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { FileUpload } from "@/components/ui/file-upload";
 import PopupMessage from "@/components/ui/popup-message";
-import { uploadFile } from "@/lib/client-file-upload";
+import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -449,6 +449,32 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     router.refresh();
   };
 
+  // Download function
+  const handleDownloadFile = async (filePath: string) => {
+    try {
+      // Extract filename from path
+      const filename = filePath.split('/').pop() || 'document';
+      console.log('Downloading file:', filename, 'from path:', filePath);
+      
+      const blob = await downloadFile(filename);
+      if (blob) {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Download failed: Could not get file blob');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+    }
+  };
+
   return (
     <div className="container">
       <Card>
@@ -767,6 +793,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         form.setValue("photoPath", path);
                       }}
                       onUploadError={setPhotoError}
+                      onDownload={handleDownloadFile}
                       onRemoveFile={() => {
                         setPhotoFile(null);
                         setPhotoPath("");
@@ -789,6 +816,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         form.setValue("aadharPath", path);
                       }}
                       onUploadError={setAadharError}
+                      onDownload={handleDownloadFile}
                       onRemoveFile={() => {
                         setAadharFile(null);
                         setAadharPath("");
@@ -857,6 +885,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                             onUploadError={(error) => {
                               console.error("Upload error:", error);
                             }}
+                            onDownload={handleDownloadFile}
                             onRemoveFile={() => {
                               form.setValue(`additionalDocs.${index}.docFilePath`, "");
                             }}

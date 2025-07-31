@@ -48,7 +48,7 @@ export function validateFile(file: File): FileValidationResult {
 }
 
 /**
- * Uploads a file using the API route
+ * Uploads a file using the external Node.js file upload API
  */
 export async function uploadFile(file: File, subfolder: string = ''): Promise<FileUploadResult> {
   try {
@@ -64,13 +64,17 @@ export async function uploadFile(file: File, subfolder: string = ''): Promise<Fi
     // Create FormData
     const formData = new FormData();
     formData.append('file', file);
-    if (subfolder) {
-      formData.append('subfolder', subfolder);
-    }
 
-    // Upload file
-    const response = await fetch('/api/upload', {
+    // Get the API URL from environment variable or use production default
+    const apiUrl = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online';
+    const apiToken = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024';
+
+    // Upload file to external API
+    const response = await fetch(`${apiUrl}/upload`, {
       method: 'POST',
+      headers: {
+        'x-api-token': apiToken,
+      },
       body: formData,
     });
 
@@ -78,15 +82,17 @@ export async function uploadFile(file: File, subfolder: string = ''): Promise<Fi
       const errorData = await response.json();
       return {
         success: false,
-        error: errorData.error || 'Upload failed'
+        error: errorData.error || errorData.message || 'Upload failed'
       };
     }
 
     const result = await response.json();
+    
+    // Return the file path from the external API response
     return {
       success: true,
-      filePath: result.filePath,
-      fileName: result.fileName
+      filePath: result.file?.filePath || result.filePath,
+      fileName: result.file?.filename || result.fileName
     };
 
   } catch (error) {
@@ -99,7 +105,7 @@ export async function uploadFile(file: File, subfolder: string = ''): Promise<Fi
 }
 
 /**
- * Uploads a file with progress tracking
+ * Uploads a file with progress tracking using the external Node.js file upload API
  */
 export async function uploadFileWithProgress(
   file: File, 
@@ -119,9 +125,10 @@ export async function uploadFileWithProgress(
     // Create FormData
     const formData = new FormData();
     formData.append('file', file);
-    if (subfolder) {
-      formData.append('subfolder', subfolder);
-    }
+
+    // Get the API URL from environment variable or use production default
+    const apiUrl = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online';
+    const apiToken = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024';
 
     // Upload with progress tracking using XMLHttpRequest
     return new Promise((resolve) => {
@@ -140,8 +147,8 @@ export async function uploadFileWithProgress(
             const result = JSON.parse(xhr.responseText);
             resolve({
               success: true,
-              filePath: result.filePath,
-              fileName: result.fileName
+              filePath: result.file?.filePath || result.filePath,
+              fileName: result.file?.filename || result.fileName
             });
           } catch (error) {
             resolve({
@@ -154,7 +161,7 @@ export async function uploadFileWithProgress(
             const errorData = JSON.parse(xhr.responseText);
             resolve({
               success: false,
-              error: errorData.error || 'Upload failed'
+              error: errorData.error || errorData.message || 'Upload failed'
             });
           } catch (error) {
             resolve({
@@ -172,7 +179,8 @@ export async function uploadFileWithProgress(
         });
       });
 
-      xhr.open('POST', '/api/upload');
+      xhr.open('POST', `${apiUrl}/upload`);
+      xhr.setRequestHeader('x-api-token', apiToken);
       xhr.send(formData);
     });
 
@@ -202,4 +210,84 @@ export function formatFileSize(bytes: number): string {
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * Downloads a file from the external API
+ */
+export async function downloadFile(filename: string): Promise<Blob | null> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online';
+    const apiToken = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024';
+
+    const response = await fetch(`${apiUrl}/download/${filename}`, {
+      headers: {
+        'x-api-token': apiToken,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Download failed:', response.statusText);
+      return null;
+    }
+
+    return await response.blob();
+  } catch (error) {
+    console.error('Download error:', error);
+    return null;
+  }
+}
+
+/**
+ * Deletes a file from the external API
+ */
+export async function deleteFile(filename: string): Promise<boolean> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online';
+    const apiToken = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024';
+
+    const response = await fetch(`${apiUrl}/delete/${filename}`, {
+      method: 'DELETE',
+      headers: {
+        'x-api-token': apiToken,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Delete failed:', response.statusText);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Delete error:', error);
+    return false;
+  }
+}
+
+/**
+ * Lists all files from the external API
+ */
+export async function listFiles(): Promise<any[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online';
+    const apiToken = process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024';
+
+    const response = await fetch(`${apiUrl}/files`, {
+      headers: {
+        'x-api-token': apiToken,
+      },
+    });
+
+    if (!response.ok) {
+      console.error('List files failed:', response.statusText);
+      return [];
+    }
+
+    const result = await response.json();
+    return result.files || [];
+  } catch (error) {
+    console.error('List files error:', error);
+    return [];
+  }
 } 
