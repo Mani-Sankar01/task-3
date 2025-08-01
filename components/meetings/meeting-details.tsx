@@ -180,7 +180,10 @@ export default function MeetingDetails({ meeting }: MeetingDetailsProps) {
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium">
-                          {new Date(followUp.date).toLocaleDateString()}
+                          {followUp.date && !isNaN(new Date(followUp.date).getTime()) 
+                            ? new Date(followUp.date).toLocaleDateString()
+                            : "Invalid Date"
+                          }
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {followUp.time}

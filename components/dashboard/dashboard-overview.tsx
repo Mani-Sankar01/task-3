@@ -358,7 +358,7 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-destructive">
-                  ₹{dashboardData.membershipFeesDue.reduce((sum, fee) => sum + fee.amount, 0).toLocaleString()}
+                  ₹{dashboardData.membershipFeesDue.reduce((sum, fee) => sum + (fee.amount || 0), 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {dashboardData.membershipFeesDue.length} pending payments
@@ -384,12 +384,15 @@ export default function DashboardOverview() {
                         <div className="flex flex-col">
                           <span className="font-medium">{fee.memberName}</span>
                           <span className="text-sm text-muted-foreground">
-                            Due: {format(new Date(fee.dueDate), "MMM dd")}
+                            Due: {fee.dueDate && !isNaN(new Date(fee.dueDate).getTime()) 
+                              ? format(new Date(fee.dueDate), "MMM dd")
+                              : "Invalid Date"
+                            }
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold">
-                            ₹{fee.amount.toLocaleString()}
+                            ₹{(fee.amount || 0).toLocaleString()}
                           </span>
                           <Button
                             variant="ghost"
@@ -441,18 +444,22 @@ export default function DashboardOverview() {
                           <span className="font-medium">{license.documentName}</span>
                           <span className="text-sm text-muted-foreground">
                             {license.members.applicantName} • Expires:{" "}
-                            {format(new Date(license.expiredAt), "MMM dd")}
+                            {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) 
+                              ? format(new Date(license.expiredAt), "MMM dd")
+                              : "Invalid Date"
+                            }
                           </span>
                         </div>
                         <Badge
                           variant={
-                            new Date(license.expiredAt) <
-                            addDays(new Date(), 7)
+                            license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                            new Date(license.expiredAt) < addDays(new Date(), 7)
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {new Date(license.expiredAt) < addDays(new Date(), 7)
+                          {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                           new Date(license.expiredAt) < addDays(new Date(), 7)
                             ? "Urgent"
                             : "Soon"}
                         </Badge>
@@ -593,7 +600,10 @@ export default function DashboardOverview() {
                           </span>
                           <span className="text-sm text-muted-foreground">
                             {payment.vehicleId} • Due:{" "}
-                            {format(new Date(payment.tripDate), "MMM dd")}
+                            {payment.tripDate && !isNaN(new Date(payment.tripDate).getTime()) 
+                              ? format(new Date(payment.tripDate), "MMM dd")
+                              : "Invalid Date"
+                            }
                           </span>
                         </div>
                         <div className="text-right">
@@ -651,13 +661,19 @@ export default function DashboardOverview() {
                         <div className="flex flex-col">
                           <span className="font-medium">{fee.memberName}</span>
                           <span className="text-sm text-muted-foreground">
-                            Period: {format(new Date(fee.periodFrom), "MMM dd")}{" "}
-                            - {format(new Date(fee.periodTo), "MMM dd")}
+                            Period: {fee.periodFrom && !isNaN(new Date(fee.periodFrom).getTime()) 
+                              ? format(new Date(fee.periodFrom), "MMM dd")
+                              : "Invalid Date"
+                            }{" "}
+                            - {fee.periodTo && !isNaN(new Date(fee.periodTo).getTime()) 
+                              ? format(new Date(fee.periodTo), "MMM dd")
+                              : "Invalid Date"
+                            }
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold">
-                            ₹{fee.amount.toLocaleString()}
+                            ₹{(fee.amount || 0).toLocaleString()}
                           </span>
                           <Button
                             variant="outline"
@@ -717,18 +733,22 @@ export default function DashboardOverview() {
                           <span className="font-medium">{license.documentName}</span>
                           <span className="text-sm text-muted-foreground">
                             {license.members.applicantName} • Expires:{" "}
-                            {format(new Date(license.expiredAt), "MMM dd")}
+                            {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) 
+                              ? format(new Date(license.expiredAt), "MMM dd")
+                              : "Invalid Date"
+                            }
                           </span>
                         </div>
                         <Badge
                           variant={
-                            new Date(license.expiredAt) <
-                            addDays(new Date(), 7)
+                            license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                            new Date(license.expiredAt) < addDays(new Date(), 7)
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {new Date(license.expiredAt) < addDays(new Date(), 7)
+                          {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                           new Date(license.expiredAt) < addDays(new Date(), 7)
                             ? "Urgent"
                             : "Soon"}
                         </Badge>

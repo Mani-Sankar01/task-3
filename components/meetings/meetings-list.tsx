@@ -274,7 +274,10 @@ export default function MeetingsList() {
                         <div className="flex items-center">
                           <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                           <span>
-                            {new Date(meeting.date).toLocaleDateString()} at{" "}
+                            {meeting.date && !isNaN(new Date(meeting.date).getTime()) 
+                              ? new Date(meeting.date).toLocaleDateString()
+                              : "Invalid Date"
+                            } at{" "}
                             {meeting.time}
                           </span>
                         </div>

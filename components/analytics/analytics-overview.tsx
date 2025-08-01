@@ -209,7 +209,13 @@ export default function AnalyticsOverview() {
 
   // Prepare chart data from API response
   const prepareChartData = () => {
-    if (!analyticsData) return {};
+    if (!analyticsData) return {
+      memberGrowthData: [],
+      memberStatusData: [],
+      vehicleStatusData: [],
+      vehicleMonthlyData: [],
+      labourStatusData: [],
+    };
 
     // Member growth data
     const memberGrowthData = analyticsData.members.membersJoinCountByMonth.map(item => ({
@@ -527,7 +533,7 @@ export default function AnalyticsOverview() {
               <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={chartData.memberGrowthData}
+                    data={chartData.memberGrowthData || []}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -556,7 +562,7 @@ export default function AnalyticsOverview() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData.memberStatusData}
+                      data={chartData.memberStatusData || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -567,7 +573,7 @@ export default function AnalyticsOverview() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.memberStatusData.map((entry, index) => (
+                      {(chartData.memberStatusData || []).map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -594,7 +600,7 @@ export default function AnalyticsOverview() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData.vehicleStatusData}
+                      data={chartData.vehicleStatusData || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -605,7 +611,7 @@ export default function AnalyticsOverview() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.vehicleStatusData.map((entry, index) => (
+                      {(chartData.vehicleStatusData || []).map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}
@@ -627,7 +633,7 @@ export default function AnalyticsOverview() {
               <CardContent className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={chartData.vehicleMonthlyData}
+                    data={chartData.vehicleMonthlyData || []}
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -689,7 +695,7 @@ export default function AnalyticsOverview() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData.labourStatusData}
+                      data={chartData.labourStatusData || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -700,7 +706,7 @@ export default function AnalyticsOverview() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.labourStatusData.map((entry, index) => (
+                      {(chartData.labourStatusData || []).map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={COLORS[index % COLORS.length]}

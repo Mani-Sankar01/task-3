@@ -99,11 +99,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
     router.push(`/admin/vehicle/${vehicle.id}/add-trip`);
   };
 
-  const handleEditTrip = (tripId: string) => {
+  const handleEditTrip = (tripId: number) => {
     router.push(`/admin/vehicle/${vehicle.id}/edit-trip/${tripId}`);
   };
 
-  const handleDeleteTrip = (tripId: string) => {
+  const handleDeleteTrip = (tripId: number) => {
     if (
       window.confirm(
         "Are you sure you want to delete this trip? This action cannot be undone."
@@ -171,9 +171,9 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Added on: {new Date(vehicle.createdAt).toLocaleDateString()}
-                  </span>
+                                     <span>
+                     Added on: {new Date(vehicle.createdAt).toLocaleDateString()}
+                   </span>
                 </div>
               </div>
               <div className="space-y-4">
@@ -183,10 +183,10 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Last Updated:{" "}
-                    {new Date(vehicle.modifiedAt).toLocaleDateString()}
-                  </span>
+                                     <span>
+                     Last Updated:{" "}
+                     {new Date(vehicle.modifiedAt).toLocaleDateString()}
+                   </span>
                 </div>
               </div>
             </div>
@@ -378,11 +378,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                           <TableCell className="font-medium">
                             {trip.id}
                           </TableCell>
-                          <TableCell>
-                            {new Date(trip.date).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>{trip.totalRounds}</TableCell>
-                          <TableCell>₹{trip.totalAmountToPay}</TableCell>
+                                                     <TableCell>
+                             {new Date(trip.tripDate).toLocaleDateString()}
+                           </TableCell>
+                                                     <TableCell>{trip.numberOfTrips}</TableCell>
+                           <TableCell>₹{trip.totalAmount}</TableCell>
                           <TableCell>₹{trip.amountPaid}</TableCell>
                           <TableCell>
                             <Badge
