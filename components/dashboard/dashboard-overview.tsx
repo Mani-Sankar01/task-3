@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import axios from "axios";
 import {
   Calendar,
   DollarSign,
@@ -23,6 +25,7 @@ import {
   Server,
   XCircle,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -37,8 +40,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 
-import { getDashboardData } from "@/data/dashboard";
 import { format, isToday, addDays } from "date-fns";
 import {
   fetchHealthCheckData,
@@ -50,31 +53,127 @@ import {
 } from "@/services/health-check";
 import { Skeleton } from "../ui/skeleton";
 
+interface DashboardData {
+  members: {
+    total: number;
+    active: number;
+    inactive: number;
+    cancelled: number;
+  };
+  vehicles: {
+    total: number;
+    active: number;
+    maintenance: number;
+    inactive: number;
+    vehiclePaymentsDue: Array<{
+      id: number;
+      tripId: string;
+      vehicleId: string;
+      tripDate: string;
+      amountPerTrip: number;
+      numberOfTrips: number;
+      totalAmount: number;
+      amountPaid: number;
+      balanceAmount: number;
+      paymentStatus: string;
+      notes: string;
+      receiptPath: string | null;
+      createdAt: string;
+      modifiedAt: string;
+      createdBy: number;
+      modifiedBy: number;
+    }>;
+  };
+  labour: {
+    total: number;
+    active: number;
+    onBench: number;
+    inactive: number;
+  };
+  membershipFeesDue: any[]; // Will be implemented later
+  expiringLisences: Array<{
+    id: number;
+    documentName: string;
+    documentPath: string;
+    expiredAt: string;
+    members: {
+      membershipId: string;
+      firmName: string;
+      applicantName: string;
+    };
+  }>;
+}
+
 export default function DashboardOverview() {
   const router = useRouter();
-  const [dashboardData, setDashboardData] = useState(() => getDashboardData());
+  const { data: session, status: sessionStatus } = useSession();
+  const { toast } = useToast();
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Health check state
   const [healthData, setHealthData] = useState<HealthCheckResponse | null>(
     null
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isHealthLoading, setIsHealthLoading] = useState(true);
+  const [healthError, setHealthError] = useState<string | null>(null);
+
+  // Fetch dashboard data from API
+  const fetchDashboardData = async () => {
+    if (sessionStatus !== "authenticated" || !session?.user?.token) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await axios.get(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/dashboard/get_over_view`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      setDashboardData(response.data);
+      console.log("Dashboard data:", response.data);
+    } catch (err: any) {
+      console.error("Error fetching dashboard data:", err);
+      setError("Failed to load dashboard data");
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to load dashboard data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load dashboard data on component mount and session change
+  useEffect(() => {
+    if (sessionStatus === "authenticated") {
+      fetchDashboardData();
+    }
+  }, [sessionStatus, session?.user?.token]);
 
   // Fetch health check data
   useEffect(() => {
     const getHealthData = async () => {
       try {
-        setIsLoading(true);
+        setIsHealthLoading(true);
         const data = await fetchHealthCheckData();
         setHealthData(data);
-        setError(null);
+        setHealthError(null);
       } catch (err) {
-        setError("Failed to fetch system health data");
+        setHealthError("Failed to fetch system health data");
         console.error(err);
       } finally {
-        setIsLoading(false);
+        setIsHealthLoading(false);
       }
     };
 
@@ -106,30 +205,70 @@ export default function DashboardOverview() {
   // Function to refresh health data
   const refreshHealthData = async () => {
     try {
-      setIsLoading(true);
+      setIsHealthLoading(true);
       const data = await fetchHealthCheckData();
       setHealthData(data);
-      setError(null);
+      setHealthError(null);
     } catch (err) {
-      setError("Failed to fetch system health data");
+      setHealthError("Failed to fetch system health data");
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setIsHealthLoading(false);
     }
   };
 
-  // Refresh dashboard data every minute
+  // Refresh dashboard data every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      setDashboardData(getDashboardData());
-    }, 60000);
+      if (sessionStatus === "authenticated") {
+        fetchDashboardData();
+      }
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, []);
+  }, [sessionStatus]);
 
   const navigateToSection = (path: string) => {
     router.push(path);
   };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <p className="text-muted-foreground">Loading dashboard data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-destructive mb-2">{error}</p>
+            <Button onClick={fetchDashboardData}>Try Again</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex justify-center items-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-muted-foreground">No dashboard data available</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -168,11 +307,11 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {dashboardData.totalMembers}
+                  {dashboardData.members.total}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardData.activeMembers} active,{" "}
-                  {dashboardData.inactiveMembers} inactive
+                  {dashboardData.members.active} active,{" "}
+                  {dashboardData.members.inactive} inactive
                 </p>
               </CardContent>
             </Card>
@@ -185,11 +324,11 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {dashboardData.totalVehicles}
+                  {dashboardData.vehicles.total}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardData.activeVehicles} active,{" "}
-                  {dashboardData.maintenanceVehicles} in maintenance
+                  {dashboardData.vehicles.active} active,{" "}
+                  {dashboardData.vehicles.maintenance} in maintenance
                 </p>
               </CardContent>
             </Card>
@@ -202,11 +341,11 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {dashboardData.totalLabour}
+                  {dashboardData.labour.total}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardData.activeLabour} active,{" "}
-                  {dashboardData.benchLabour} on bench
+                  {dashboardData.labour.active} active,{" "}
+                  {dashboardData.labour.onBench} on bench
                 </p>
               </CardContent>
             </Card>
@@ -219,10 +358,10 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-destructive">
-                  ₹{dashboardData.pendingFees.toLocaleString()}
+                  ₹{dashboardData.membershipFeesDue.reduce((sum, fee) => sum + fee.amount, 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardData.pendingFeesCount} pending payments
+                  {dashboardData.membershipFeesDue.length} pending payments
                 </p>
               </CardContent>
             </Card>
@@ -236,8 +375,8 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.dueFeesThisMonth.length > 0 ? (
-                    dashboardData.dueFeesThisMonth.map((fee, index) => (
+                  {dashboardData.membershipFeesDue.length > 0 ? (
+                    dashboardData.membershipFeesDue.map((fee, index) => (
                       <div
                         key={index}
                         className="flex justify-between items-center border-b pb-3 last:border-0"
@@ -292,28 +431,28 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.expiringLicenses.length > 0 ? (
-                    dashboardData.expiringLicenses.map((license, index) => (
+                  {dashboardData.expiringLisences.length > 0 ? (
+                    dashboardData.expiringLisences.map((license, index) => (
                       <div
                         key={index}
                         className="flex justify-between items-center border-b pb-3 last:border-0"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{license.name}</span>
+                          <span className="font-medium">{license.documentName}</span>
                           <span className="text-sm text-muted-foreground">
-                            {license.memberName} • Expires:{" "}
-                            {format(new Date(license.expiryDate), "MMM dd")}
+                            {license.members.applicantName} • Expires:{" "}
+                            {format(new Date(license.expiredAt), "MMM dd")}
                           </span>
                         </div>
                         <Badge
                           variant={
-                            new Date(license.expiryDate) <
+                            new Date(license.expiredAt) <
                             addDays(new Date(), 7)
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {new Date(license.expiryDate) < addDays(new Date(), 7)
+                          {new Date(license.expiredAt) < addDays(new Date(), 7)
                             ? "Urgent"
                             : "Soon"}
                         </Badge>
@@ -344,43 +483,10 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.vehiclesDueForMaintenance.length > 0 ? (
-                    dashboardData.vehiclesDueForMaintenance.map(
-                      (vehicle, index) => (
-                        <div
-                          key={index}
-                          className="flex justify-between items-center border-b pb-3 last:border-0"
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">
-                              {vehicle.vehicleNumber}
-                            </span>
-                            <span className="text-sm text-muted-foreground">
-                              {vehicle.driverName} • Due:{" "}
-                              {format(
-                                new Date(vehicle.maintenanceDate),
-                                "MMM dd"
-                              )}
-                            </span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-primary"
-                            onClick={() =>
-                              navigateToSection(`/admin/vehicles/${vehicle.id}`)
-                            }
-                          >
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      )
-                    )
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No vehicles due for maintenance
-                    </p>
-                  )}
+                  {/* This section needs to be implemented based on actual vehicle maintenance data */}
+                  <p className="text-center text-muted-foreground py-4">
+                    Vehicle maintenance data not yet available from API.
+                  </p>
                 </div>
               </CardContent>
               <CardFooter>
@@ -401,19 +507,32 @@ export default function DashboardOverview() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Total Dues
+                  Total Vehicle Dues
                 </CardTitle>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-destructive">
-                  ₹
-                  {(
-                    dashboardData.pendingFees + dashboardData.pendingVehicleDues
-                  ).toLocaleString()}
+                  ₹{dashboardData.vehicles.vehiclePaymentsDue.reduce((sum, payment) => sum + payment.balanceAmount, 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Across all categories
+                  Across all vehicles
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Vehicle Payments
+                </CardTitle>
+                <Truck className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ₹{dashboardData.vehicles.vehiclePaymentsDue.reduce((sum, payment) => sum + payment.balanceAmount, 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {dashboardData.vehicles.vehiclePaymentsDue.length} pending payments
                 </p>
               </CardContent>
             </Card>
@@ -426,26 +545,10 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ₹{dashboardData.pendingFees.toLocaleString()}
+                  ₹0
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {dashboardData.pendingFeesCount} pending payments
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Vehicle Dues
-                </CardTitle>
-                <Truck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  ₹{dashboardData.pendingVehicleDues.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {dashboardData.pendingVehicleDuesCount} pending payments
+                  {dashboardData.membershipFeesDue.length} pending payments
                 </p>
               </CardContent>
             </Card>
@@ -458,10 +561,10 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {dashboardData.collectionRate}%
+                  0%
                 </div>
                 <Progress
-                  value={dashboardData.collectionRate}
+                  value={0}
                   className="mt-2"
                 />
               </CardContent>
@@ -471,15 +574,76 @@ export default function DashboardOverview() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Membership Fees Due Today</CardTitle>
+                <CardTitle>Vehicle Payments Due</CardTitle>
+                <CardDescription>
+                  Vehicle payments that need attention
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {dashboardData.vehicles.vehiclePaymentsDue.length > 0 ? (
+                    dashboardData.vehicles.vehiclePaymentsDue.map((payment, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center border-b pb-3 last:border-0"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {payment.tripId}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {payment.vehicleId} • Due:{" "}
+                            {format(new Date(payment.tripDate), "MMM dd")}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold">
+                            ₹{payment.balanceAmount.toLocaleString()}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="ml-2"
+                            onClick={() =>
+                              navigateToSection(
+                                `/admin/vehicles/${payment.vehicleId}`
+                              )
+                            }
+                          >
+                            View
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">
+                      No vehicle payments due
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigateToSection("/admin/vehicles")}
+                >
+                  View All Vehicles
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Membership Fees Due</CardTitle>
                 <CardDescription>
                   Fees that need immediate attention
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.dueFeesToday.length > 0 ? (
-                    dashboardData.dueFeesToday.map((fee, index) => (
+                  {dashboardData.membershipFeesDue.length > 0 ? (
+                    dashboardData.membershipFeesDue.map((fee, index) => (
                       <div
                         key={index}
                         className="flex justify-between items-center border-b pb-3 last:border-0"
@@ -529,178 +693,11 @@ export default function DashboardOverview() {
                 </Button>
               </CardFooter>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Vehicle Payments Due</CardTitle>
-                <CardDescription>
-                  Vehicle payments that need attention
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.dueVehiclePayments.length > 0 ? (
-                    dashboardData.dueVehiclePayments.map((payment, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center border-b pb-3 last:border-0"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {payment.vehicleNumber}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {payment.driverName} • Due:{" "}
-                            {format(new Date(payment.dueDate), "MMM dd")}
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold">
-                            ₹{payment.amount.toLocaleString()}
-                          </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="ml-2"
-                            onClick={() =>
-                              navigateToSection(
-                                `/admin/vehicles/${payment.vehicleId}`
-                              )
-                            }
-                          >
-                            View
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No vehicle payments due
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigateToSection("/admin/vehicles")}
-                >
-                  View All Vehicles
-                </Button>
-              </CardFooter>
-            </Card>
           </div>
         </TabsContent>
 
         <TabsContent value="upcoming" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Upcoming Meetings</CardTitle>
-                <CardDescription>Next 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.upcomingMeetings.length > 0 ? (
-                    dashboardData.upcomingMeetings.map((meeting, index) => (
-                      <div
-                        key={index}
-                        className="flex flex-col space-y-1 border-b pb-3 last:border-0"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{meeting.title}</span>
-                          <Badge
-                            variant={
-                              isToday(new Date(meeting.date))
-                                ? "destructive"
-                                : "secondary"
-                            }
-                          >
-                            {isToday(new Date(meeting.date))
-                              ? "Today"
-                              : format(new Date(meeting.date), "MMM dd")}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Clock className="mr-1 h-3 w-3" /> {meeting.time}
-                        </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                          <Users className="mr-1 h-3 w-3" />{" "}
-                          {meeting.expectedAttendees} attendees
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No upcoming meetings
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="default"
-                  className="w-full"
-                  onClick={() => navigateToSection("/admin/meetings/add")}
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
-                </Button>
-              </CardFooter>
-            </Card>
-
-            {/* <Card>
-              <CardHeader>
-                <CardTitle>GST Filings Due</CardTitle>
-                <CardDescription>Upcoming GST filings</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.upcomingGstFilings.length > 0 ? (
-                    dashboardData.upcomingGstFilings.map((filing, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center border-b pb-3 last:border-0"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {filing.memberName}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            Period: {filing.filingPeriod} • Due:{" "}
-                            {format(new Date(filing.dueDate), "MMM dd")}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-primary"
-                          onClick={() =>
-                            navigateToSection(`/admin/gst-filings/${filing.id}`)
-                          }
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-center text-muted-foreground py-4">
-                      No upcoming GST filings
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigateToSection("/admin/gst-filings")}
-                >
-                  View All GST Filings
-                </Button>
-              </CardFooter>
-            </Card> */}
-
             <Card>
               <CardHeader>
                 <CardTitle>Upcoming Renewals</CardTitle>
@@ -710,28 +707,28 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {dashboardData.expiringLicenses.length > 0 ? (
-                    dashboardData.expiringLicenses.map((license, index) => (
+                  {dashboardData.expiringLisences.length > 0 ? (
+                    dashboardData.expiringLisences.map((license, index) => (
                       <div
                         key={index}
                         className="flex justify-between items-center border-b pb-3 last:border-0"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{license.name}</span>
+                          <span className="font-medium">{license.documentName}</span>
                           <span className="text-sm text-muted-foreground">
-                            {license.memberName} • Expires:{" "}
-                            {format(new Date(license.expiryDate), "MMM dd")}
+                            {license.members.applicantName} • Expires:{" "}
+                            {format(new Date(license.expiredAt), "MMM dd")}
                           </span>
                         </div>
                         <Badge
                           variant={
-                            new Date(license.expiryDate) <
+                            new Date(license.expiredAt) <
                             addDays(new Date(), 7)
                               ? "destructive"
                               : "secondary"
                           }
                         >
-                          {new Date(license.expiryDate) < addDays(new Date(), 7)
+                          {new Date(license.expiredAt) < addDays(new Date(), 7)
                             ? "Urgent"
                             : "Soon"}
                         </Badge>
@@ -754,6 +751,29 @@ export default function DashboardOverview() {
                 </Button>
               </CardFooter>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Upcoming Meetings</CardTitle>
+                <CardDescription>Next 7 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-center text-muted-foreground py-4">
+                    No upcoming meetings
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  variant="default"
+                  className="w-full"
+                  onClick={() => navigateToSection("/admin/meetings/add")}
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
+                </Button>
+              </CardFooter>
+            </Card>
           </div>
         </TabsContent>
 
@@ -768,21 +788,21 @@ export default function DashboardOverview() {
                 variant="ghost"
                 size="icon"
                 onClick={refreshHealthData}
-                disabled={isLoading}
+                disabled={isHealthLoading}
                 title="Refresh system status"
               >
                 <RefreshCw
-                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  className={`h-4 w-4 ${isHealthLoading ? "animate-spin" : ""}`}
                 />
               </Button>
             </CardHeader>
             <CardContent>
-              {error ? (
+              {healthError ? (
                 <div className="flex items-center justify-center p-4 text-destructive">
                   <XCircle className="h-5 w-5 mr-2" />
-                  <span>{error}</span>
+                  <span>{healthError}</span>
                 </div>
-              ) : isLoading ? (
+              ) : isHealthLoading ? (
                 <div className="space-y-4">
                   <Skeleton className="h-6 w-full" />
                   <Skeleton className="h-6 w-full" />
