@@ -30,10 +30,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getAllVehicles, deleteVehicle, type Vehicle } from "@/data/vehicles";
+import { getAllVehicles, type Vehicle } from "@/data/vehicles";
 import { getRouteById } from "@/data/routes";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import PopupMessage from "@/components/ui/popup-message";
+import { useToast } from "@/hooks/use-toast";
 
 export default function VehiclesList() {
   const router = useRouter();
@@ -46,6 +48,16 @@ export default function VehiclesList() {
 
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status } = useSession();
+  const { toast } = useToast();
+  const [deletePopup, setDeletePopup] = useState<{
+    isOpen: boolean;
+    vehicleId: string | null;
+    vehicleNumber: string;
+  }>({
+    isOpen: false,
+    vehicleId: null,
+    vehicleNumber: "",
+  });
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
@@ -162,23 +174,83 @@ export default function VehiclesList() {
     router.push(`/admin/vehicle/${vehicleId}/edit`);
   };
 
-  // Delete a vehicle
-  const handleDeleteVehicle = (vehicleId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this vehicle? This action cannot be undone."
-      )
-    ) {
-      deleteVehicle(vehicleId);
-      setVehicles(getAllVehicles());
+  // Show delete confirmation popup
+  const showDeleteConfirmation = (vehicleId: string, vehicleNumber: string) => {
+    setDeletePopup({
+      isOpen: true,
+      vehicleId,
+      vehicleNumber,
+    });
+  };
 
-      if (
-        currentPage > 1 &&
-        (currentPage - 1) * itemsPerPage >= sortedVehicles.length - 1
-      ) {
-        setCurrentPage(currentPage - 1);
+  // Handle vehicle deletion
+  const handleDeleteVehicle = async () => {
+    if (!deletePopup.vehicleId || !session?.user?.token) return;
+
+    try {
+      const response = await axios.delete(
+        `${process.env.BACKEND_API_URL}/api/vehicle/delete_vehicle/${deletePopup.vehicleId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 204) {
+        // Remove the vehicle from the local state
+        setVehicles(prevVehicles => 
+          prevVehicles.filter(vehicle => vehicle.vehicleId !== deletePopup.vehicleId)
+        );
+
+                 // Show success toast
+         console.log("Showing success toast for vehicle deletion");
+         setDeletePopup({
+        isOpen: false,
+        vehicleId: null,
+        vehicleNumber: "",
+      });
+         toast({
+           title: "Vehicle Deleted Successfully!",
+           description: `Vehicle ${deletePopup.vehicleNumber} has been deleted.`
+         });
+
+        // Adjust pagination if needed
+        if (
+          currentPage > 1 &&
+          (currentPage - 1) * itemsPerPage >= sortedVehicles.length - 1
+        ) {
+          setCurrentPage(currentPage - 1);
+        }
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: "Failed to delete vehicle. Please try again.",
+          variant: "destructive",
+        });
       }
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      toast({
+        title: "Delete Failed",
+        description: "An error occurred while deleting the vehicle.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletePopup({
+        isOpen: false,
+        vehicleId: null,
+        vehicleNumber: "",
+      });
     }
+  };
+
+  const closeDeletePopup = () => {
+    setDeletePopup({
+      isOpen: false,
+      vehicleId: null,
+      vehicleNumber: "",
+    });
   };
 
   // Get route name by ID
@@ -359,7 +431,7 @@ export default function VehiclesList() {
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteVehicle(vehicle.vehicleId);
+                                showDeleteConfirmation(vehicle.vehicleId, vehicle.vehicleNumber);
                               }}
                             >
                               Delete Vehicle
@@ -411,6 +483,26 @@ export default function VehiclesList() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Popup */}
+      <PopupMessage
+        isOpen={deletePopup.isOpen}
+        onClose={closeDeletePopup}
+        type="warning"
+        title="Delete Vehicle"
+        message={`Are you sure you want to delete vehicle "${deletePopup.vehicleNumber}"? This action cannot be undone.`}
+        primaryButton={{
+          text: "Delete",
+          onClick: handleDeleteVehicle,
+          variant: "destructive",
+        }}
+        secondaryButton={{
+          text: "Cancel",
+          onClick: closeDeletePopup,
+          variant: "outline",
+        }}
+        showCloseButton={false}
+      />
     </div>
   );
 }

@@ -40,6 +40,7 @@ import {
   vehicles,
 } from "@/data/vehicles";
 import { useSession } from "next-auth/react";
+import PopupMessage from "@/components/ui/popup-message";
 
 const formSchema = z.object({
   vehicleId: z.string().optional(),
@@ -73,6 +74,17 @@ export default function EditVehicleForm({
   const [isLoading, setIsLoading] = useState(isEditMode); // only load if editing
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const { data: session, status } = useSession();
+  const [popupMessage, setPopupMessage] = useState<{
+    isOpen: boolean;
+    type: "success" | "error" | "warning" | "info";
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -144,9 +156,19 @@ export default function EditVehicleForm({
         );
         if (response.status === 200 || response.status === 201) {
           setIsSubmitting(false);
-          alert(`✅ Vehicle updated successfully!`);
+          setPopupMessage({
+            isOpen: true,
+            type: "success",
+            title: "Vehicle Updated Successfully!",
+            message: "The vehicle has been updated successfully. You will be redirected to the vehicle list.",
+          });
         } else {
-          alert("⚠️ Something went wrong. Vechicle not updated.");
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Update Failed",
+            message: "Something went wrong. Vehicle not updated.",
+          });
         }
       } else {
         console.log(JSON.stringify(data));
@@ -162,16 +184,29 @@ export default function EditVehicleForm({
         );
         if (response.status === 200 || response.status === 201) {
           setIsSubmitting(false);
-          alert(`✅ Vehicle Added successfully!`);
+          setPopupMessage({
+            isOpen: true,
+            type: "success",
+            title: "Vehicle Added Successfully!",
+            message: "The vehicle has been added successfully. You will be redirected to the vehicle list.",
+          });
         } else {
-          alert("⚠️ Something went wrong. Vehicle not added.");
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Add Failed",
+            message: "Something went wrong. Vehicle not added.",
+          });
         }
       }
-      router.push("/admin/vehicle");
-      router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to save vehicle. Please try again.");
+      setPopupMessage({
+        isOpen: true,
+        type: "error",
+        title: "Error",
+        message: "Failed to save vehicle. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -185,6 +220,16 @@ export default function EditVehicleForm({
     ) {
       router.push("/admin/vehicle");
     }
+  };
+
+  const handlePopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleSuccessPopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    router.push("/admin/vehicle");
+    router.refresh();
   };
 
   if (isLoading || status === "loading") {
@@ -369,6 +414,29 @@ export default function EditVehicleForm({
           </Form>
         </CardContent>
       </Card>
+
+      {/* Popup Message */}
+      <PopupMessage
+        isOpen={popupMessage.isOpen}
+        onClose={handlePopupClose}
+        type={popupMessage.type}
+        title={popupMessage.title}
+        message={popupMessage.message}
+        primaryButton={
+          popupMessage.type === "success"
+            ? {
+                text: "Go to Vehicle List",
+                onClick: handleSuccessPopupClose,
+                variant: "default",
+              }
+            : {
+                text: "OK",
+                onClick: handlePopupClose,
+                variant: "default",
+              }
+        }
+        showCloseButton={false}
+      />
     </div>
   );
 }

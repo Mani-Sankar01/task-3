@@ -41,6 +41,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   getAllLabour,
@@ -68,6 +76,8 @@ export default function LabourList() {
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [labourToDelete, setLabourToDelete] = useState<{ id: string; name: string } | null>(null);
   const itemsPerPage = 10;
 
   // Load labour list from API
@@ -78,7 +88,7 @@ export default function LabourList() {
         setError("");
         try {
           const response = await axios.get(
-            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_active_labours`,
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_labours`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -243,9 +253,6 @@ export default function LabourList() {
 
   // Delete a labour
   const handleDeleteLabour = async (labourId: string) => {
-    if (!window.confirm("Are you sure you want to delete this labour?")) {
-      return;
-    }
 
     if (!session?.user.token) {
       toast({
@@ -259,7 +266,7 @@ export default function LabourList() {
     setIsDeleting(labourId);
     try {
       const response = await axios.delete(
-        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_labour_id/${labourId}`,
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/delete_labour/${labourId}`,
         {
           headers: {
             Authorization: `Bearer ${session.user.token}`,
@@ -275,7 +282,7 @@ export default function LabourList() {
         });
         // Refresh the labour list
         const updatedResponse = await axios.get(
-          `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_active_labours`,
+          `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_labours`,
           {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
@@ -293,6 +300,23 @@ export default function LabourList() {
       });
     } finally {
       setIsDeleting(null);
+    }
+  };
+
+  const openDeleteDialog = (labourId: string, labourName: string) => {
+    setLabourToDelete({ id: labourId, name: labourName });
+    setShowDeleteDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setLabourToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (labourToDelete) {
+      await handleDeleteLabour(labourToDelete.id);
+      closeDeleteDialog();
     }
   };
 
@@ -451,7 +475,7 @@ export default function LabourList() {
                     <TableRow
                       key={labour.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => viewLabourDetails(labour.id)}
+                      onClick={() => viewLabourDetails(labour.labourId)}
                     >
                       <TableCell>
                         <Avatar className="h-10 w-10">
@@ -531,18 +555,10 @@ export default function LabourList() {
                               className="text-destructive focus:text-destructive"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteLabour(labour.labourId);
+                                openDeleteDialog(labour.labourId, labour.fullName || "Unknown Labour");
                               }}
-                              disabled={isDeleting === labour.labourId}
                             >
-                              {isDeleting === labour.labourId ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Deleting...
-                                </>
-                              ) : (
-                                "Delete Labour"
-                              )}
+                              Delete Labour
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -591,6 +607,38 @@ export default function LabourList() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Labour</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete <strong>{labourToDelete?.name}</strong>? 
+                This action cannot be undone and will permanently remove the labour record.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeDeleteDialog}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDelete}
+                disabled={isDeleting === labourToDelete?.id}
+              >
+                {isDeleting === labourToDelete?.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Labour"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

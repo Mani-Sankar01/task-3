@@ -285,7 +285,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
       const filename = filePath.split('/').pop() || 'document';
       console.log('Downloading file:', filename, 'from path:', filePath);
       
-      const blob = await downloadFile(filename);
+      const blob = await downloadFile(filename); 
       if (blob) {
         // Create download link
         const url = window.URL.createObjectURL(blob);
@@ -296,11 +296,25 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Download Successful",
+          description: `File ${filename} downloaded successfully.`,
+        });
       } else {
-        console.error('Download failed: Could not get file blob');
+        toast({
+          title: "Download Failed",
+          description: "Could not download the file. Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "An error occurred while downloading the file.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -560,7 +574,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath}`, '_blank')}
+                              onClick={() => handleDownloadFile(labour.photoPath)}
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -582,7 +596,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => window.open(`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.aadharPath}`, '_blank')}
+                              onClick={() => handleDownloadFile(labour.aadharPath)}
                             >
                               <Download className="h-4 w-4" />
                             </Button>

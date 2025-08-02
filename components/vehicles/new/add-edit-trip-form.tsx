@@ -50,6 +50,7 @@ import {
 } from "@/data/vehicles";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import PopupMessage from "@/components/ui/popup-message";
 
 // Update the form schema
 const formSchema = z.object({
@@ -87,6 +88,17 @@ export default function AddEditTripForm({
   const [vehicle, setVehicle] = useState<Vehicle | null>(null); // or undefined
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status } = useSession();
+  const [popupMessage, setPopupMessage] = useState<{
+    isOpen: boolean;
+    type: "success" | "error" | "warning" | "info";
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -189,9 +201,19 @@ export default function AddEditTripForm({
         );
         if (response.status === 200 || response.status === 201) {
           setIsSubmitting(false);
-          alert(`✅ Vehicle trp updated successfully!`);
+          setPopupMessage({
+            isOpen: true,
+            type: "success",
+            title: "Trip Updated Successfully!",
+            message: "The trip has been updated successfully. You will be redirected to the vehicle details.",
+          });
         } else {
-          alert("⚠️ Something went wrong. Vehicle not added.");
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Update Failed",
+            message: "Something went wrong. Trip not updated.",
+          });
         }
       } else {
         const newData = {
@@ -217,18 +239,29 @@ export default function AddEditTripForm({
         );
         if (response.status === 200 || response.status === 201) {
           setIsSubmitting(false);
-          alert(`✅ Vehicle trp Added successfully!`);
+          setPopupMessage({
+            isOpen: true,
+            type: "success",
+            title: "Trip Added Successfully!",
+            message: "The trip has been added successfully. You will be redirected to the vehicle details.",
+          });
         } else {
-          alert("⚠️ Something went wrong. Vehicle not added.");
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Add Failed",
+            message: "Something went wrong. Trip not added.",
+          });
         }
       }
-
-      //   await new Promise((resolve) => setTimeout(resolve, 1000));
-      //   router.push(`/admin/vehicle/${vehicleId}`);
-      //   router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to save trip. Please try again.");
+      setPopupMessage({
+        isOpen: true,
+        type: "error",
+        title: "Error",
+        message: "Failed to save trip. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +275,16 @@ export default function AddEditTripForm({
     ) {
       router.push(`/admin/vehicle/${vehicleId}`);
     }
+  };
+
+  const handlePopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleSuccessPopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    router.push(`/admin/vehicle/${vehicleId}`);
+    router.refresh();
   };
 
   if (isLoading || status === "loading") {
@@ -556,6 +599,29 @@ export default function AddEditTripForm({
           </Form>
         </CardContent>
       </Card>
+
+      {/* Popup Message */}
+      <PopupMessage
+        isOpen={popupMessage.isOpen}
+        onClose={handlePopupClose}
+        type={popupMessage.type}
+        title={popupMessage.title}
+        message={popupMessage.message}
+        primaryButton={
+          popupMessage.type === "success"
+            ? {
+                text: "Go to Vehicle Details",
+                onClick: handleSuccessPopupClose,
+                variant: "default",
+              }
+            : {
+                text: "OK",
+                onClick: handlePopupClose,
+                variant: "default",
+              }
+        }
+        showCloseButton={false}
+      />
     </div>
   );
 }

@@ -47,6 +47,7 @@ import {
   getVehicleById,
   type Trip,
 } from "@/data/vehicles";
+import PopupMessage from "@/components/ui/popup-message";
 
 // Update the form schema
 const formSchema = z.object({
@@ -79,6 +80,17 @@ export default function TripForm({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const vehicle = getVehicleById(vehicleId);
+  const [popupMessage, setPopupMessage] = useState<{
+    isOpen: boolean;
+    type: "success" | "error" | "warning" | "info";
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: "info",
+    title: "",
+    message: "",
+  });
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -151,12 +163,22 @@ export default function TripForm({
         console.log("New trip added:", newTrip);
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push(`/admin/vehicle/${vehicleId}`);
-      router.refresh();
+      setPopupMessage({
+        isOpen: true,
+        type: "success",
+        title: isEditMode ? "Trip Updated Successfully!" : "Trip Added Successfully!",
+        message: isEditMode 
+          ? "The trip has been updated successfully. You will be redirected to the vehicle details."
+          : "The trip has been added successfully. You will be redirected to the vehicle details.",
+      });
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to save trip. Please try again.");
+      setPopupMessage({
+        isOpen: true,
+        type: "error",
+        title: "Error",
+        message: "Failed to save trip. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -170,6 +192,16 @@ export default function TripForm({
     ) {
       router.push(`/admin/vehicle/${vehicleId}`);
     }
+  };
+
+  const handlePopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleSuccessPopupClose = () => {
+    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    router.push(`/admin/vehicle/${vehicleId}`);
+    router.refresh();
   };
 
   return (
@@ -452,6 +484,29 @@ export default function TripForm({
           </Form>
         </CardContent>
       </Card>
+
+      {/* Popup Message */}
+      <PopupMessage
+        isOpen={popupMessage.isOpen}
+        onClose={handlePopupClose}
+        type={popupMessage.type}
+        title={popupMessage.title}
+        message={popupMessage.message}
+        primaryButton={
+          popupMessage.type === "success"
+            ? {
+                text: "Go to Vehicle Details",
+                onClick: handleSuccessPopupClose,
+                variant: "default",
+              }
+            : {
+                text: "OK",
+                onClick: handlePopupClose,
+                variant: "default",
+              }
+        }
+        showCloseButton={false}
+      />
     </div>
   );
 }
