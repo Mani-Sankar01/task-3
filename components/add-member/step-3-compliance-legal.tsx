@@ -20,9 +20,29 @@ import { downloadFile } from "@/lib/client-file-upload";
 
 interface Step3ComplianceLegalProps {
   isEditMode?: boolean;
+  validationErrors?: {
+    gstinNo?: string;
+    factoryLicenseNo?: string;
+    tspcbOrderNo?: string;
+    mdlNo?: string;
+    udyamCertificateNo?: string;
+  };
+  validationSuccess?: {
+    gstinNo?: string;
+    factoryLicenseNo?: string;
+    tspcbOrderNo?: string;
+    mdlNo?: string;
+    udyamCertificateNo?: string;
+  };
+  onFieldChange?: (fieldName: string, value: string) => void;
 }
 
-export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLegalProps) {
+export default function Step3ComplianceLegal({ 
+  isEditMode, 
+  validationErrors, 
+  validationSuccess, 
+  onFieldChange 
+}: Step3ComplianceLegalProps) {
   const { control } = useFormContext();
 
   // Partner details field array
@@ -74,9 +94,22 @@ export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLega
                 <FormItem className="flex-1">
                   <FormLabel>GSTIN No</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter GSTIN number" {...field} />
+                    <Input 
+                      placeholder="Enter GSTIN number" 
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onFieldChange?.('gstinNo', e.target.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
+                  {validationErrors?.gstinNo && (
+                    <p className="text-sm text-destructive mt-1">{validationErrors.gstinNo}</p>
+                  )}
+                  {validationSuccess?.gstinNo && (
+                    <p className="text-sm text-green-600 mt-1">{validationSuccess.gstinNo}</p>
+                  )}
                 </FormItem>
               )}
             />
@@ -139,9 +172,19 @@ export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLega
                     <Input
                       placeholder="Enter factory license number"
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onFieldChange?.('factoryLicenseNo', e.target.value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
+                  {validationErrors?.factoryLicenseNo && (
+                    <p className="text-sm text-destructive mt-1">{validationErrors.factoryLicenseNo}</p>
+                  )}
+                  {validationSuccess?.factoryLicenseNo && (
+                    <p className="text-sm text-green-600 mt-1">{validationSuccess.factoryLicenseNo}</p>
+                  )}
                 </FormItem>
               )}
             />
@@ -201,9 +244,22 @@ export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLega
                 <FormItem className="flex-1">
                   <FormLabel>TSPCB Order No</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter TSPCB order number" {...field} />
+                    <Input 
+                      placeholder="Enter TSPCB order number" 
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onFieldChange?.('tspcbOrderNo', e.target.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
+                  {validationErrors?.tspcbOrderNo && (
+                    <p className="text-sm text-destructive mt-1">{validationErrors.tspcbOrderNo}</p>
+                  )}
+                  {validationSuccess?.tspcbOrderNo && (
+                    <p className="text-sm text-green-600 mt-1">{validationSuccess.tspcbOrderNo}</p>
+                  )}
                 </FormItem>
               )}
             />
@@ -263,9 +319,22 @@ export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLega
                 <FormItem className="flex-1">
                   <FormLabel>M.D.L No</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter M.D.L number" {...field} />
+                    <Input 
+                      placeholder="Enter M.D.L number" 
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onFieldChange?.('mdlNo', e.target.value);
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
+                  {validationErrors?.mdlNo && (
+                    <p className="text-sm text-destructive mt-1">{validationErrors.mdlNo}</p>
+                  )}
+                  {validationSuccess?.mdlNo && (
+                    <p className="text-sm text-green-600 mt-1">{validationSuccess.mdlNo}</p>
+                  )}
                 </FormItem>
               )}
             />
@@ -328,9 +397,19 @@ export default function Step3ComplianceLegal({ isEditMode }: Step3ComplianceLega
                     <Input
                       placeholder="Enter Udyam certificate number"
                       {...field}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        onFieldChange?.('udyamCertificateNo', e.target.value);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
+                  {validationErrors?.udyamCertificateNo && (
+                    <p className="text-sm text-destructive mt-1">{validationErrors.udyamCertificateNo}</p>
+                  )}
+                  {validationSuccess?.udyamCertificateNo && (
+                    <p className="text-sm text-green-600 mt-1">{validationSuccess.udyamCertificateNo}</p>
+                  )}
                 </FormItem>
               )}
             />

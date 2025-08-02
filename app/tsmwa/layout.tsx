@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 import {
-  AlertCircle,
   BellIcon,
   CalendarDays,
   ChartColumn,
@@ -67,18 +66,13 @@ const data = {
       items: [
         {
           title: "Dashboard",
-          url: "/admin",
+          url: "/tsmwa",
           icon: SquareKanban,
         },
         {
           title: "Analytics",
-          url: "/admin/analytics",
+          url: "/tsmwa/analytics",
           icon: ChartColumn,
-        },
-        {
-          title: "Users",
-          url: "/admin/users",
-          icon: UserRoundCogIcon,
         },
       ],
     },
@@ -88,24 +82,14 @@ const data = {
       items: [
         {
           title: "All Members",
-          url: "/admin/memberships",
+          url: "/tsmwa/memberships",
           icon: UsersIcon,
         },
         {
           title: "Membership Fees",
-          url: "/admin/membership-fees",
+          url: "/tsmwa/membership-fees",
           icon: IndianRupee,
         },
-        {
-          title: "Pending Approvals",
-          url: "/admin/memberships/approval-pending",
-          icon: AlertCircle,
-        },
-        {
-          title: "Bill Approvals",
-          url: "/admin/membership-fees/approval-pending",
-          icon: AlertCircle,
-        }
       ],
     },
 
@@ -131,7 +115,7 @@ const data = {
         // },
         {
           title: "All Invoices",
-          url: "/admin/invoices",
+          url: "/tsmwa/invoices",
           icon: ClipboardList,
         },
         // {
@@ -147,7 +131,7 @@ const data = {
       items: [
         {
           title: "All Meetings",
-          url: "/admin/meetings",
+          url: "/tsmwa/meetings",
           icon: CalendarDays,
         },
         {
@@ -163,12 +147,12 @@ const data = {
       items: [
         {
           title: "All Vehicle",
-          url: "/admin/vehicle",
+          url: "/tsmwa/vehicle",
           icon: CalendarDays,
         },
         {
           title: "All Trips",
-          url: "/admin/vehicle/trips",
+          url: "/tsmwa/vehicle/trips",
           icon: IndianRupee,
         },
       ],
@@ -179,18 +163,7 @@ const data = {
       items: [
         {
           title: "All Labours",
-          url: "/admin/labour",
-          icon: Users2,
-        },
-      ],
-    },
-    {
-      title: "All Lease",
-      url: "#",
-      items: [
-        {
-          title: "All Lease",
-          url: "/admin/lease-queries",
+          url: "/tsmwa/labour",
           icon: Users2,
         },
       ],

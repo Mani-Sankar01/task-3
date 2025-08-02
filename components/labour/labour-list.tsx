@@ -315,8 +315,10 @@ export default function LabourList() {
 
   const confirmDelete = async () => {
     if (labourToDelete) {
-      await handleDeleteLabour(labourToDelete.id);
+      // Close dialog immediately to prevent blocking
+      const labourId = labourToDelete.id;
       closeDeleteDialog();
+      await handleDeleteLabour(labourId);
     }
   };
 

@@ -378,7 +378,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           if (updateDocs.length > 0) {
             payload.updateAdditionalDocs = updateDocs;
           }
-        } else {
+      } else {
           // For add mode: put all documents directly in additionalDocs
           payload.additionalDocs = data.additionalDocs.map(doc => ({
             docName: doc.docName,
@@ -869,7 +869,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         />
 
                         <div>
-                          <FormLabel>Document Upload</FormLabel>
+                              <FormLabel>Document Upload</FormLabel>
                           <FileUpload
                             onFileSelect={(file) => {
                               // Handle file upload for additional documents

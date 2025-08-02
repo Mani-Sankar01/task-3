@@ -1,23 +1,12 @@
-"use client";
-
-import React, { useEffect } from "react";
+import { Suspense } from "react";
+import MembershipFeesList from "@/components/membership-fees/membership-fees-list";
+import { Card, CardContent } from "@/components/ui/card";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
-import { Suspense } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic"; // This ensures the page is not statically generated
-import DashboardOverview from "@/components/dashboard/dashboard-overview";
-import { useSession } from "next-auth/react";
 
-function page() {
-  const { data: session, status } = useSession();
-
-  useEffect(() => {
-    if (status === "authenticated" && session?.user?.role) {
-      localStorage.setItem("userRole", session.user.role);
-    }
-  }, [status, session]);
+const page = () => {
   return (
     <Suspense
       fallback={
@@ -27,7 +16,7 @@ function page() {
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
                 <p className="mt-4 text-muted-foreground">
-                  Loading dashboard...
+                  Loading membership fees...
                 </p>
               </div>
             </div>
@@ -36,13 +25,13 @@ function page() {
       }
     >
       <SidebarInset>
-        <Header breadcrumbs={[{ label: "Dashoard" }]} />
-        <div className="flex flex-1 flex-col">
-          <DashboardOverview />
+        <Header breadcrumbs={[{ label: "All Membership Fees" }]} />
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-4">
+          <MembershipFeesList />
         </div>
       </SidebarInset>
     </Suspense>
   );
-}
+};
 
 export default page;

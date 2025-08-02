@@ -111,17 +111,14 @@ const page = () => {
       try {
         setIsLoading(true);
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const response = await axios.get(
-          `${apiUrl}/api/member/get_members`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${apiUrl}/api/member/get_members`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
 
         console.log("Members API response:", response.data);
-        
+
         // Handle the response structure
         let membersData: Member[] = [];
         if (response.data && Array.isArray(response.data)) {
@@ -131,7 +128,7 @@ const page = () => {
         } else if (response.data && Array.isArray(response.data.members)) {
           membersData = response.data.members;
         }
-        
+
         console.log("Processed members data:", membersData);
         setMembers(membersData);
         setError(null);
@@ -210,12 +207,12 @@ const page = () => {
 
   // Navigate to member details
   const viewMemberDetails = (memberId: string) => {
-    router.push(`/admin/memberships/${memberId}`);
+    router.push(`/tsmwa/memberships/${memberId}`);
   };
 
   // Navigate to edit member
   const editMember = (memberId: string) => {
-    router.push(`/admin/memberships/add?id=${memberId}&edit=true`);
+    router.push(`/tsmwa/memberships/add?id=${memberId}&edit=true`);
   };
 
   // Show delete confirmation popup
@@ -253,7 +250,7 @@ const page = () => {
       await axios.post(
         `${apiUrl}/api/member/delete_members`,
         {
-          membershipIds: [memberId]
+          membershipIds: [memberId],
         },
         {
           headers: {
@@ -264,18 +261,27 @@ const page = () => {
       );
 
       // Refresh the list
-      const refreshResponse = await axios.get(`${apiUrl}/api/member/get_members`, {
-        headers: {
-          Authorization: `Bearer ${session.user.token}`,
-        },
-      });
+      const refreshResponse = await axios.get(
+        `${apiUrl}/api/member/get_members`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
 
       let updatedMembersData: Member[] = [];
       if (refreshResponse.data && Array.isArray(refreshResponse.data)) {
         updatedMembersData = refreshResponse.data;
-      } else if (refreshResponse.data && Array.isArray(refreshResponse.data.data)) {
+      } else if (
+        refreshResponse.data &&
+        Array.isArray(refreshResponse.data.data)
+      ) {
         updatedMembersData = refreshResponse.data.data;
-      } else if (refreshResponse.data && Array.isArray(refreshResponse.data.members)) {
+      } else if (
+        refreshResponse.data &&
+        Array.isArray(refreshResponse.data.members)
+      ) {
         updatedMembersData = refreshResponse.data.members;
       }
 
@@ -294,11 +300,12 @@ const page = () => {
         title: "Member Deleted",
         description: "The member has been deleted successfully.",
       });
-
     } catch (error: any) {
       console.error("Error deleting member:", error);
-      const errorMessage = error.response?.data?.message || "Failed to delete member. Please try again.";
-      
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to delete member. Please try again.";
+
       // Show toast notification
       toast({
         title: "Delete Failed",
@@ -358,7 +365,7 @@ const page = () => {
                 Manage all organization memberships
               </CardDescription>
             </div>
-            <Link href={"/admin/memberships/add"}>
+            <Link href={"/tsmwa/memberships/add"}>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Add Member
               </Button>
@@ -479,36 +486,21 @@ const page = () => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem>
                                 <Link
-                                  href={`/admin/memberships/${member.membershipId}`}
+                                  href={`/tsmwa/memberships/${member.membershipId}`}
                                 >
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
 
                               {/* Show Edit option only for Admin or Editor roles */}
-                              {(session?.user.role! === "ADMIN" ||
-                                userRole === "TSMWA_EDITOR") && (
-                                <DropdownMenuItem>
-                                  <Link
-                                    href={`/admin/memberships/${member.membershipId}/edit`}
-                                  >
-                                    Edit Member
-                                  </Link>
-                                </DropdownMenuItem>
-                              )}
 
-                              {/* Show Delete option only for Admin role */}
-                              {session?.user.role! === "ADMIN" && (
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    showDeleteConfirmation(member.membershipId);
-                                  }}
+                              <DropdownMenuItem>
+                                <Link
+                                  href={`/tsmwa/memberships/${member.membershipId}/edit`}
                                 >
-                                  Delete Member
-                                </DropdownMenuItem>
-                              )}
+                                  Edit Member
+                                </Link>
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
