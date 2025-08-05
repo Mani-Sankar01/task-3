@@ -815,7 +815,8 @@ const AddMemberForm = () => {
       // Check each compliance field
       if (response.data["GSTIN"] && gstinNo.trim()) {
         if (response.data["GSTIN"].isMember) {
-          errors.gstinNo = `${response.data["GSTIN"].message}`;
+          const firmName = response.data["GSTIN"].firmName || "Unknown Firm";
+          errors.gstinNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
           success.gstinNo = "This GSTIN number is unique and can be used.";
@@ -825,7 +826,8 @@ const AddMemberForm = () => {
 
       if (response.data["Factory License Number"] && factoryLicenseNo.trim()) {
         if (response.data["Factory License Number"].isMember) {
-          errors.factoryLicenseNo = `${response.data["Factory License Number"].message}`;
+          const firmName = response.data["Factory License Number"].firmName || "Unknown Firm";
+          errors.factoryLicenseNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
           success.factoryLicenseNo = "This Factory License number is unique and can be used.";
@@ -835,7 +837,8 @@ const AddMemberForm = () => {
 
       if (response.data["TSPCB Order Number"] && tspcbOrderNo.trim()) {
         if (response.data["TSPCB Order Number"].isMember) {
-          errors.tspcbOrderNo = `${response.data["TSPCB Order Number"].message}`;
+          const firmName = response.data["TSPCB Order Number"].firmName || "Unknown Firm";
+          errors.tspcbOrderNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
           success.tspcbOrderNo = "This TSPCB Order number is unique and can be used.";
@@ -845,7 +848,8 @@ const AddMemberForm = () => {
 
       if (response.data["MDL Number"] && mdlNo.trim()) {
         if (response.data["MDL Number"].isMember) {
-          errors.mdlNo = `${response.data["MDL Number"].message}`;
+          const firmName = response.data["MDL Number"].firmName || "Unknown Firm";
+          errors.mdlNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
           success.mdlNo = "This MDL number is unique and can be used.";
@@ -853,12 +857,13 @@ const AddMemberForm = () => {
         }
       }
 
-      if (response.data["UDYAM Certificate Number"] && udyamCertificateNo.trim()) {
-        if (response.data["UDYAM Certificate Number"].isMember) {
-          errors.udyamCertificateNo = `${response.data["UDYAM Certificate Number"].message}`;
+      if (response.data["Udyam Certificate Number"] && udyamCertificateNo.trim()) {
+        if (response.data["Udyam Certificate Number"].isMember) {
+          const firmName = response.data["Udyam Certificate Number"].firmName || "Unknown Firm";
+          errors.udyamCertificateNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
-          success.udyamCertificateNo = "This UDYAM Certificate number is unique and can be used.";
+          success.udyamCertificateNo = "This Udyam Certificate number is unique and can be used.";
           hasSuccess = true;
         }
       }
@@ -875,6 +880,70 @@ const AddMemberForm = () => {
     } catch (error) {
       console.error("Compliance validation error:", error);
       return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  // Single field compliance validation function
+  const validateSingleComplianceField = async (fieldName: string, value: string) => {
+    if (!session?.user?.token || value.length < 3) return;
+
+    setIsValidating(true);
+    try {
+      console.log(`Validating single field: ${fieldName} with value: ${value}`);
+      
+      // Build payload with only the specific field
+      const payload: any = {};
+      const fieldMappings: { [key: string]: string } = {
+        gstinNo: 'gstInNumber',
+        factoryLicenseNo: 'factoryLicenseNumber',
+        tspcbOrderNo: 'tspcbOrderNumber',
+        mdlNo: 'mdlNumber',
+        udyamCertificateNo: 'udyamCertificateNumber'
+      };
+      
+      const apiFieldName = fieldMappings[fieldName];
+      if (apiFieldName) {
+        payload[apiFieldName] = value.trim();
+      }
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/validate_compliance_details`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      console.log('Single field validation response:', response.data);
+
+      // Clear previous validation for this field only
+      setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
+      setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
+
+      // Check the specific field response
+      const responseKeys: { [key: string]: string } = {
+        gstinNo: 'GSTIN',
+        factoryLicenseNo: 'Factory License Number',
+        tspcbOrderNo: 'TSPCB Order Number',
+        mdlNo: 'MDL Number',
+        udyamCertificateNo: 'Udyam Certificate Number'
+      };
+
+      const responseKey = responseKeys[fieldName];
+      if (response.data[responseKey]) {
+        if (response.data[responseKey].isMember) {
+          const firmName = response.data[responseKey].firmName || "Unknown Firm";
+          setValidationErrors(prev => ({ ...prev, [fieldName]: `Already added for ${firmName}` }));
+        } else {
+          setValidationSuccess(prev => ({ ...prev, [fieldName]: `This ${fieldName} is unique and can be used.` }));
+        }
+      }
+    } catch (error) {
+      console.error(`Error validating ${fieldName}:`, error);
     } finally {
       setIsValidating(false);
     }
@@ -934,32 +1003,14 @@ const AddMemberForm = () => {
       }
     }
     
-    // Compliance validation
+    // Compliance validation - single field only
     if (fieldName === 'gstinNo' || fieldName === 'factoryLicenseNo' || fieldName === 'tspcbOrderNo' || fieldName === 'mdlNo' || fieldName === 'udyamCertificateNo') {
-      const gstinNo = fieldName === 'gstinNo' ? value : currentData.complianceDetails.gstinNo;
-      const factoryLicenseNo = fieldName === 'factoryLicenseNo' ? value : currentData.complianceDetails.factoryLicenseNo;
-      const tspcbOrderNo = fieldName === 'tspcbOrderNo' ? value : currentData.complianceDetails.tspcbOrderNo;
-      const mdlNo = fieldName === 'mdlNo' ? value : currentData.complianceDetails.mdlNo;
-      const udyamCertificateNo = fieldName === 'udyamCertificateNo' ? value : currentData.complianceDetails.udyamCertificateNo;
-      
-      console.log('Current compliance values:', { gstinNo, factoryLicenseNo, tspcbOrderNo, mdlNo, udyamCertificateNo });
-      
-      // Validate each field independently if it has at least 3 characters
       if (value.length >= 3) {
-        console.log(`Starting ${fieldName} validation...`);
+        console.log(`Starting single field validation for ${fieldName}...`);
         
         // Add a small delay to avoid too many API calls
         setTimeout(async () => {
-          console.log(`Executing ${fieldName} validation...`);
-          const isValid = await validateComplianceDetails(gstinNo, factoryLicenseNo, tspcbOrderNo, mdlNo, udyamCertificateNo);
-          console.log(`${fieldName} validation result:`, isValid);
-          
-          if (isValid) {
-            // Clear error if validation passes
-            setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-            setValidationSuccess(prev => ({ ...prev, [fieldName]: `This ${fieldName} is unique and can be used.` }));
-            console.log(`${fieldName} validation passed, cleared error`);
-          }
+          await validateSingleComplianceField(fieldName, value);
         }, 500); // 500ms delay
       } else if (value.length < 3) {
         // Clear errors if field is too short

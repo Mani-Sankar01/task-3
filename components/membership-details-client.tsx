@@ -16,6 +16,7 @@ import {
   Download,
   Edit2,
   User2,
+  Plus,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -395,6 +396,15 @@ export default function MembershipDetailsClient({
   const [editLicenseExpiry, setEditLicenseExpiry] = useState("");
   const [editLicenseFile, setEditLicenseFile] = useState<File | null>(null);
   const [editLicenseDocError, setEditLicenseDocError] = useState("");
+  const [showAddLicenseDialog, setShowAddLicenseDialog] = useState(false);
+  const [addLicenseType, setAddLicenseType] = useState("");
+  const [addLicenseNumber, setAddLicenseNumber] = useState("");
+  const [addLicenseFilePath, setAddLicenseFilePath] = useState<string | null>(null);
+  const [addLicenseExpiry, setAddLicenseExpiry] = useState("");
+  const [addLicenseFile, setAddLicenseFile] = useState<File | null>(null);
+  const [addLicenseValidationError, setAddLicenseValidationError] = useState("");
+  const [addLicenseValidationSuccess, setAddLicenseValidationSuccess] = useState("");
+  const [isValidatingLicense, setIsValidatingLicense] = useState(false);
 
   const handleEditLicenseSubmit = async () => {
     setDocLoading(true);
@@ -471,32 +481,32 @@ export default function MembershipDetailsClient({
     }
     try {
       let payload: any = { membershipId: member.membershipId };
+      
+      // Create complianceDetails object with only the fields being deleted
+      payload.complianceDetails = {};
+      
       if (type === "gst") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        payload.complianceDetails.gstInCertificatePath = null;
+        payload.complianceDetails.gstInNumber = "";
+        payload.complianceDetails.gstInCertificatePath = "";
         payload.complianceDetails.gstExpiredAt = null;
-        payload.complianceDetails.gstInNumber = null;
       } else if (type === "factory") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        payload.complianceDetails.factoryLicensePath = null;
+        payload.complianceDetails.factoryLicenseNumber = "";
+        payload.complianceDetails.factoryLicensePath = "";
         payload.complianceDetails.factoryLicenseExpiredAt = null;
-        payload.complianceDetails.factoryLicenseNumber = null;
       } else if (type === "tspcb") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        payload.complianceDetails.tspcbCertificatePath = null;
+        payload.complianceDetails.tspcbOrderNumber = "";
+        payload.complianceDetails.tspcbCertificatePath = "";
         payload.complianceDetails.tspcbExpiredAt = null;
-        payload.complianceDetails.tspcbOrderNumber = null;
       } else if (type === "mdl") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        payload.complianceDetails.mdlCertificatePath = null;
+        payload.complianceDetails.mdlNumber = "";
+        payload.complianceDetails.mdlCertificatePath = "";
         payload.complianceDetails.mdlExpiredAt = null;
-        payload.complianceDetails.mdlNumber = null;
       } else if (type === "udyam") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        payload.complianceDetails.udyamCertificatePath = null;
+        payload.complianceDetails.udyamCertificateNumber = "";
+        payload.complianceDetails.udyamCertificatePath = "";
         payload.complianceDetails.udyamCertificateExpiredAt = null;
-        payload.complianceDetails.udyamCertificateNumber = null;
       }
+      
       console.log("Delete payload:", JSON.stringify(payload));
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/update_member`,
@@ -511,11 +521,175 @@ export default function MembershipDetailsClient({
       console.log("Delete response:", response);
       if (response.status !== 200 && response.status !== 201) throw new Error("Failed to delete license");
       setEditLicenseType(null);
-      toast({ title: "License deleted", description: "The license was successfully deleted.", variant: "sucess" });
+      toast({ title: "License deleted", description: "The license was successfully deleted.", variant: "default" });
       await refetchMember();
     } catch (err: any) {
       setDocError(err.message || "Failed to delete license");
       alert(err.message || "Failed to delete license");
+    } finally {
+      setDocLoading(false);
+    }
+  };
+
+  // Get available license types (only those that don't have values)
+  const getAvailableLicenseTypes = () => {
+    const allTypes = [
+      { value: "gst", label: "GST Certificate" },
+      { value: "factory", label: "Factory License" },
+      { value: "tspcb", label: "TSPCB Certificate" },
+      { value: "mdl", label: "MDL Certificate" },
+      { value: "udyam", label: "Udyam Certificate" }
+    ];
+
+    return allTypes.filter(type => {
+      if (type.value === "gst") return !member.complianceDetails.gstInNumber && !member.complianceDetails.gstInCertificatePath;
+      if (type.value === "factory") return !member.complianceDetails.factoryLicenseNumber && !member.complianceDetails.factoryLicensePath;
+      if (type.value === "tspcb") return !member.complianceDetails.tspcbOrderNumber && !member.complianceDetails.tspcbCertificatePath;
+      if (type.value === "mdl") return !member.complianceDetails.mdlNumber && !member.complianceDetails.mdlCertificatePath;
+      if (type.value === "udyam") return !member.complianceDetails.udyamCertificateNumber && !member.complianceDetails.udyamCertificatePath;
+      return false;
+    });
+  };
+
+  const openAddLicenseDialog = () => {
+    setShowAddLicenseDialog(true);
+    setAddLicenseType("");
+    setAddLicenseNumber("");
+    setAddLicenseFilePath(null);
+    setAddLicenseExpiry("");
+    setAddLicenseFile(null);
+  };
+
+  // Single license validation function
+  const validateSingleLicenseField = async (fieldName: string, value: string) => {
+    if (!session?.user?.token || value.length < 3) return;
+
+    setIsValidatingLicense(true);
+    try {
+      console.log(`Validating single license field: ${fieldName} with value: ${value}`);
+      
+      // Build payload with only the specific field
+      const payload: any = {};
+      const fieldMappings: { [key: string]: string } = {
+        gst: 'gstInNumber',
+        factory: 'factoryLicenseNumber',
+        tspcb: 'tspcbOrderNumber',
+        mdl: 'mdlNumber',
+        udyam: 'udyamCertificateNumber'
+      };
+      
+      const apiFieldName = fieldMappings[fieldName];
+      if (apiFieldName) {
+        payload[apiFieldName] = value.trim();
+      }
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/validate_compliance_details`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      console.log('Single license validation response:', response.data);
+
+      // Clear previous validation messages
+      setAddLicenseValidationError("");
+      setAddLicenseValidationSuccess("");
+
+      // Check the specific field response
+      const responseKeys: { [key: string]: string } = {
+        gst: 'GSTIN',
+        factory: 'Factory License Number',
+        tspcb: 'TSPCB Order Number',
+        mdl: 'MDL Number',
+        udyam: 'Udyam Certificate Number'
+      };
+
+      const responseKey = responseKeys[fieldName];
+      if (response.data[responseKey]) {
+        if (response.data[responseKey].isMember) {
+          const firmName = response.data[responseKey].firmName || "Unknown Firm";
+          setAddLicenseValidationError(`Already added for ${firmName}`);
+        } else {
+          setAddLicenseValidationSuccess(`This ${fieldName} is unique and can be used.`);
+        }
+      }
+    } catch (error) {
+      console.error(`Error validating ${fieldName}:`, error);
+    } finally {
+      setIsValidatingLicense(false);
+    }
+  };
+
+  const handleAddLicenseSubmit = async () => {
+    if (!addLicenseType || !session?.user.token) return;
+    
+    setDocLoading(true);
+    setDocError("");
+    
+    try {
+      let filePath = addLicenseFilePath || "";
+      if (addLicenseFile) {
+        const upload = await uploadFile(addLicenseFile, "documents");
+        if (upload.error) {
+          setDocError(upload.error || "File upload failed");
+          setDocLoading(false);
+          return;
+        }
+        filePath = upload.filePath;
+      }
+
+      let payload: any = { membershipId: member.membershipId };
+      
+      if (addLicenseType === "gst") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (addLicenseExpiry) payload.complianceDetails.gstExpiredAt = new Date(addLicenseExpiry).toISOString();
+        if (addLicenseNumber) payload.complianceDetails.gstInNumber = addLicenseNumber;
+        if (filePath) payload.complianceDetails.gstInCertificatePath = filePath;
+      } else if (addLicenseType === "factory") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (addLicenseExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(addLicenseExpiry).toISOString();
+        if (addLicenseNumber) payload.complianceDetails.factoryLicenseNumber = addLicenseNumber;
+        if (filePath) payload.complianceDetails.factoryLicensePath = filePath;
+      } else if (addLicenseType === "tspcb") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (addLicenseExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(addLicenseExpiry).toISOString();
+        if (addLicenseNumber) payload.complianceDetails.tspcbOrderNumber = addLicenseNumber;
+        if (filePath) payload.complianceDetails.tspcbCertificatePath = filePath;
+      } else if (addLicenseType === "mdl") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (addLicenseExpiry) payload.complianceDetails.mdlExpiredAt = new Date(addLicenseExpiry).toISOString();
+        if (addLicenseNumber) payload.complianceDetails.mdlNumber = addLicenseNumber;
+        if (filePath) payload.complianceDetails.mdlCertificatePath = filePath;
+      } else if (addLicenseType === "udyam") {
+        payload.complianceDetails = { ...member.complianceDetails };
+        if (addLicenseExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(addLicenseExpiry).toISOString();
+        if (addLicenseNumber) payload.complianceDetails.udyamCertificateNumber = addLicenseNumber;
+        if (filePath) payload.complianceDetails.udyamCertificatePath = filePath;
+      }
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status !== 200 && response.status !== 201) throw new Error("Failed to add license");
+      
+      setShowAddLicenseDialog(false);
+      toast({ title: "License added", description: "The license was successfully added.", variant: "default" });
+      await refetchMember();
+    } catch (err: any) {
+      setDocError(err.message || "Failed to add license");
+      alert(err.message || "Failed to add license");
     } finally {
       setDocLoading(false);
     }
@@ -1264,8 +1438,16 @@ export default function MembershipDetailsClient({
         <TabsContent value="licenses">
           <Card>
             <CardHeader>
-              <CardTitle>Licenses & Certificates</CardTitle>
-              <CardDescription>View and manage member licenses</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Licenses & Certificates</CardTitle>
+                  <CardDescription>View and manage member licenses</CardDescription>
+                </div>
+                <Button onClick={openAddLicenseDialog} disabled={getAvailableLicenseTypes().length === 0}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add License
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -1316,7 +1498,7 @@ export default function MembershipDetailsClient({
                       path: member.complianceDetails.udyamCertificatePath,
                       expiredAt: member.complianceDetails.udyamCertificateExpiredAt,
                     },
-                  ].filter(doc => doc.path).map((doc) => (
+                  ].filter(doc => doc.number || doc.path).map((doc) => (
                     <TableRow key={doc.type}>
                       <TableCell className="font-medium">{doc.label}</TableCell>
                       <TableCell>{doc.number || "-"}</TableCell>
@@ -1348,6 +1530,44 @@ export default function MembershipDetailsClient({
                   ))}
                 </TableBody>
               </Table>
+              {[
+                {
+                  type: "gst",
+                  label: "GST Certificate",
+                  number: member.complianceDetails.gstInNumber,
+                  path: member.complianceDetails.gstInCertificatePath,
+                },
+                {
+                  type: "factory",
+                  label: "Factory License",
+                  number: member.complianceDetails.factoryLicenseNumber,
+                  path: member.complianceDetails.factoryLicensePath,
+                },
+                {
+                  type: "tspcb",
+                  label: "TSPCB Certificate",
+                  number: member.complianceDetails.tspcbOrderNumber,
+                  path: member.complianceDetails.tspcbCertificatePath,
+                },
+                {
+                  type: "mdl",
+                  label: "MDL Certificate",
+                  number: member.complianceDetails.mdlNumber,
+                  path: member.complianceDetails.mdlCertificatePath,
+                },
+                {
+                  type: "udyam",
+                  label: "Udyam Certificate",
+                  number: member.complianceDetails.udyamCertificateNumber,
+                  path: member.complianceDetails.udyamCertificatePath,
+                },
+              ].filter(doc => !doc.number && !doc.path).length === 5 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No licenses or certificates found.</p>
+                  <p className="text-sm">Click "Add License" to add a new certificate.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
           {/* Edit License Dialog */}
@@ -1377,6 +1597,104 @@ export default function MembershipDetailsClient({
                 <Button variant="outline" onClick={() => setEditLicenseType(null)} disabled={docLoading}>Cancel</Button>
                 <Button onClick={handleEditLicenseSubmit} disabled={docLoading}>Save Changes</Button>
                 {editLicenseDocError && <div className="text-red-500 text-sm mt-2">{editLicenseDocError}</div>}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Add License Dialog */}
+          <Dialog open={showAddLicenseDialog} onOpenChange={val => { if (!val) setShowAddLicenseDialog(false); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New License</DialogTitle>
+                <DialogDescription>Select a license type to add</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>License Type</Label>
+                  <Select value={addLicenseType} onValueChange={setAddLicenseType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select license type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableLicenseTypes().map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {addLicenseType && (
+                  <>
+                    <div>
+                      <Label>Number</Label>
+                      <Input 
+                        value={addLicenseNumber} 
+                        onChange={e => {
+                          setAddLicenseNumber(e.target.value);
+                          // Clear validation messages when user starts typing
+                          setAddLicenseValidationError("");
+                          setAddLicenseValidationSuccess("");
+                          
+                          // Validate after 3 characters
+                          if (e.target.value.length >= 3) {
+                            setTimeout(() => {
+                              validateSingleLicenseField(addLicenseType, e.target.value);
+                            }, 500);
+                          }
+                        }} 
+                        placeholder="Enter license number"
+                      />
+                      {isValidatingLicense && (
+                        <div className="text-sm text-muted-foreground mt-1">
+                          Validating...
+                        </div>
+                      )}
+                      {addLicenseValidationError && (
+                        <div className="text-sm text-red-500 mt-1">
+                          {addLicenseValidationError}
+                        </div>
+                      )}
+                      {addLicenseValidationSuccess && (
+                        <div className="text-sm text-green-500 mt-1">
+                          {addLicenseValidationSuccess}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <Label>File</Label>
+                      <FileUpload
+                        onFileSelect={setAddLicenseFile}
+                        onUploadComplete={(filePath) => setAddLicenseFilePath(filePath)}
+                        onUploadError={setDocError}
+                        subfolder="documents"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onDownload={filePath => handleDownloadDocument(filePath)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Expiry Date</Label>
+                      <Input 
+                        type="date" 
+                        value={addLicenseExpiry} 
+                        onChange={e => setAddLicenseExpiry(e.target.value)} 
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddLicenseDialog(false)} disabled={docLoading}>Cancel</Button>
+                <Button 
+                  onClick={handleAddLicenseSubmit} 
+                  disabled={docLoading || !addLicenseType || !!addLicenseValidationError || isValidatingLicense}
+                >
+                  Add License
+                </Button>
+                {docError && <div className="text-red-500 text-sm mt-2">{docError}</div>}
               </DialogFooter>
             </DialogContent>
           </Dialog>

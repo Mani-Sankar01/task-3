@@ -204,21 +204,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{
-    gstinNo?: string;
-    factoryLicenseNo?: string;
-    tspcbOrderNo?: string;
-    mdlNo?: string;
-    udyamCertificateNo?: string;
-  }>({});
-  const [validationSuccess, setValidationSuccess] = useState<{
-    gstinNo?: string;
-    factoryLicenseNo?: string;
-    tspcbOrderNo?: string;
-    mdlNo?: string;
-    udyamCertificateNo?: string;
-  }>({});
+
   const { data: session, status } = useSession();
   const originalDataRef = useRef<FormValues | null>(null);
   const [popupMessage, setPopupMessage] = useState<{
@@ -740,177 +726,11 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
     return false;
   };
 
-  // Compliance validation function
-  const validateComplianceDetails = async (
-    gstinNo: string,
-    factoryLicenseNo: string,
-    tspcbOrderNo: string,
-    mdlNo: string,
-    udyamCertificateNo: string
-  ) => {
-    if (!session?.user?.token) return false;
 
-    setIsValidating(true);
-    try {
-      console.log('Making API call to validate compliance details...');
-      
-      // Build payload with only non-empty values
-      const payload: any = {};
-      if (gstinNo.trim()) payload.gstInNumber = gstinNo.trim();
-      if (factoryLicenseNo.trim()) payload.factoryLicenseNumber = factoryLicenseNo.trim();
-      if (tspcbOrderNo.trim()) payload.tspcbOrderNumber = tspcbOrderNo.trim();
-      if (mdlNo.trim()) payload.mdlNumber = mdlNo.trim();
-      if (udyamCertificateNo.trim()) payload.udyamCertificateNumber = udyamCertificateNo.trim();
-
-      // Only make API call if there's at least one value to validate
-      if (Object.keys(payload).length === 0) {
-        setIsValidating(false);
-        return true;
-      }
-
-      const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/member/validate_compliance_details`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        }
-      );
-
-      console.log('Compliance validation API response:', response.data);
-
-      // Clear previous validation errors and success messages
-      setValidationErrors(prev => ({
-        ...prev,
-        gstinNo: undefined,
-        factoryLicenseNo: undefined,
-        tspcbOrderNo: undefined,
-        mdlNo: undefined,
-        udyamCertificateNo: undefined,
-      }));
-      setValidationSuccess(prev => ({
-        ...prev,
-        gstinNo: undefined,
-        factoryLicenseNo: undefined,
-        tspcbOrderNo: undefined,
-        mdlNo: undefined,
-        udyamCertificateNo: undefined,
-      }));
-
-      const errors: any = {};
-      const success: any = {};
-      let hasErrors = false;
-      let hasSuccess = false;
-
-      // Check each compliance field
-      if (response.data["GSTIN"] && gstinNo.trim()) {
-        if (response.data["GSTIN"].isMember) {
-          errors.gstinNo = `${response.data["GSTIN"].message}`;
-          hasErrors = true;
-        } else {
-          success.gstinNo = "This GSTIN number is unique and can be used.";
-          hasSuccess = true;
-        }
-      }
-
-      if (response.data["Factory License Number"] && factoryLicenseNo.trim()) {
-        if (response.data["Factory License Number"].isMember) {
-          errors.factoryLicenseNo = `${response.data["Factory License Number"].message}`;
-          hasErrors = true;
-        } else {
-          success.factoryLicenseNo = "This Factory License number is unique and can be used.";
-          hasSuccess = true;
-        }
-      }
-
-      if (response.data["TSPCB Order Number"] && tspcbOrderNo.trim()) {
-        if (response.data["TSPCB Order Number"].isMember) {
-          errors.tspcbOrderNo = `${response.data["TSPCB Order Number"].message}`;
-          hasErrors = true;
-        } else {
-          success.tspcbOrderNo = "This TSPCB Order number is unique and can be used.";
-          hasSuccess = true;
-        }
-      }
-
-      if (response.data["MDL Number"] && mdlNo.trim()) {
-        if (response.data["MDL Number"].isMember) {
-          errors.mdlNo = `${response.data["MDL Number"].message}`;
-          hasErrors = true;
-        } else {
-          success.mdlNo = "This MDL number is unique and can be used.";
-          hasSuccess = true;
-        }
-      }
-
-      if (response.data["UDYAM Certificate Number"] && udyamCertificateNo.trim()) {
-        if (response.data["UDYAM Certificate Number"].isMember) {
-          errors.udyamCertificateNo = `${response.data["UDYAM Certificate Number"].message}`;
-          hasErrors = true;
-          } else {
-          success.udyamCertificateNo = "This UDYAM Certificate number is unique and can be used.";
-          hasSuccess = true;
-        }
-      }
-
-      if (hasErrors) {
-        setValidationErrors(prev => ({ ...prev, ...errors }));
-      }
-
-      if (hasSuccess) {
-        setValidationSuccess(prev => ({ ...prev, ...success }));
-      }
-
-      return !hasErrors;
-    } catch (error) {
-      console.error("Compliance validation error:", error);
-      return false;
-    } finally {
-      setIsValidating(false);
-    }
-  };
 
   // Real-time validation function
   const handleFieldChange = async (fieldName: string, value: string) => {
     console.log('Field change detected:', fieldName, value);
-    
-    const currentData = methods.getValues();
-    
-    // Compliance validation
-    if (fieldName === 'gstinNo' || fieldName === 'factoryLicenseNo' || fieldName === 'tspcbOrderNo' || fieldName === 'mdlNo' || fieldName === 'udyamCertificateNo') {
-      const gstinNo = fieldName === 'gstinNo' ? value : currentData.complianceDetails.gstinNo;
-      const factoryLicenseNo = fieldName === 'factoryLicenseNo' ? value : currentData.complianceDetails.factoryLicenseNo;
-      const tspcbOrderNo = fieldName === 'tspcbOrderNo' ? value : currentData.complianceDetails.tspcbOrderNo;
-      const mdlNo = fieldName === 'mdlNo' ? value : currentData.complianceDetails.mdlNo;
-      const udyamCertificateNo = fieldName === 'udyamCertificateNo' ? value : currentData.complianceDetails.udyamCertificateNo;
-      
-      console.log('Current compliance values:', { gstinNo, factoryLicenseNo, tspcbOrderNo, mdlNo, udyamCertificateNo });
-      
-      // Validate each field independently if it has at least 3 characters
-      if (value.length >= 3) {
-        console.log(`Starting ${fieldName} validation...`);
-        
-        // Add a small delay to avoid too many API calls
-        setTimeout(async () => {
-          console.log(`Executing ${fieldName} validation...`);
-          const isValid = await validateComplianceDetails(gstinNo, factoryLicenseNo, tspcbOrderNo, mdlNo, udyamCertificateNo);
-          console.log(`${fieldName} validation result:`, isValid);
-          
-          if (isValid) {
-            // Clear error if validation passes
-            setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-            setValidationSuccess(prev => ({ ...prev, [fieldName]: `This ${fieldName} is unique and can be used.` }));
-            console.log(`${fieldName} validation passed, cleared error`);
-          }
-        }, 500); // 500ms delay
-      } else if (value.length < 3) {
-        // Clear errors if field is too short
-        setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-        setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
-        console.log(`${fieldName} too short, cleared error`);
-      }
-    }
   };
 
   const handleSubmit = async (data: FormValues) => {
@@ -1382,9 +1202,6 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
               {currentStep === 3 && (
                 <Step3ComplianceLegal 
                   isEditMode 
-                  validationErrors={validationErrors}
-                  validationSuccess={validationSuccess}
-                  onFieldChange={handleFieldChange}
                 />
               )}
               {currentStep === 4 && <Step4MembershipDocs isEditMode />}
