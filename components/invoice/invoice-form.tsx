@@ -512,7 +512,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
             amount: item.amount,
           })),
         };
-        console.log(addPayload);
+        console.log(JSON.stringify(addPayload));
         await axios.post(
           `${process.env.BACKEND_API_URL}/api/tax_invoice/add_tax_invoice`,
           addPayload,
@@ -524,7 +524,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
           }
         );
         alert("Invoice created successfully!");
-        router.push("/admin/invoices");
+        // router.push("/admin/invoices");
       }
     } catch (error) {
       console.error("Error submitting form:", error);

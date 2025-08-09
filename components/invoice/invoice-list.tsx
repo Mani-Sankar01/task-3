@@ -29,6 +29,7 @@ interface ApiInvoice {
   iGSTInPercent: number;
   subTotal: string;
   total: string;
+  status: string;
   createdAt: string;
   modifiedAt: string;
   createdBy: number;
@@ -84,6 +85,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "../ui/badge";
 
 
 export default function InvoiceList() {
@@ -520,8 +522,9 @@ export default function InvoiceList() {
                   <TableHead>CGST %</TableHead>
                   <TableHead>SGST %</TableHead>
                   <TableHead>IGST %</TableHead>
-                  <TableHead className="text-right">Sub Total</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Sub Total</TableHead>
+                  <TableHead>Total</TableHead>
+                   <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -543,11 +546,20 @@ export default function InvoiceList() {
                       <TableCell>{invoice.cGSTInPercent}%</TableCell>
                       <TableCell>{invoice.sGSTInPercent}%</TableCell>
                       <TableCell>{invoice.iGSTInPercent}%</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>
                         ₹{parseFloat(invoice.subTotal).toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell>
                         ₹{parseFloat(invoice.total).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {invoice.status === "APPROVED" ? (
+                          <Badge variant="default">Approved</Badge>
+                        ) : invoice.status === "PENDING" ? (
+                          <Badge variant="outline">Pending</Badge>
+                        ) : (
+                          <Badge variant="destructive">DECLINED</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>

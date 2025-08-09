@@ -382,17 +382,19 @@ export default function DashboardOverview() {
                         className="flex justify-between items-center border-b pb-3 last:border-0"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{fee.memberName}</span>
+                          <span className="font-medium">{fee.members?.firmName || fee.members?.applicantName || "Unknown Member"}</span>
                           <span className="text-sm text-muted-foreground">
-                            Due: {fee.dueDate && !isNaN(new Date(fee.dueDate).getTime()) 
-                              ? format(new Date(fee.dueDate), "MMM dd")
-                              : "Invalid Date"
+                            Due: {fee.toDate && !isNaN(new Date(fee.toDate).getTime()) 
+                              ? format(new Date(fee.toDate), "MMM dd, yyyy")
+                              : fee.fromDate && !isNaN(new Date(fee.fromDate).getTime())
+                              ? format(new Date(fee.fromDate), "MMM dd, yyyy")
+                              : "Date not available"
                             }
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold">
-                            ₹{(fee.amount || 0).toLocaleString()}
+                            ₹{(fee.dueAmount || fee.totalAmount || 0).toLocaleString()}
                           </span>
                           <Button
                             variant="ghost"
@@ -400,7 +402,7 @@ export default function DashboardOverview() {
                             className="text-primary"
                             onClick={() =>
                               navigateToSection(
-                                `/admin/membership-fees/${fee.id}`
+                                `/admin/membership-fees/${fee.billingId}/edit`
                               )
                             }
                           >
@@ -483,29 +485,7 @@ export default function DashboardOverview() {
               </CardFooter>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Vehicle Maintenance</CardTitle>
-                <CardDescription>Vehicles due for maintenance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* This section needs to be implemented based on actual vehicle maintenance data */}
-                  <p className="text-center text-muted-foreground py-4">
-                    Vehicle maintenance data not yet available from API.
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => navigateToSection("/admin/vehicles")}
-                >
-                  View All Vehicles
-                </Button>
-              </CardFooter>
-            </Card>
+
           </div>
         </TabsContent>
 

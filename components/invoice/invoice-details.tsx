@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
+import { Badge } from "../ui/badge";
 
 // API Invoice interface
 interface ApiInvoice {
@@ -31,6 +32,7 @@ interface ApiInvoice {
   iGSTInPercent: number;
   subTotal: string;
   total: string;
+  status: string;
   createdAt: string;
   modifiedAt: string;
   createdBy: number;
@@ -228,6 +230,13 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div>
               <p className="font-bold">Invoice No: {invoice.invoiceId}</p>
+              {invoice.status === "APPROVED" ? (
+                          <Badge variant="default">Approved</Badge>
+                        ) : invoice.status === "PENDING" ? (
+                          <Badge variant="outline">Pending</Badge>
+                        ) : (
+                          <Badge variant="destructive">DECLINED</Badge>
+                        )}
             </div>
             <div className="text-right mt-4 md:mt-0">
               <p className="font-bold">
