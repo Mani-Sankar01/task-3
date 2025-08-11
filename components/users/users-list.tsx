@@ -35,6 +35,8 @@ import {
   Pencil,
   Trash2,
   Filter,
+  BanIcon,
+  CheckCheckIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -254,20 +256,15 @@ export default function UsersList() {
     let badgeClass = "";
 
     switch (role) {
-      case UserRole.TSMWA_ADMIN:
+      case UserRole.ADMIN:
         badgeClass = "bg-purple-100 text-purple-800 hover:bg-purple-100";
         break;
       case UserRole.TSMWA_EDITOR:
         badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-100";
         break;
-      case UserRole.TSMWA_VIEWER:
-        badgeClass = "bg-indigo-100 text-indigo-800 hover:bg-indigo-100";
-        break;
-      case UserRole.TQMWA_EDITOR:
+      
+      case UserRole.TQMA_EDITOR:
         badgeClass = "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
-        break;
-      case UserRole.TQMWA_VIEWER:
-        badgeClass = "bg-amber-100 text-amber-800 hover:bg-amber-100";
         break;
       default:
         badgeClass = "bg-gray-100 text-gray-800 hover:bg-gray-100";
@@ -454,6 +451,19 @@ export default function UsersList() {
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
+                          {user.status === "ACTIVE" ? (
+                            <DropdownMenuItem
+                          >
+                            <BanIcon className="mr-2 h-4 w-4 text-red-600" />
+                            Inactive User
+                          </DropdownMenuItem>) : (
+                            <DropdownMenuItem
+                           
+                          >
+                            <CheckCheckIcon className="mr-2 h-4 w-4 text-green-600" />
+                            Activate User
+                          </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => handleDeleteUser(user.id)}
                             className="text-red-600"

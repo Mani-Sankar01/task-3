@@ -13,7 +13,8 @@ import {
   Calendar,
   AlertCircle,
   Check,
-  X
+  X,
+  Filter
 } from "lucide-react";
 
 import Header from "@/components/header";
@@ -31,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PendingChange {
   id: string;
@@ -74,6 +76,7 @@ const ApprovalPendingPage = () => {
   const [declineReason, setDeclineReason] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [declineError, setDeclineError] = useState("");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
 
   // Fetch pending changes
   useEffect(() => {
@@ -90,6 +93,8 @@ const ApprovalPendingPage = () => {
             },
           }
         );
+
+        console.log(response.data);
 
         setPendingChanges(response.data);
       } catch (error) {
@@ -268,6 +273,11 @@ const ApprovalPendingPage = () => {
   const handleApprove = async (changeId: string) => {
     if (!session?.user?.token) return;
 
+    console.log({
+          pendingChangeId: changeId,
+          action: "APPROVED"
+        });
+
     setIsProcessing(true);
     try {
       const response = await axios.post(
@@ -383,6 +393,12 @@ const ApprovalPendingPage = () => {
     return <Badge variant="outline">Modified</Badge>;
   };
 
+  // Filter pending changes based on approval status
+  const filteredPendingChanges = pendingChanges.filter((change) => {
+    if (approvalStatusFilter === "all") return true;
+    return change.approvalStatus === approvalStatusFilter;
+  });
+
   if (isLoading) {
     return (
       <SidebarInset>
@@ -405,24 +421,45 @@ const ApprovalPendingPage = () => {
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Approval Pending</h1>
-          <Badge variant="outline" className="text-sm">
-            {pendingChanges.length} pending changes
-          </Badge>
+          <div className="flex items-center gap-4">
+            <Select
+              value={approvalStatusFilter}
+              onValueChange={setApprovalStatusFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="DECLINED">Declined</SelectItem>
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="text-sm">
+              {filteredPendingChanges.length} of {pendingChanges.length} changes
+            </Badge>
+          </div>
         </div>
 
-        {pendingChanges.length === 0 ? (
+        {filteredPendingChanges.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Pending Changes</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {pendingChanges.length === 0 ? "No Pending Changes" : "No Changes Found"}
+              </h3>
               <p className="text-muted-foreground text-center">
-                All member changes have been processed. Check back later for new pending changes.
+                {pendingChanges.length === 0 
+                  ? "All member changes have been processed. Check back later for new pending changes."
+                  : `No changes found with "${approvalStatusFilter}" status. Try adjusting the filter.`
+                }
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {pendingChanges.map((change) => {
+            {filteredPendingChanges.map((change) => {
               const changes = extractChanges(change.updatedData);
               
               return (
@@ -471,7 +508,7 @@ const ApprovalPendingPage = () => {
                         size="sm"
                         onClick={() => handleApprove(change.id)}
                         disabled={isProcessing}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-primary hover:bg-primary/90"
                       >
                         <Check className="h-4 w-4 mr-2" />
                         Approve
@@ -554,7 +591,7 @@ const ApprovalPendingPage = () => {
                     variant="default"
                     onClick={() => handleApprove(selectedChange.id)}
                     disabled={isProcessing}
-                    className="bg-green-600 hover:bg-green-700"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     <Check className="h-4 w-4 mr-2" />
                     Approve

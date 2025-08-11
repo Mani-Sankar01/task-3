@@ -5,7 +5,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ArrowUpDown, BananaIcon, BanIcon, CheckCheck, EyeIcon, MoreHorizontal, PencilIcon, Plus, Search, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -37,12 +44,13 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
-import PopupMessage from "@/components/ui/popup-message";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
 
 // Define the Member type based on API response
 interface Member {
   membershipId: string;
-  approvalStatus: "APPROVED" | "PENDING" | "REJECTED";
+  approvalStatus: "APPROVED" | "PENDING" | "DECLINED";
   membershipStatus: "ACTIVE" | "INACTIVE";
   nextDueDate: string | null;
   isPaymentDue: "TRUE" | "FALSE";
@@ -87,8 +95,9 @@ const page = () => {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDeletePopup, setShowDeletePopup] = useState(false);
-  const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [approvalFilter, setApprovalFilter] = useState<string>("all");
+
   const { data: session, status } = useSession();
   const { toast } = useToast();
 
@@ -146,13 +155,21 @@ const page = () => {
     fetchMembers();
   }, [status, session?.user?.token]);
 
-  // Filter members based on search term
-  const filteredMembers = members.filter(
-    (member) =>
+  // Filter members based on search term and status filters
+  const filteredMembers = members.filter((member) => {
+    const matchesSearch = 
       member.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.firmName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.membershipId.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      member.membershipId.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = 
+      statusFilter === "all" || member.membershipStatus === statusFilter;
+    
+    const matchesApproval = 
+      approvalFilter === "all" || member.approvalStatus === approvalFilter;
+    
+    return matchesSearch && matchesStatus && matchesApproval;
+  });
 
   // Sort members if a sort field is selected
   const sortedMembers = [...filteredMembers].sort((a, b) => {
@@ -218,26 +235,12 @@ const page = () => {
     router.push(`/admin/memberships/add?id=${memberId}&edit=true`);
   };
 
-  // Show delete confirmation popup
-  const showDeleteConfirmation = (memberId: string) => {
-    setMemberToDelete(memberId);
-    setShowDeletePopup(true);
-  };
-
-  // Handle popup close
-  const handlePopupClose = () => {
-    setShowDeletePopup(false);
-    setMemberToDelete(null);
-  };
-
   // Delete a member
-  const handleDeleteMember = async () => {
-    if (!memberToDelete) return;
-
-    // Close popup immediately to prevent blocking
-    const memberId = memberToDelete;
-    setShowDeletePopup(false);
-    setMemberToDelete(null);
+  const handleDeleteMember = async (memberId: string, closeDialog?: () => void) => {
+    // Close dialog if provided
+    if (closeDialog) {
+      closeDialog();
+    }
 
     try {
       if (status !== "authenticated" || !session?.user?.token) {
@@ -366,17 +369,58 @@ const page = () => {
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, firm or ID..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1); // Reset to first page when search changes
-                  }}
-                />
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, firm or ID..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1); // Reset to first page when search changes
+                    }}
+                  />
+                </div>
+                
+                {/* Filter dropdowns */}
+                <div className="flex gap-4">
+                  <Select
+                    value={statusFilter}
+                    onValueChange={(value) => {
+                      setStatusFilter(value);
+                      setCurrentPage(1); // Reset to first page when filter changes
+                    }}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={approvalFilter}
+                    onValueChange={(value) => {
+                      setApprovalFilter(value);
+                      setCurrentPage(1); // Reset to first page when filter changes
+                    }}
+                  >
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="All Approvals" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Approvals</SelectItem>
+                      <SelectItem value="APPROVED">Approved</SelectItem>
+                      <SelectItem value="PENDING">Pending</SelectItem>
+                      <SelectItem value="DECLINED">Declined</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
 
@@ -428,6 +472,11 @@ const page = () => {
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
+
+                    <TableHead className="hidden md:table-cell">
+                        Approval
+                    </TableHead>
+
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -457,11 +506,26 @@ const page = () => {
                             }
                           >
                             {member.membershipStatus.charAt(0).toUpperCase() +
-                              member.membershipStatus.slice(1)}
+                              member.membershipStatus.slice(1).toLowerCase()}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {new Date(member.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                        <Badge
+                        
+                            variant={
+                              member.approvalStatus === "APPROVED"
+                                ? "default"
+                                : member.approvalStatus === "DECLINED"
+                                ? "secondary"
+                                : "destructive"
+                            }
+                          >
+                            {member.approvalStatus.charAt(0).toUpperCase() +
+                              member.approvalStatus.slice(1).toLowerCase()}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
@@ -480,18 +544,21 @@ const page = () => {
                               <DropdownMenuItem>
                                 <Link
                                   href={`/admin/memberships/${member.membershipId}`}
+                                  className="flex items-center gap-2 cursor-pointer"
                                 >
+                                  <EyeIcon className=" h-4 w-4" />
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
 
                               {/* Show Edit option only for Admin or Editor roles */}
-                              {(session?.user.role! === "ADMIN" ||
-                                userRole === "TSMWA_EDITOR") && (
+                              {(session?.user.role! === "ADMIN") && (
                                 <DropdownMenuItem>
                                   <Link
                                     href={`/admin/memberships/${member.membershipId}/edit`}
+                                    className="flex items-center gap-2 cursor-pointer"
                                   >
+                                    <PencilIcon className="h-4 w-4" />
                                     Edit Member
                                   </Link>
                                 </DropdownMenuItem>
@@ -499,15 +566,71 @@ const page = () => {
 
                               {/* Show Delete option only for Admin role */}
                               {session?.user.role! === "ADMIN" && (
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    showDeleteConfirmation(member.membershipId);
-                                  }}
-                                >
-                                  Delete Member
-                                </DropdownMenuItem>
+                                <>
+                                {member.membershipStatus === "ACTIVE" && (
+                                  <>
+                                  <DropdownMenuItem className="cursor-pointer">
+                                    <X className="h-4 w-4 text-red-600" />
+                                    Make Inactivate
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="cursor-pointer">
+                                    <X className="h-4 w-4 text-red-600" />
+                                    Cancel Membership
+                                  </DropdownMenuItem>
+                                  </>
+                                )}
+                                
+                                {member.approvalStatus === "APPROVED" ? (
+                                  <DropdownMenuItem className="cursor-pointer">
+                                    <BanIcon className="h-4 w-4 text-red-600" />
+                                    Decline
+                                  </DropdownMenuItem>
+                                ): (
+                                  <DropdownMenuItem className="cursor-pointer">
+                                    <CheckCheck className="h-4 w-4 text-red-600" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                )}
+
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <Trash2 className="h-4 w-4 text-red-600" />
+                                      Delete Member
+                                    </DropdownMenuItem>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center gap-2">
+                                        <span className="text-destructive">⚠️</span>
+                                        Confirm Delete
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Are you sure you want to delete <span className="font-semibold">{member.applicantName}</span>? 
+                                        This action cannot be undone.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter className="gap-2">
+                                      <DialogClose asChild>
+                                        <Button variant="outline">Cancel</Button>
+                                      </DialogClose>
+                                      <DialogClose asChild>
+                                        <Button 
+                                          variant="destructive"
+                                          onClick={() => handleDeleteMember(member.membershipId)}
+                                        >
+                                          Delete Member
+                                        </Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
+
+                                 
+                                </>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -559,26 +682,6 @@ const page = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Delete Confirmation Popup */}
-      <PopupMessage
-        isOpen={showDeletePopup}
-        onClose={handlePopupClose}
-        type="warning"
-        title="Confirm Delete"
-        message="Are you sure you want to delete this member? This action cannot be undone."
-        primaryButton={{
-          text: "Delete",
-          onClick: handleDeleteMember,
-          variant: "destructive" as const,
-        }}
-        secondaryButton={{
-          text: "Cancel",
-          onClick: handlePopupClose,
-          variant: "outline" as const,
-        }}
-        showCloseButton={false}
-      />
     </SidebarInset>
   );
 };

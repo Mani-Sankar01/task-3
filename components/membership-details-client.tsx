@@ -17,6 +17,7 @@ import {
   Edit2,
   User2,
   Plus,
+  Activity,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -66,6 +67,15 @@ import { useToast } from "@/hooks/use-toast";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+interface USCMeterHistory {
+  id: number;
+  electricalUscNumber: string;
+  membershipId: string;
+  branchId: number | null;
+  assignedAt: string;
+  unassignedAt: string | null;
 }
 
 interface MembershipDetailsClientProps {
@@ -405,6 +415,60 @@ export default function MembershipDetailsClient({
   const [addLicenseValidationError, setAddLicenseValidationError] = useState("");
   const [addLicenseValidationSuccess, setAddLicenseValidationSuccess] = useState("");
   const [isValidatingLicense, setIsValidatingLicense] = useState(false);
+  
+  // USC Meter History states
+  const [uscMeterHistory, setUscMeterHistory] = useState<USCMeterHistory[]>([]);
+  const [isLoadingMeterHistory, setIsLoadingMeterHistory] = useState(false);
+  const [meterHistoryError, setMeterHistoryError] = useState("");
+
+  // Fetch USC Meter History
+  const fetchUSCMeterHistory = async () => {
+    if (!session?.user?.token) return;
+    
+    setIsLoadingMeterHistory(true);
+    setMeterHistoryError("");
+    
+    try {
+      const response = await fetch(
+        `${process.env.BACKEND_API_URL}/api/member/get_usc_history`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch USC meter history");
+      }
+
+      const data: USCMeterHistory[] = await response.json();
+      
+      // Filter history for the current member
+      const memberHistory = data.filter(
+        (entry) => entry.membershipId === member.membershipId
+      );
+      
+      setUscMeterHistory(data); // store all
+    } catch (error) {
+      console.error("Error fetching USC meter history:", error);
+      setMeterHistoryError("Failed to load USC meter history");
+      toast({
+        title: "Error",
+        description: "Failed to load USC meter history",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingMeterHistory(false);
+    }
+  };
+
+  // Auto-fetch meter history on component mount
+  useEffect(() => {
+    fetchUSCMeterHistory();
+  }, [session?.user?.token]);
 
   const handleEditLicenseSubmit = async () => {
     setDocLoading(true);
@@ -893,8 +957,8 @@ export default function MembershipDetailsClient({
             value="history"
             
           > <div className="flex items-center gap-2">
-              <History className="h-4 w-4" />
-              History
+              <Activity className="h-4 w-4" />
+              Meter History
             </div>
             
           </TabsTrigger>
@@ -1373,46 +1437,88 @@ export default function MembershipDetailsClient({
         <TabsContent value="history">
           <Card>
             <CardHeader>
-              <CardTitle>Activity History</CardTitle>
-              <CardDescription>
-                Recent activities and changes to the membership
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>USC Meter History</CardTitle>
+                  <CardDescription>
+                    Full assignment history for meter: <span className="font-mono text-primary">{member.electricalUscNumber || "-"}</span>
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={fetchUSCMeterHistory} 
+                  disabled={isLoadingMeterHistory}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isLoadingMeterHistory ? "Loading..." : "Refresh"}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <History className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Member approved</p>
-                    <p className="text-sm text-muted-foreground">
-                      Membership application was approved
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {member.approvedOrDeclinedAt
-                      ? new Date(
-                          member.approvedOrDeclinedAt
-                        ).toLocaleDateString()
-                      : new Date(member.createdAt).toLocaleDateString()}
-                  </div>
+              {meterHistoryError ? (
+                <div className="text-center py-8">
+                  <div className="text-destructive mb-2">{meterHistoryError}</div>
+                  <Button onClick={fetchUSCMeterHistory} variant="outline" size="sm">
+                    Try Again
+                  </Button>
                 </div>
-                <div className="flex items-start gap-4">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <History className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Member created</p>
-                    <p className="text-sm text-muted-foreground">
-                      New membership application submitted
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(member.createdAt).toLocaleDateString()}
-                  </div>
+              ) : isLoadingMeterHistory ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                  <p className="text-muted-foreground">Loading USC meter history...</p>
                 </div>
-              </div>
+              ) : !member.electricalUscNumber ? (
+                <div className="text-center py-8">
+                  <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Meter History</h3>
+                  <p className="text-muted-foreground">
+                    This member does not have an assigned USC meter number.
+                  </p>
+                </div>
+              ) : (() => {
+                const meterHistory = uscMeterHistory.filter(entry => entry.electricalUscNumber === member.electricalUscNumber);
+                if (meterHistory.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No History Found</h3>
+                      <p className="text-muted-foreground">
+                        No assignment history found for this meter.
+                      </p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Membership ID</TableHead>
+                          <TableHead>Branch ID</TableHead>
+                          <TableHead>Assigned Date</TableHead>
+                          <TableHead>Unassigned Date</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {meterHistory.map((entry) => (
+                          <TableRow key={entry.id} className={entry.membershipId === member.membershipId ? "bg-primary/10" : ""}>
+                            <TableCell className="font-medium">{entry.membershipId}</TableCell>
+                            <TableCell>{entry.branchId ? `Branch ${entry.branchId}` : "Main"}</TableCell>
+                            <TableCell>{new Date(entry.assignedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</TableCell>
+                            <TableCell>{entry.unassignedAt ? new Date(entry.unassignedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant={entry.unassignedAt ? "secondary" : "default"} className={entry.unassignedAt ? "bg-gray-100 text-gray-800" : "bg-green-100 text-green-800"}>
+                                {entry.unassignedAt ? "Unassigned" : "Active"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>

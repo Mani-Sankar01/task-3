@@ -146,18 +146,23 @@ const BillApprovalPendingPage = () => {
   };
 
   // Handle approval
-  const handleApprove = async (billingId: string) => {
+  const handleApprove = async (id: number) => {
     if (!session?.user?.token) return;
 
-    const request = pendingRequests.find(req => req.billingId === billingId);
+    const request = pendingRequests.find(req => req.id === id);
     if (!request) return;
+
+    console.log({
+      id: id,
+      approvalStatus: "APPROVED"
+    });
 
     setIsProcessing(true);
     try {
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/bill/approve_decline_bill_changes`,
         {
-          billingId: billingId,
+          id: id,
           approvalStatus: "APPROVED"
         },
         {
@@ -174,9 +179,9 @@ const BillApprovalPendingPage = () => {
         });
         
         // Remove the approved request from the list
-        setPendingRequests(prev => prev.filter(request => request.billingId !== billingId));
+        setPendingRequests(prev => prev.filter(request => request.id !== id));
         
-        if (selectedRequest?.billingId === billingId) {
+        if (selectedRequest?.id === id) {
           setShowDetailsDialog(false);
           setSelectedRequest(null);
         }
@@ -194,18 +199,18 @@ const BillApprovalPendingPage = () => {
   };
 
   // Handle decline
-  const handleDecline = async (billingId: string) => {
+  const handleDecline = async (id: number) => {
     if (!session?.user?.token) return;
 
     // Show decline dialog if no note provided
     if (!declineNote.trim()) {
-      setSelectedRequest(pendingRequests.find(request => request.billingId === billingId) || null);
+      setSelectedRequest(pendingRequests.find(request => request.id === id) || null);
       setShowDeclineDialog(true);
       setDeclineError(""); // Clear any previous errors
       return;
     }
 
-    const request = pendingRequests.find(req => req.billingId === billingId);
+    const request = pendingRequests.find(req => req.id === id);
     if (!request) return;
 
     setIsProcessing(true);
@@ -215,7 +220,7 @@ const BillApprovalPendingPage = () => {
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/bill/approve_decline_bill_changes`,
         {
-          billingId: billingId,
+          id: id,
           approvalStatus: "DECLINED",
           note: declineNote.trim()
         },
@@ -233,13 +238,13 @@ const BillApprovalPendingPage = () => {
         });
         
         // Remove the declined request from the list
-        setPendingRequests(prev => prev.filter(request => request.billingId !== billingId));
+        setPendingRequests(prev => prev.filter(request => request.id !== id));
         
         setShowDeclineDialog(false);
         setDeclineNote("");
         setDeclineError("");
         
-        if (selectedRequest?.billingId === billingId) {
+        if (selectedRequest?.id === id) {
           setShowDetailsDialog(false);
           setSelectedRequest(null);
         }
@@ -258,7 +263,7 @@ const BillApprovalPendingPage = () => {
   // Handle decline submission from dialog
   const handleDeclineSubmit = async () => {
     if (!selectedRequest || !declineNote.trim()) return;
-    await handleDecline(selectedRequest.billingId);
+    await handleDecline(selectedRequest.id);
   };
 
   // Get change type badge
@@ -356,9 +361,9 @@ const BillApprovalPendingPage = () => {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleApprove(request.billingId)}
+                        onClick={() => handleApprove(request.id)}
                         disabled={isProcessing}
-                        className="bg-green-600 hover:bg-green-700"
+                        className="bg-primary hover:bg-primary/90"
                       >
                         <Check className="h-4 w-4 mr-2" />
                         Approve
@@ -439,7 +444,7 @@ const BillApprovalPendingPage = () => {
                 <>
                   <Button
                     variant="default"
-                    onClick={() => handleApprove(selectedRequest.billingId)}
+                    onClick={() => handleApprove(selectedRequest.id)}
                     disabled={isProcessing}
                     className="bg-green-600 hover:bg-green-700"
                   >

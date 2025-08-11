@@ -8,6 +8,8 @@ import axios from "axios";
 import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
 import {
   CalendarIcon,
+  CircleCheck,
+  CircleX,
   Download,
   Edit,
   Eye,
@@ -599,6 +601,18 @@ export default function InvoiceList() {
                             >
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
+                            {invoice.status === "PENDING" && (
+                              <DropdownMenuItem>
+                                <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                Approve
+                              </DropdownMenuItem>
+                            )}
+                            {invoice.status === "APPROVED" && (
+                              <DropdownMenuItem>
+                                <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                Decline
+                              </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
@@ -609,6 +623,7 @@ export default function InvoiceList() {
                             >
                               <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
+                            
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
