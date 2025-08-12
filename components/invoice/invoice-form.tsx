@@ -94,30 +94,38 @@ interface InvoiceFormProps {
   isEditMode: boolean;
 }
 
-export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceFormProps) {
+export default function InvoiceForm({
+  invoice,
+  invoiceId,
+  isEditMode,
+}: InvoiceFormProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [members, setMembers] = useState<Array<{
-    id: string;
-    membershipId: string;
-    applicantName: string;
-    firmName: string;
-    complianceDetails?: {
-      fullAddress?: string;
-      gstInNumber?: string;
-    };
-  }>>([]);
+  const [members, setMembers] = useState<
+    Array<{
+      id: string;
+      membershipId: string;
+      applicantName: string;
+      firmName: string;
+      complianceDetails?: {
+        fullAddress?: string;
+        gstInNumber?: string;
+      };
+    }>
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [filteredMembers, setFilteredMembers] = useState<Array<{
-    id: string;
-    membershipId: string;
-    applicantName: string;
-    firmName: string;
-    complianceDetails?: {
-      fullAddress?: string;
-      gstInNumber?: string;
-    };
-  }>>([]);
+  const [filteredMembers, setFilteredMembers] = useState<
+    Array<{
+      id: string;
+      membershipId: string;
+      applicantName: string;
+      firmName: string;
+      complianceDetails?: {
+        fullAddress?: string;
+        gstInNumber?: string;
+      };
+    }>
+  >([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
   const [apiInvoice, setApiInvoice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
@@ -188,7 +196,12 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
 
   // Fetch invoice data from API if in edit mode
   useEffect(() => {
-    if (isEditMode && invoiceId && status === "authenticated" && session?.user?.token) {
+    if (
+      isEditMode &&
+      invoiceId &&
+      status === "authenticated" &&
+      session?.user?.token
+    ) {
       const fetchInvoice = async () => {
         try {
           setIsLoading(true);
@@ -203,18 +216,22 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
           );
 
           console.log("Invoice API response:", response.data);
-          
+
           // Handle the response structure with taxInvoice array
           let invoiceData: any = null;
-          if (response.data && response.data.taxInvoice && Array.isArray(response.data.taxInvoice)) {
+          if (
+            response.data &&
+            response.data.taxInvoice &&
+            Array.isArray(response.data.taxInvoice)
+          ) {
             invoiceData = response.data.taxInvoice[0];
           } else if (response.data && !response.data.taxInvoice) {
             invoiceData = response.data;
           }
-          
+
           if (invoiceData) {
             setApiInvoice(invoiceData);
-            
+
             // Fetch member details
             const memberResponse = await axios.get(
               `${apiUrl}/api/member/get_member/${invoiceData.membershipId}`,
@@ -224,12 +241,12 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
                 },
               }
             );
-            
+
             const member = memberResponse.data;
-            
+
             // Update form with API data
             form.reset({
-              invoiceDate: invoiceData.invoiceDate.split('T')[0],
+              invoiceDate: invoiceData.invoiceDate.split("T")[0],
               memberId: invoiceData.membershipId,
               memberName: member.applicantName || "",
               firmName: member.firmName || "",
@@ -248,22 +265,30 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
                 totalSqFeet: parseFloat(item.totalSqFeet),
                 ratePerSqFt: parseFloat(item.ratePerSqFeet),
                 amount: parseFloat(item.amount),
-              })) || [{
-                hsnCode: "",
-                particulars: "",
-                noOfStones: 0,
-                sizes: "",
-                totalSqFeet: 0,
-                ratePerSqFt: 0,
-                amount: 0,
-              }],
+              })) || [
+                {
+                  hsnCode: "",
+                  particulars: "",
+                  noOfStones: 0,
+                  sizes: "",
+                  totalSqFeet: 0,
+                  ratePerSqFt: 0,
+                  amount: 0,
+                },
+              ],
               cgstPercentage: invoiceData.cGSTInPercent,
               sgstPercentage: invoiceData.sGSTInPercent,
               igstPercentage: invoiceData.iGSTInPercent,
               subTotal: parseFloat(invoiceData.subTotal),
-              cgstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.cGSTInPercent) / 100,
-              sgstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.sGSTInPercent) / 100,
-              igstAmount: (parseFloat(invoiceData.subTotal) * invoiceData.iGSTInPercent) / 100,
+              cgstAmount:
+                (parseFloat(invoiceData.subTotal) * invoiceData.cGSTInPercent) /
+                100,
+              sgstAmount:
+                (parseFloat(invoiceData.subTotal) * invoiceData.sGSTInPercent) /
+                100,
+              igstAmount:
+                (parseFloat(invoiceData.subTotal) * invoiceData.iGSTInPercent) /
+                100,
               totalAmount: parseFloat(invoiceData.total),
             });
           }
@@ -285,7 +310,9 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
       if (status === "authenticated" && session?.user?.token) {
         try {
           const response = await axios.get(
-            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_members`,
+            `${
+              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            }/api/member/get_members`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -313,9 +340,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
           member.applicantName
             .toLowerCase()
             .includes(memberSearchTerm.toLowerCase()) ||
-          member.firmName
-            .toLowerCase()
-            .includes(memberSearchTerm.toLowerCase())
+          member.firmName.toLowerCase().includes(memberSearchTerm.toLowerCase())
       );
       setFilteredMembers(filtered);
     } else {
@@ -340,10 +365,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
       form.setValue("memberId", member.membershipId);
       form.setValue("memberName", member.applicantName || "Unknown");
       form.setValue("firmName", member.firmName || "Unknown");
-      form.setValue(
-        "firmAddress",
-        member.complianceDetails?.fullAddress || ""
-      );
+      form.setValue("firmAddress", member.complianceDetails?.fullAddress || "");
       form.setValue("gstNumber", member.complianceDetails?.gstInNumber || "");
       form.setValue("state", member.state || "");
       form.setValue("companyName", member.firmName || "Unknown");
@@ -431,7 +453,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
           subTotal: data.subTotal,
           total: data.totalAmount,
           newInvoiceItem: data.items
-            .filter(item => !item.id) // Only new items (no id)
+            .filter((item) => !item.id) // Only new items (no id)
             .map((item) => ({
               hsnCode: item.hsnCode,
               particular: item.particulars,
@@ -442,7 +464,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
               amount: item.amount,
             })),
           updateInvoiceItem: data.items
-            .filter(item => item.id) // Only existing items (has id)
+            .filter((item) => item.id) // Only existing items (has id)
             .map((item) => ({
               id: parseInt(item.id!),
               hsnCode: item.hsnCode,
@@ -457,8 +479,7 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
         };
 
         console.log("Update payload:", JSON.stringify(updatePayload));
-        
-        
+
         try {
           const response = await axios.post(
             `${process.env.BACKEND_API_URL}/api/tax_invoice/update_tax_invoice`,
@@ -709,21 +730,19 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
   }
 
   return (
-    <div className="container mx-auto py-10 px-4">
+    <div className="container mx-auto">
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
         </Button>
         <h1 className="text-2xl font-bold">
-          {isEditMode
-            ? `Edit Invoice #${invoiceId}`
-            : "Create New Invoice"}
+          {isEditMode ? `Edit Invoice #${invoiceId}` : "Create New Invoice"}
         </h1>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="max-w-5xl mx-auto">
+          <Card className="mx-auto">
             <CardHeader>
               <CardTitle className="text-2xl">TAX INVOICE</CardTitle>
               <CardDescription>
@@ -818,8 +837,13 @@ export default function InvoiceForm({ invoice, invoiceId, isEditMode }: InvoiceF
                                   className="w-full mb-2"
                                 />
                                 {filteredMembers.map((member) => (
-                                  <SelectItem key={member.membershipId} value={member.membershipId}>
-                                    {(member.applicantName || "Unknown") + " - " + (member.firmName || "Unknown")}
+                                  <SelectItem
+                                    key={member.membershipId}
+                                    value={member.membershipId}
+                                  >
+                                    {(member.applicantName || "Unknown") +
+                                      " - " +
+                                      (member.firmName || "Unknown")}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

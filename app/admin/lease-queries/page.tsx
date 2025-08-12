@@ -6,7 +6,8 @@ export default function Page() {
     <SidebarInset>
       <Header breadcrumbs={[{ label: "All Lease Queries" }]} />
       <div className="flex flex-1 flex-col">
-    <LeaseQueryList /></div>
+        <LeaseQueryList />
+      </div>
     </SidebarInset>
   );
 }
