@@ -81,7 +81,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     firmName: string;
   }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userRole, setUserRole] = useState<string>("Editor");
   const [uploadedFiles, setUploadedFiles] = useState<
     Record<number, File | null>
   >({});
@@ -176,13 +175,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     };
     fetchMembers();
   }, [status, session?.user?.token]);
-
-  // Get user role from session
-  useEffect(() => {
-    if (status === "authenticated" && session?.user?.role) {
-      setUserRole(session.user.role);
-    }
-  }, [status, session?.user?.role]);
 
   // Load existing lease query data when editing
   useEffect(() => {
@@ -387,7 +379,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
       }
       
       // Redirect back to list
-      router.push(`/admin/lease-queries?role=${userRole}`);
+      router.push(`/admin/lease-queries`);
     } catch (error: any) {
       console.error("Error submitting form:", error);
       console.error("Error response:", error.response?.data);
@@ -789,7 +781,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                   type="button"
                   variant="outline"
                   onClick={() =>
-                    router.push(`/admin/lease-queries?role=${userRole}`)
+                    router.push(`/admin/lease-queries`)
                   }
                 >
                   Cancel

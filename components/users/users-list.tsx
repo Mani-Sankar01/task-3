@@ -53,7 +53,12 @@ interface User {
   gender: "MALE" | "FEMALE" | "OTHER";
   email: string;
   phone: string;
-  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  role:
+    | "TSMWA_ADMIN"
+    | "TSMWA_EDITOR"
+    | "TSMWA_VIEWER"
+    | "TQMWA_EDITOR"
+    | "TQMWA_VIEWER";
   status: "ACTIVE" | "INACTIVE";
   createdAt?: string;
   updatedAt?: string;
@@ -141,12 +146,14 @@ export default function UsersList() {
       result.sort((a, b) => {
         const aValue = a[sortConfig.key];
         const bValue = b[sortConfig.key];
-        
+
         // Handle undefined values
         if (aValue === undefined && bValue === undefined) return 0;
-        if (aValue === undefined) return sortConfig.direction === "ascending" ? 1 : -1;
-        if (bValue === undefined) return sortConfig.direction === "ascending" ? -1 : 1;
-        
+        if (aValue === undefined)
+          return sortConfig.direction === "ascending" ? 1 : -1;
+        if (bValue === undefined)
+          return sortConfig.direction === "ascending" ? -1 : 1;
+
         if (aValue < bValue) {
           return sortConfig.direction === "ascending" ? -1 : 1;
         }
@@ -246,7 +253,7 @@ export default function UsersList() {
             : "bg-red-100 text-red-800 hover:bg-red-100"
         }
       >
-        {status}
+        {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()}
       </Badge>
     );
   };
@@ -262,7 +269,7 @@ export default function UsersList() {
       case UserRole.TSMWA_EDITOR:
         badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-100";
         break;
-      
+
       case UserRole.TQMA_EDITOR:
         badgeClass = "bg-cyan-100 text-cyan-800 hover:bg-cyan-100";
         break;
@@ -272,7 +279,7 @@ export default function UsersList() {
 
     return (
       <Badge variant="outline" className={badgeClass}>
-        {role}
+        {role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()}
       </Badge>
     );
   };
@@ -424,12 +431,20 @@ export default function UsersList() {
               ) : (
                 currentItems.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.fullName}</TableCell>
+                    <TableCell className="font-medium">
+                      {user.fullName}
+                    </TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.phone}</TableCell>
-                    <TableCell>{renderRoleBadge(user.role as UserRole)}</TableCell>
-                    <TableCell>{renderStatusBadge(user.status as UserStatus)}</TableCell>
-                    <TableCell>{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</TableCell>
+                    <TableCell>
+                      {renderRoleBadge(user.role as UserRole)}
+                    </TableCell>
+                    <TableCell>
+                      {renderStatusBadge(user.status as UserStatus)}
+                    </TableCell>
+                    <TableCell>
+                      {user.createdAt ? formatDate(user.createdAt) : "N/A"}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -452,17 +467,15 @@ export default function UsersList() {
                             Edit
                           </DropdownMenuItem>
                           {user.status === "ACTIVE" ? (
-                            <DropdownMenuItem
-                          >
-                            <BanIcon className="mr-2 h-4 w-4 text-red-600" />
-                            Inactive User
-                          </DropdownMenuItem>) : (
-                            <DropdownMenuItem
-                           
-                          >
-                            <CheckCheckIcon className="mr-2 h-4 w-4 text-green-600" />
-                            Activate User
-                          </DropdownMenuItem>
+                            <DropdownMenuItem>
+                              <BanIcon className="mr-2 h-4 w-4 text-red-600" />
+                              Inactive User
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem>
+                              <CheckCheckIcon className="mr-2 h-4 w-4 text-green-600" />
+                              Activate User
+                            </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
                             onClick={() => handleDeleteUser(user.id)}

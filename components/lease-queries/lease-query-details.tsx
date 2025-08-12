@@ -44,9 +44,14 @@ import {
 import {
   getLeaseQueryById,
   type LeaseQuery,
-  getMemberNameByMembershipId,
+  // getMemberNameByMembershipId, // Removed
+  // getMemberById, // Removed
 } from "@/data/lease-queries";
-import { getMemberById } from "@/data/members";
+import { // getMemberById, // Removed
+  // getMemberNameByMembershipId, // Removed
+} from "@/data/members";
+import axios from "axios";
+import { useSession } from "next-auth/react";
 
 export default function LeaseQueryDetails({ id }: { id?: string }) {
   const router = useRouter();
@@ -55,43 +60,41 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   const queryId = id || searchParams.get("id");
   const [query, setQuery] = useState<LeaseQuery | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // User role for role-based access control - get from localStorage for persistence
-  const [userRole, setUserRole] = useState(() => {
-    if (typeof window !== "undefined") {
-      const savedRole = localStorage.getItem("userRole");
-      if (savedRole && ["admin", "editor", "viewer"].includes(savedRole)) {
-        return savedRole;
-      }
-    }
-    return "admin"; // Default role
-  });
+  const { data: session, status } = useSession();
 
   useEffect(() => {
-    if (queryId) {
-      // In a real app, this would be an API call
-      const fetchedQuery = getLeaseQueryById(queryId);
-      setQuery(fetchedQuery || null);
+    async function fetchLeaseQueryDetails() {
+      if (!queryId) return;
+      if (status === "authenticated" && session?.user?.token) {
+        try {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL}/api/lease_query/get_lease_query/${queryId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          setQuery(response.data.data || null);
+        } catch (error) {
+          setQuery(null);
+        } finally {
+          setLoading(false);
+        }
+      }
+      // Do NOT setLoading(false) here if not authenticated; wait for session
     }
-    setLoading(false);
-  }, [queryId]);
+    fetchLeaseQueryDetails();
+  }, [queryId, status, session]);
 
   const handleEdit = () => {
     if (query) {
-      router.push(`/admin/lease-queries/${query.id}/edit/?role=${userRole}`);
+      router.push(`/admin/lease-queries/${query.leaseQueryId}/edit`);
     }
   };
 
   const handleBack = () => {
     router.push("/admin/lease-queries");
-  };
-
-  // Change user role (for demo purposes)
-  const handleRoleChange = (role: string) => {
-    setUserRole(role);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("userRole", role);
-    }
   };
 
   if (loading) {
@@ -126,27 +129,58 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
     );
   }
 
-  // Get member details
-  const memberName = getMemberNameByMembershipId(query.membershipId);
-  const member = getMemberById(query.membershipId);
+  // Use member details from API response
+  const member = query.members || {};
+  const memberName = (member as any)?.firmName || (member as any)?.applicantName || "Unknown Member";
 
-  // Calculate lease duration in years and months
-  const leaseStartDate = new Date(query.leaseDate);
-  const leaseEndDate = new Date(query.expiryDate);
-  const durationMs = leaseEndDate.getTime() - leaseStartDate.getTime();
+  // Use correct date fields
+  const leaseStartDate = query.dateOfLease ? new Date(query.dateOfLease) : null;
+  const leaseEndDate = query.expiryOfLease ? new Date(query.expiryOfLease) : null;
+  const renewalDate = query.dateOfRenewal ? new Date(query.dateOfRenewal) : null;
+  const durationMs = leaseStartDate && leaseEndDate ? leaseEndDate.getTime() - leaseStartDate.getTime() : 0;
   const durationDays = durationMs / (1000 * 60 * 60 * 24);
-  const durationYears = Math.floor(durationDays / 365);
-  const durationMonths = Math.floor((durationDays % 365) / 30);
+  const durationYears = leaseStartDate && leaseEndDate ? Math.floor(durationDays / 365) : 0;
+  const durationMonths = leaseStartDate && leaseEndDate ? Math.floor((durationDays % 365) / 30) : 0;
 
   // Format date function
   const formatDate = (dateString: string) => {
+    if (!dateString) return "-";
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "-";
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
   };
+
+  // Calculate lease duration in years, months, and days
+  function getLeaseDuration(start: Date | null, end: Date | null) {
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return "-";
+    let years = end.getFullYear() - start.getFullYear();
+    let months = end.getMonth() - start.getMonth();
+    let days = end.getDate() - start.getDate();
+    if (days < 0) {
+      months--;
+      // Get days in previous month
+      const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    let result = [];
+    if (years > 0) result.push(`${years} year${years > 1 ? 's' : ''}`);
+    if (months > 0) result.push(`${months} month${months > 1 ? 's' : ''}`);
+    if (days > 0) result.push(`${days} day${days > 1 ? 's' : ''}`);
+    if (result.length === 0) {
+      // If less than a month, show days
+      const totalDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      return `${totalDays} day${totalDays !== 1 ? 's' : ''}`;
+    }
+    return result.join(' ');
+  }
 
   return (
     <div className="container mx-auto p-6">
@@ -157,56 +191,34 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           </Button>
           <h1 className="text-2xl font-bold">Lease Query Details</h1>
         </div>
-
-        {/* Role selector for demo purposes */}
-        {/* <div className="flex items-center gap-2">
-          <span className="text-sm">Role:</span>
-          <Select
-            value={userRole}
-            onValueChange={handleRoleChange}
-            className="w-[120px]"
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="editor">Editor</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div> */}
       </div>
 
       <Card className="mb-6">
         <CardHeader className="flex flex-row items-center gap-4">
           <Avatar className="h-16 w-16">
             <AvatarImage
-              src={
-                member?.declaration?.membershipFormUpload ||
-                "/placeholder.svg?height=64&width=64"
-              }
+              src={"/placeholder.svg?height=64&width=64"}
               alt="Member avatar"
             />
             <AvatarFallback>{memberName.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <CardTitle className="text-2xl">Query ID: {query.id}</CardTitle>
+              <CardTitle className="text-2xl">Query ID: {query.leaseQueryId}</CardTitle>
               <Badge
                 variant={
-                  query.status === "resolved"
+                  query.status === "RESOLVED"
                     ? "default"
-                    : query.status === "pending"
+                    : query.status === "PENDING"
                     ? "secondary"
-                    : query.status === "processing"
+                    : query.status === "PROCESSING"
                     ? "default"
-                    : query.status === "rejected"
+                    : query.status === "REJECTED"
                     ? "destructive"
                     : "outline"
                 }
               >
-                {query.status.charAt(0).toUpperCase() + query.status.slice(1)}
+                {query.status?.charAt(0).toUpperCase() + query.status?.slice(1).toLowerCase()}
               </Badge>
             </div>
             <CardDescription>
@@ -214,17 +226,14 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
             </CardDescription>
           </div>
 
-          {/* Show Edit button only for Admin or Editor roles */}
-          {(userRole === "admin" || userRole === "editor") && (
-            <Button onClick={handleEdit}>
-              <Edit className="mr-2 h-4 w-4" /> Edit Query
-            </Button>
-          )}
+           <Button onClick={handleEdit}>
+            <Edit className="mr-2 h-4 w-4" /> Edit Query
+          </Button>
         </CardHeader>
       </Card>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="flex min-w-full gap-2 overflow-auto p-1 md:grid md:grid-cols-4">
+        <TabsList className="flex min-w-full gap-2 overflow-auto p-1 md:grid md:grid-cols-3">
           <TabsTrigger
             value="overview"
             className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
@@ -246,68 +255,41 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
             <FileText className="h-4 w-4" />
             Documents
           </TabsTrigger>
-          <TabsTrigger
-            value="timeline"
-            className="flex min-w-[130px] items-center justify-center gap-2 md:min-w-0"
-          >
-            <CalendarDays className="h-4 w-4" />
-            Timeline
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Present Lease Holder
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Present Lease Holder</CardTitle>
                 <User className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {query.presentLeaseHolder}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Current active lease holder
-                </p>
+                <div className="text-2xl font-bold">{query.presentLeaseHolder}</div>
+                <p className="text-xs text-muted-foreground">Current active lease holder</p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Lease Period
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Lease Period</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {durationYears} years {durationMonths} months
-                </div>
+                <div className="text-2xl font-bold">{getLeaseDuration(leaseStartDate, leaseEndDate)}</div>
                 <p className="text-xs text-muted-foreground">
-                  {formatDate(query.leaseDate)} - {formatDate(query.expiryDate)}
+                  {formatDate(query.dateOfLease)} - {formatDate(query.expiryOfLease)}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Last Renewal
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Last Renewal</CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {query.renewalDate ? formatDate(query.renewalDate) : "N/A"}
-                </div>
+                <div className="text-2xl font-bold">{query.dateOfRenewal ? formatDate(query.dateOfRenewal) : "N/A"}</div>
                 <p className="text-xs text-muted-foreground">
-                  {query.renewalDate
-                    ? `Renewed ${Math.round(
-                        (new Date().getTime() -
-                          new Date(query.renewalDate).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )} days ago`
-                    : "No renewal recorded"}
+                  {query.dateOfRenewal ? `Renewed ${Math.round((new Date().getTime() - new Date(query.dateOfRenewal).getTime()) / (1000 * 60 * 60 * 24))} days ago` : "No renewal recorded"}
                 </p>
               </CardContent>
             </Card>
@@ -316,48 +298,34 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           <Card>
             <CardHeader>
               <CardTitle>Lease Details</CardTitle>
-              <CardDescription>
-                Complete information about this lease agreement
-              </CardDescription>
+              <CardDescription>Complete information about this lease agreement</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Membership ID
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-500">Membership ID</h3>
                   <p>{query.membershipId}</p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Member Name
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-500">Member Name</h3>
                   <p>{memberName}</p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Present Lease Holder
-                  </h3>
+                  <h3 className="text-sm font-medium text-gray-500">Present Lease Holder</h3>
                   <p>{query.presentLeaseHolder}</p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Date of Lease
-                  </h3>
-                  <p>{formatDate(query.leaseDate)}</p>
+                  <h3 className="text-sm font-medium text-gray-500">Date of Lease</h3>
+                  <p>{formatDate(query.dateOfLease)}</p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Expiry of Lease
-                  </h3>
-                  <p>{formatDate(query.expiryDate)}</p>
+                  <h3 className="text-sm font-medium text-gray-500">Expiry of Lease</h3>
+                  <p>{formatDate(query.expiryOfLease)}</p>
                 </div>
-                {query.renewalDate && (
+                {query.dateOfRenewal && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-gray-500">
-                      Date of Renewal
-                    </h3>
-                    <p>{formatDate(query.renewalDate)}</p>
+                    <h3 className="text-sm font-medium text-gray-500">Date of Renewal</h3>
+                    <p>{formatDate(query.dateOfRenewal)}</p>
                   </div>
                 )}
                 <div className="space-y-2">
@@ -365,27 +333,24 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                   <p>
                     <Badge
                       variant={
-                        query.status === "resolved"
+                        query.status === "RESOLVED"
                           ? "default"
-                          : query.status === "pending"
+                          : query.status === "PENDING"
                           ? "secondary"
-                          : query.status === "processing"
+                          : query.status === "PROCESSING"
                           ? "default"
-                          : query.status === "rejected"
+                          : query.status === "REJECTED"
                           ? "destructive"
                           : "outline"
                       }
                     >
-                      {query.status.charAt(0).toUpperCase() +
-                        query.status.slice(1)}
+                      {query.status?.charAt(0).toUpperCase() + query.status?.slice(1).toLowerCase()}
                     </Badge>
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium text-gray-500">
-                    Created At
-                  </h3>
-                  <p>{new Date(query.createdAt).toLocaleString()}</p>
+                  <h3 className="text-sm font-medium text-gray-500">Created At</h3>
+                  <p>{formatDate(query.createdAt)}</p>
                 </div>
               </div>
             </CardContent>
@@ -396,61 +361,71 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           <Card>
             <CardHeader>
               <CardTitle>Lease Holder History</CardTitle>
-              <CardDescription>
-                Previous lease holders for this property
-              </CardDescription>
+              <CardDescription>Present and previous lease holders for this property</CardDescription>
             </CardHeader>
             <CardContent>
-              {query.leaseHolderHistory &&
-              query.leaseHolderHistory.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Period From</TableHead>
-                      <TableHead>Period To</TableHead>
-                      <TableHead>Duration</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {query.leaseHolderHistory.map((holder, index) => (
-                      <TableRow key={index}>
-                        <TableCell className="font-medium">
-                          {holder.name}
-                        </TableCell>
-                        <TableCell>{formatDate(holder.periodFrom)}</TableCell>
-                        <TableCell>{formatDate(holder.periodTo)}</TableCell>
-                        <TableCell>
-                          {Math.round(
-                            (new Date(holder.periodTo).getTime() -
-                              new Date(holder.periodFrom).getTime()) /
-                              (1000 * 60 * 60 * 24 * 30)
-                          )}{" "}
-                          months
-                        </TableCell>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Membership ID</TableHead>
+                    <TableHead>Period From</TableHead>
+                    <TableHead>Period To</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(() => {
+                    const history = Array.isArray(query.leaseQueryHistory) ? query.leaseQueryHistory : [];
+                    const presentRow = (
+                      <TableRow>
+                        <TableCell className="font-medium">{query.presentLeaseHolder} (Current)</TableCell>
+                        <TableCell>{query.membershipId}</TableCell>
+                        <TableCell>{formatDate(query.dateOfLease)}</TableCell>
+                        <TableCell>{formatDate(query.expiryOfLease)}</TableCell>
                       </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell className="font-medium">
-                        {query.presentLeaseHolder} (Current)
-                      </TableCell>
-                      <TableCell>{formatDate(query.leaseDate)}</TableCell>
-                      <TableCell>{formatDate(query.expiryDate)}</TableCell>
-                      <TableCell>
-                        {Math.round(
-                          (new Date(query.expiryDate).getTime() -
-                            new Date(query.leaseDate).getTime()) /
-                            (1000 * 60 * 60 * 24 * 30)
-                        )}{" "}
-                        months
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              ) : (
+                    );
+                    // Check if first history entry matches present lease holder
+                    if (
+                      history.length > 0 &&
+                      history[0].leaseHolderName === query.presentLeaseHolder &&
+                      history[0].membershipId === query.membershipId &&
+                      formatDate(history[0].fromDate) === formatDate(query.dateOfLease) &&
+                      formatDate(history[0].toDate) === formatDate(query.expiryOfLease)
+                    ) {
+                      // Only show history rows
+                      return history.map((h: any, idx: number) => (
+                        <TableRow key={h.id || idx}>
+                          <TableCell className="font-medium">{h.leaseHolderName}</TableCell>
+                          <TableCell>{h.membershipId}</TableCell>
+                          <TableCell>{formatDate(h.fromDate)}</TableCell>
+                          <TableCell>{formatDate(h.toDate)}</TableCell>
+                        </TableRow>
+                      ));
+                    } else if (history.length > 0) {
+                      // Show present row, then history
+                      return (
+                        <>
+                          {presentRow}
+                          {history.map((h: any, idx: number) => (
+                            <TableRow key={h.id || idx}>
+                              <TableCell className="font-medium">{h.leaseHolderName}</TableCell>
+                              <TableCell>{h.membershipId}</TableCell>
+                              <TableCell>{formatDate(h.fromDate)}</TableCell>
+                              <TableCell>{formatDate(h.toDate)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      );
+                    } else {
+                      // No history, only present row
+                      return presentRow;
+                    }
+                  })()}
+                </TableBody>
+              </Table>
+              {(!Array.isArray(query.leaseQueryHistory) || query.leaseQueryHistory.length === 0) && (
                 <div className="text-center py-6 text-muted-foreground">
-                  No previous lease holders recorded. {query.presentLeaseHolder}{" "}
-                  is the first lease holder.
+                  No previous lease holders recorded. {query.presentLeaseHolder} is the first lease holder.
                 </div>
               )}
             </CardContent>
@@ -466,31 +441,26 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {query.documents && query.documents.length > 0 ? (
+              {Array.isArray(query.leaseQueryAttachments) && query.leaseQueryAttachments.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Document Name</TableHead>
-                      <TableHead>File Name</TableHead>
-                      <TableHead>Upload Date</TableHead>
+                      <TableHead>File Path</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {query.documents.map((doc, index) => (
+                    {query.leaseQueryAttachments.map((doc: any, index: number) => (
                       <TableRow key={index}>
-                        <TableCell className="font-medium">
-                          {doc.name}
-                        </TableCell>
-                        <TableCell>{doc.fileName || "N/A"}</TableCell>
-                        <TableCell>
-                          {doc.uploadDate ? formatDate(doc.uploadDate) : "N/A"}
-                        </TableCell>
+                        <TableCell className="font-medium">{doc.documentName}</TableCell>
+                        <TableCell>{doc.documentPath || "N/A"}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 px-2"
+                            // onClick={() => handleDownload(doc.documentPath)}
                           >
                             <Download className="h-4 w-4 mr-2" /> Download
                           </Button>
@@ -502,70 +472,9 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p>
-                    No documents have been uploaded for this lease agreement.
-                  </p>
+                  <p>No documents have been uploaded for this lease agreement.</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="timeline">
-          <Card>
-            <CardHeader>
-              <CardTitle>Lease Timeline</CardTitle>
-              <CardDescription>
-                History of events for this lease agreement
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Calendar className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Lease Created</p>
-                    <p className="text-sm text-muted-foreground">
-                      Lease agreement created for {query.presentLeaseHolder}
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatDate(query.createdAt)}
-                  </div>
-                </div>
-                {query.renewalDate && (
-                  <div className="flex items-start gap-4">
-                    <div className="rounded-full bg-primary/10 p-2">
-                      <History className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Lease Renewed</p>
-                      <p className="text-sm text-muted-foreground">
-                        Lease agreement renewed for {query.presentLeaseHolder}
-                      </p>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatDate(query.renewalDate)}
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start gap-4">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Clock className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Lease Expiry</p>
-                    <p className="text-sm text-muted-foreground">
-                      Lease agreement will expire
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {formatDate(query.expiryDate)}
-                  </div>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

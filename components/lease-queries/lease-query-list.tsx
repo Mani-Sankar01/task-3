@@ -62,9 +62,6 @@ export default function LeaseQueryList() {
   const [isLoading, setIsLoading] = useState(true);
   const itemsPerPage = 10;
 
-  // User role for role-based access control - get from session
-  const [userRole, setUserRole] = useState<string>("admin");
-
   // Load lease queries from API on component mount
   useEffect(() => {
     const fetchLeaseQueries = async () => {
@@ -192,17 +189,17 @@ export default function LeaseQueryList() {
 
   // Navigate to query details
   const viewQueryDetails = (queryId: string) => {
-    router.push(`/admin/lease-queries/${queryId}?role=${userRole}`);
+    router.push(`/admin/lease-queries/${queryId}`);
   };
 
   // Navigate to add new query
   const addNewQuery = () => {
-    router.push(`/admin/lease-queries/add?role=${userRole}`);
+    router.push(`/admin/lease-queries/add`);
   };
 
   // Navigate to edit query - only available for admin or editor roles
   const editQuery = (queryId: string) => {
-    router.push(`/admin/lease-queries/edit/${queryId}?role=${userRole}`);
+    router.push(`/admin/lease-queries/edit/${queryId}`);
   };
 
   // Delete a query
@@ -418,9 +415,8 @@ export default function LeaseQueryList() {
                             </DropdownMenuItem>
 
                             {/* Show Edit option only for Admin or Editor roles */}
-                            {(userRole === "admin" ||
-                              userRole === "editor") && (
-                              <DropdownMenuItem
+                            {/* Removed role-based UI */}
+                            <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   editQuery(query.leaseQueryId);
@@ -428,11 +424,10 @@ export default function LeaseQueryList() {
                               >
                                 Edit Query
                               </DropdownMenuItem>
-                            )}
 
                             {/* Show Delete option only for Admin role */}
-                            {userRole === "admin" && (
-                              <DropdownMenuItem
+                            {/* Removed role-based UI */}
+                            <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -441,7 +436,6 @@ export default function LeaseQueryList() {
                               >
                                 Delete Query
                               </DropdownMenuItem>
-                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
