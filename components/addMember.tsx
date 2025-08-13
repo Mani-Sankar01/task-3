@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const formSchema = z.object({
@@ -451,7 +452,7 @@ const AddMember = ({
       );
 
       // Redirect to memberships page
-      router.push("/admin/memberships");
+      router.push(`/${renderRoleBasedPath(userRole)}/memberships`);
     } catch (error) {
       console.error("Error submitting form:", error);
       alert("Failed to save member. Please try again.");
@@ -509,7 +510,7 @@ const AddMember = ({
   }
 
   const handleBack = () => {
-    router.push("/admin/memberships");
+    router.push(`/${renderRoleBasedPath(userRole)}/memberships`);
   };
 
   return (

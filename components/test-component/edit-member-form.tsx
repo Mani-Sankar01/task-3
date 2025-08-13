@@ -24,6 +24,7 @@ import Step4MembershipDocs from "@/components/add-member/step-4-membership-docs"
 import Step5ProposerDeclaration from "@/components/add-member/step-5-proposer-declaration";
 import { uploadFile } from "@/lib/client-file-upload";
 import PopupMessage from "@/components/ui/popup-message";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const formSchema = z.object({
@@ -114,19 +115,44 @@ const formSchema = z.object({
   }),
   complianceDetails: z.object({
     gstinNo: z.string(),
-    gstinDoc: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    gstinDoc: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     gstinExpiredAt: z.string().optional(),
     factoryLicenseNo: z.string(),
-    factoryLicenseDoc: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    factoryLicenseDoc: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     factoryLicenseExpiredAt: z.string().optional(),
     tspcbOrderNo: z.string(),
-    tspcbOrderDoc: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    tspcbOrderDoc: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     tspcbExpiredAt: z.string().optional(),
     mdlNo: z.string(),
-    mdlDoc: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    mdlDoc: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     mdlExpiredAt: z.string().optional(),
     udyamCertificateNo: z.string(),
-    udyamCertificateDoc: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    udyamCertificateDoc: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     udyamCertificateExpiredAt: z.string().optional(),
   }),
   communicationDetails: z.object({
@@ -161,11 +187,26 @@ const formSchema = z.object({
       .min(1, "Select is an Executive member or not"),
   }),
   documentDetails: z.object({
-    saleDeedElectricityBill: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    saleDeedElectricityBill: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     saleDeedExpiredAt: z.string().optional(),
-    rentalDeed: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    rentalDeed: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     rentalDeedExpiredAt: z.string().optional(),
-    partnershipDeed: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    partnershipDeed: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
     partnershipDeedExpiredAt: z.string().optional(),
     additionalDocuments: z.any().optional(),
     additionalAttachments: z.array(
@@ -173,7 +214,12 @@ const formSchema = z.object({
         id: z.number().optional(),
         membershipId: z.string(),
         name: z.string(),
-        file: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+        file: z
+          .union([
+            z.instanceof(File),
+            z.object({ existingPath: z.string().nullable() }),
+          ])
+          .optional(),
         expiredAt: z.string().optional(),
       })
     ),
@@ -192,8 +238,18 @@ const formSchema = z.object({
   }),
   declaration: z.object({
     agreeToTerms: z.boolean(),
-    photoUpload: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
-    signatureUpload: z.union([z.instanceof(File), z.object({ existingPath: z.string().nullable() })]).optional(),
+    photoUpload: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
+    signatureUpload: z
+      .union([
+        z.instanceof(File),
+        z.object({ existingPath: z.string().nullable() }),
+      ])
+      .optional(),
   }),
 });
 
@@ -215,12 +271,24 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
     primaryButton?: {
       text: string;
       onClick: () => void;
-      variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+      variant?:
+        | "default"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
     };
     secondaryButton?: {
       text: string;
       onClick: () => void;
-      variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+      variant?:
+        | "default"
+        | "destructive"
+        | "outline"
+        | "secondary"
+        | "ghost"
+        | "link";
     };
     showCloseButton?: boolean;
   } | null>(null);
@@ -293,7 +361,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         isMemberOfOrg: "",
         hasAppliedEarlier: "",
         isValidMember: "",
-        isExecutiveMember: "",  
+        isExecutiveMember: "",
         orgDetails: "",
         previousApplicationDetails: "",
       },
@@ -382,11 +450,15 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                   machinery: Array.isArray(b.machineryInformations)
                     ? b.machineryInformations.map((m: any) => {
                         return {
-                        id: m.id,
-                          type: m.isOther === "TRUE" ? "Others" : (m.machineName || m.customName || ""),
-                          machineName: m.isOther === "TRUE" ? m.machineName : "",
+                          id: m.id,
+                          type:
+                            m.isOther === "TRUE"
+                              ? "Others"
+                              : m.machineName || m.customName || "",
+                          machineName:
+                            m.isOther === "TRUE" ? m.machineName : "",
                           isOther: m.isOther === "TRUE",
-                        quantity: m.machineCount?.toString() || "0",
+                          quantity: m.machineCount?.toString() || "0",
                         };
                       })
                     : [],
@@ -414,20 +486,61 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           },
           complianceDetails: {
             gstinNo: reponseData.complianceDetails?.gstInNumber || "",
-            gstinDoc: { existingPath: reponseData.complianceDetails?.gstInCertificatePath || null },
-            gstinExpiredAt: reponseData.complianceDetails?.gstExpiredAt ? new Date(reponseData.complianceDetails.gstExpiredAt).toISOString().split('T')[0] : "",
-            factoryLicenseNo: reponseData.complianceDetails?.factoryLicenseNumber || "",
-            factoryLicenseDoc: { existingPath: reponseData.complianceDetails?.factoryLicensePath || null },
-            factoryLicenseExpiredAt: reponseData.complianceDetails?.factoryLicenseExpiredAt ? new Date(reponseData.complianceDetails.factoryLicenseExpiredAt).toISOString().split('T')[0] : "",
+            gstinDoc: {
+              existingPath:
+                reponseData.complianceDetails?.gstInCertificatePath || null,
+            },
+            gstinExpiredAt: reponseData.complianceDetails?.gstExpiredAt
+              ? new Date(reponseData.complianceDetails.gstExpiredAt)
+                  .toISOString()
+                  .split("T")[0]
+              : "",
+            factoryLicenseNo:
+              reponseData.complianceDetails?.factoryLicenseNumber || "",
+            factoryLicenseDoc: {
+              existingPath:
+                reponseData.complianceDetails?.factoryLicensePath || null,
+            },
+            factoryLicenseExpiredAt: reponseData.complianceDetails
+              ?.factoryLicenseExpiredAt
+              ? new Date(reponseData.complianceDetails.factoryLicenseExpiredAt)
+                  .toISOString()
+                  .split("T")[0]
+              : "",
             tspcbOrderNo: reponseData.complianceDetails?.tspcbOrderNumber || "",
-            tspcbOrderDoc: { existingPath: reponseData.complianceDetails?.tspcbCertificatePath || null },
-            tspcbExpiredAt: reponseData.complianceDetails?.tspcbExpiredAt ? new Date(reponseData.complianceDetails.tspcbExpiredAt).toISOString().split('T')[0] : "",
+            tspcbOrderDoc: {
+              existingPath:
+                reponseData.complianceDetails?.tspcbCertificatePath || null,
+            },
+            tspcbExpiredAt: reponseData.complianceDetails?.tspcbExpiredAt
+              ? new Date(reponseData.complianceDetails.tspcbExpiredAt)
+                  .toISOString()
+                  .split("T")[0]
+              : "",
             mdlNo: reponseData.complianceDetails?.mdlNumber || "",
-            mdlDoc: { existingPath: reponseData.complianceDetails?.mdlCertificatePath || null },
-            mdlExpiredAt: reponseData.complianceDetails?.mdlExpiredAt ? new Date(reponseData.complianceDetails.mdlExpiredAt).toISOString().split('T')[0] : "",
-            udyamCertificateNo: reponseData.complianceDetails?.udyamCertificateNumber || "",
-            udyamCertificateDoc: { existingPath: reponseData.complianceDetails?.udyamCertificatePath || null },
-            udyamCertificateExpiredAt: reponseData.complianceDetails?.udyamCertificateExpiredAt ? new Date(reponseData.complianceDetails.udyamCertificateExpiredAt).toISOString().split('T')[0] : "",
+            mdlDoc: {
+              existingPath:
+                reponseData.complianceDetails?.mdlCertificatePath || null,
+            },
+            mdlExpiredAt: reponseData.complianceDetails?.mdlExpiredAt
+              ? new Date(reponseData.complianceDetails.mdlExpiredAt)
+                  .toISOString()
+                  .split("T")[0]
+              : "",
+            udyamCertificateNo:
+              reponseData.complianceDetails?.udyamCertificateNumber || "",
+            udyamCertificateDoc: {
+              existingPath:
+                reponseData.complianceDetails?.udyamCertificatePath || null,
+            },
+            udyamCertificateExpiredAt: reponseData.complianceDetails
+              ?.udyamCertificateExpiredAt
+              ? new Date(
+                  reponseData.complianceDetails.udyamCertificateExpiredAt
+                )
+                  .toISOString()
+                  .split("T")[0]
+              : "",
           },
           communicationDetails: {
             fullAddress: reponseData.complianceDetails?.fullAddress || "",
@@ -463,7 +576,9 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                 ? "yes"
                 : "no",
             orgDetails: reponseData.similarMembershipInquiry?.org_details || "",
-            previousApplicationDetails: reponseData.similarMembershipInquiry?.previous_application_details || "",
+            previousApplicationDetails:
+              reponseData.similarMembershipInquiry
+                ?.previous_application_details || "",
           },
           documentDetails: {
             // Only keep additionalAttachments and other non-compliance docs here
@@ -474,7 +589,9 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                 file: {
                   existingPath: a.documentPath,
                 },
-                expiredAt: a.expiredAt ? new Date(a.expiredAt).toISOString().split('T')[0] : "",
+                expiredAt: a.expiredAt
+                  ? new Date(a.expiredAt).toISOString().split("T")[0]
+                  : "",
                 membershipId: a.membershipId,
               })
             ),
@@ -495,10 +612,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             agreeToTerms:
               reponseData.declarations?.agreesToTerms === "TRUE" ? true : false,
             photoUpload: {
-              existingPath: reponseData.declarations?.membershipFormPath || null,
+              existingPath:
+                reponseData.declarations?.membershipFormPath || null,
             },
             signatureUpload: {
-              existingPath: reponseData.declarations?.applicationSignaturePath || null,
+              existingPath:
+                reponseData.declarations?.applicationSignaturePath || null,
             },
           },
         };
@@ -558,7 +677,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         "Are you sure you want to cancel? All unsaved changes will be lost."
       )
     ) {
-      router.push("/admin/memberships");
+      router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
     }
   };
 
@@ -578,14 +697,29 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   };
 
   // Function to check if there are any changes
-const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: Record<string, string>): boolean => {
-  console.log("Checking for changes...");
+  const checkForChanges = (
+    data: FormValues,
+    original: FormValues,
+    uploadedFiles: Record<string, string>
+  ): boolean => {
+    console.log("Checking for changes...");
 
     // Check basic fields
     const basicFields = [
-      'applicationDetails', 'memberDetails', 'firmDetails', 'businessDetails',
-      'electricalDetails', 'labourDetails', 'complianceDetails', 'communicationDetails',
-      'representativeDetails', 'membershipDetails', 'documentDetails', 'proposer1', 'proposer2', 'declaration'
+      "applicationDetails",
+      "memberDetails",
+      "firmDetails",
+      "businessDetails",
+      "electricalDetails",
+      "labourDetails",
+      "complianceDetails",
+      "communicationDetails",
+      "representativeDetails",
+      "membershipDetails",
+      "documentDetails",
+      "proposer1",
+      "proposer2",
+      "declaration",
     ];
 
     for (const field of basicFields) {
@@ -595,52 +729,59 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
         console.log(`Changes detected in field: ${field}`);
         console.log(`Data:`, data[field as keyof FormValues]);
         console.log(`Original:`, original[field as keyof FormValues]);
-        
+
         // For representativeDetails, let's do a more detailed comparison
-        if (field === 'representativeDetails') {
+        if (field === "representativeDetails") {
           const dataPartners = data.representativeDetails.partners || [];
-          const originalPartners = original.representativeDetails.partners || [];
-          
+          const originalPartners =
+            original.representativeDetails.partners || [];
+
           if (dataPartners.length !== originalPartners.length) {
             console.log("Partner count changed");
             return true;
           }
-          
+
           // Compare each partner individually
           for (let i = 0; i < dataPartners.length; i++) {
             const dataPartner = dataPartners[i];
             const originalPartner = originalPartners[i];
-            
-            if (dataPartner.name !== originalPartner.name ||
-                dataPartner.contactNo !== originalPartner.contactNo ||
-                dataPartner.aadharNo !== originalPartner.aadharNo ||
-                dataPartner.email !== originalPartner.email ||
-                dataPartner.pan !== originalPartner.pan) {
+
+            if (
+              dataPartner.name !== originalPartner.name ||
+              dataPartner.contactNo !== originalPartner.contactNo ||
+              dataPartner.aadharNo !== originalPartner.aadharNo ||
+              dataPartner.email !== originalPartner.email ||
+              dataPartner.pan !== originalPartner.pan
+            ) {
               console.log(`Partner ${i} changed`);
               return true;
             }
           }
-          
+
           // If we get here, the partners are actually the same
-          console.log("RepresentativeDetails appears to be the same, ignoring false positive");
+          console.log(
+            "RepresentativeDetails appears to be the same, ignoring false positive"
+          );
           continue; // Skip this field and continue checking others
         }
-        
+
         // For proposer1 and proposer2, only check membershipId changes
-        if (field === 'proposer1' || field === 'proposer2') {
+        if (field === "proposer1" || field === "proposer2") {
           const dataProposer = data[field as keyof FormValues] as any;
           const originalProposer = original[field as keyof FormValues] as any;
-          
+
           if (dataProposer.membershipId !== originalProposer.membershipId) {
             console.log(`${field} membershipId changed`);
             return true;
           }
-          
+
           // Ignore name, firmName, and address changes as they're not in the API
-          console.log(`${field} appears to be the same, ignoring false positive`);
+          console.log(
+            `${field} appears to be the same, ignoring false positive`
+          );
           continue; // Skip this field and continue checking others
         }
-        
+
         return true;
       }
     }
@@ -663,9 +804,19 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
       }
 
       // Check basic branch fields
-      const branchFields = ['placeOfBusiness', 'proprietorStatus', 'proprietorType', 'electricalUscNumber', 'scNumber', 'sanctionedHP'];
+      const branchFields = [
+        "placeOfBusiness",
+        "proprietorStatus",
+        "proprietorType",
+        "electricalUscNumber",
+        "scNumber",
+        "sanctionedHP",
+      ];
       for (const field of branchFields) {
-        if (origBranch[field as keyof typeof origBranch] !== newBranch[field as keyof typeof newBranch]) {
+        if (
+          origBranch[field as keyof typeof origBranch] !==
+          newBranch[field as keyof typeof newBranch]
+        ) {
           return true;
         }
       }
@@ -686,10 +837,12 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
           return true;
         }
 
-        if (origMachine.type !== newMachine.type ||
-            origMachine.machineName !== newMachine.machineName ||
-            origMachine.isOther !== newMachine.isOther ||
-            origMachine.quantity !== newMachine.quantity) {
+        if (
+          origMachine.type !== newMachine.type ||
+          origMachine.machineName !== newMachine.machineName ||
+          origMachine.isOther !== newMachine.isOther ||
+          origMachine.quantity !== newMachine.quantity
+        ) {
           return true;
         }
       }
@@ -710,13 +863,15 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
           return true;
         }
 
-        if (origLab.name !== newLab.name ||
-            origLab.aadharNumber !== newLab.aadharNumber ||
-            origLab.eshramCardNumber !== newLab.eshramCardNumber ||
-            origLab.employedFrom !== newLab.employedFrom ||
-            origLab.employedTo !== newLab.employedTo ||
-            origLab.esiNumber !== newLab.esiNumber ||
-            origLab.status !== newLab.status) {
+        if (
+          origLab.name !== newLab.name ||
+          origLab.aadharNumber !== newLab.aadharNumber ||
+          origLab.eshramCardNumber !== newLab.eshramCardNumber ||
+          origLab.employedFrom !== newLab.employedFrom ||
+          origLab.employedTo !== newLab.employedTo ||
+          origLab.esiNumber !== newLab.esiNumber ||
+          origLab.status !== newLab.status
+        ) {
           return true;
         }
       }
@@ -726,11 +881,9 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
     return false;
   };
 
-
-
   // Real-time validation function
   const handleFieldChange = async (fieldName: string, value: string) => {
-    console.log('Field change detected:', fieldName, value);
+    console.log("Field change detected:", fieldName, value);
   };
 
   const handleSubmit = async (data: FormValues) => {
@@ -742,16 +895,17 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
       // Check if there are any changes
       const hasChanges = checkForChanges(data, original, {});
       console.log("Change detection result:", hasChanges);
-      
+
       if (!hasChanges) {
         setPopupMessage({
           isOpen: true,
           type: "warning",
           title: "No Changes Detected",
-          message: "No changes have been made to the member data. Please make some changes before submitting.",
+          message:
+            "No changes have been made to the member data. Please make some changes before submitting.",
         });
-          setIsSubmitting(false);
-          return;
+        setIsSubmitting(false);
+        return;
       }
 
       const reqData: any = { membershipId: memberId };
@@ -766,10 +920,14 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
       const wasEmpty = (key: keyof typeof data, subkey?: string) => {
         if (!subkey) {
           const value = original[key];
-          return !value || (typeof value === 'string' && value === "");
+          return !value || (typeof value === "string" && value === "");
         }
         const obj = original[key] as any;
-        return !obj || !obj[subkey] || (typeof obj[subkey] === 'string' && obj[subkey] === "");
+        return (
+          !obj ||
+          !obj[subkey] ||
+          (typeof obj[subkey] === "string" && obj[subkey] === "")
+        );
       };
 
       // Basic member fields
@@ -802,8 +960,12 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
         console.log("Added relativeName:", data.memberDetails.relativeName);
       }
       if (changed("applicationDetails", "electricalUscNumber")) {
-        reqData.electricalUscNumber = data.applicationDetails.electricalUscNumber;
-        console.log("Added electricalUscNumber:", data.applicationDetails.electricalUscNumber);
+        reqData.electricalUscNumber =
+          data.applicationDetails.electricalUscNumber;
+        console.log(
+          "Added electricalUscNumber:",
+          data.applicationDetails.electricalUscNumber
+        );
       }
       if (changed("applicationDetails", "scNumber")) {
         reqData.scNumber = data.applicationDetails.scNumber;
@@ -842,33 +1004,56 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
         console.log("Added pinCode:", data.businessDetails.pincode);
       }
       if (changed("businessDetails", "ownershipType")) {
-        reqData.proprietorStatus = data.businessDetails.ownershipType?.toUpperCase();
-        console.log("Added proprietorStatus:", data.businessDetails.ownershipType?.toUpperCase());
+        reqData.proprietorStatus =
+          data.businessDetails.ownershipType?.toUpperCase();
+        console.log(
+          "Added proprietorStatus:",
+          data.businessDetails.ownershipType?.toUpperCase()
+        );
       }
       if (changed("businessDetails", "ownerSubType")) {
-        reqData.proprietorType = data.businessDetails.ownerSubType?.toUpperCase();
-        console.log("Added proprietorType:", data.businessDetails.ownerSubType?.toUpperCase());
+        reqData.proprietorType =
+          data.businessDetails.ownerSubType?.toUpperCase();
+        console.log(
+          "Added proprietorType:",
+          data.businessDetails.ownerSubType?.toUpperCase()
+        );
       }
       if (changed("electricalDetails", "sanctionedHP")) {
         reqData.sanctionedHP = parseFloat(data.electricalDetails.sanctionedHP);
-        console.log("Added sanctionedHP:", parseFloat(data.electricalDetails.sanctionedHP));
+        console.log(
+          "Added sanctionedHP:",
+          parseFloat(data.electricalDetails.sanctionedHP)
+        );
       }
       if (changed("labourDetails", "estimatedMaleWorkers")) {
-        reqData.estimatedMaleWorker = parseInt(data.labourDetails.estimatedMaleWorkers);
-        console.log("Added estimatedMaleWorker:", parseInt(data.labourDetails.estimatedMaleWorkers));
+        reqData.estimatedMaleWorker = parseInt(
+          data.labourDetails.estimatedMaleWorkers
+        );
+        console.log(
+          "Added estimatedMaleWorker:",
+          parseInt(data.labourDetails.estimatedMaleWorkers)
+        );
       }
       if (changed("labourDetails", "estimatedFemaleWorkers")) {
-        reqData.estimatedFemaleWorker = parseInt(data.labourDetails.estimatedFemaleWorkers);
-        console.log("Added estimatedFemaleWorker:", parseInt(data.labourDetails.estimatedFemaleWorkers));
+        reqData.estimatedFemaleWorker = parseInt(
+          data.labourDetails.estimatedFemaleWorkers
+        );
+        console.log(
+          "Added estimatedFemaleWorker:",
+          parseInt(data.labourDetails.estimatedFemaleWorkers)
+        );
       }
 
       // complianceDetails
-      if (changed("communicationDetails", "fullAddress") || 
-          changed("complianceDetails", "gstinNo") || 
-          changed("complianceDetails", "factoryLicenseNo") || 
-          changed("complianceDetails", "tspcbOrderNo") || 
-          changed("complianceDetails", "mdlNo") || 
-          changed("complianceDetails", "udyamCertificateNo")) {
+      if (
+        changed("communicationDetails", "fullAddress") ||
+        changed("complianceDetails", "gstinNo") ||
+        changed("complianceDetails", "factoryLicenseNo") ||
+        changed("complianceDetails", "tspcbOrderNo") ||
+        changed("complianceDetails", "mdlNo") ||
+        changed("complianceDetails", "udyamCertificateNo")
+      ) {
         reqData.complianceDetails = {
           gstInNumber: data.complianceDetails.gstinNo,
           gstInCertificatePath: "/uploads/gstin_certificate.pdf",
@@ -879,163 +1064,205 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
       }
 
       // similarMembershipInquiry
-      if (changed("membershipDetails", "isMemberOfOrg") || 
-          changed("membershipDetails", "orgDetails") || 
-          changed("membershipDetails", "hasAppliedEarlier") || 
-          changed("membershipDetails", "previousApplicationDetails") || 
-          changed("membershipDetails", "isValidMember") || 
-          changed("membershipDetails", "isExecutiveMember")) {
+      if (
+        changed("membershipDetails", "isMemberOfOrg") ||
+        changed("membershipDetails", "orgDetails") ||
+        changed("membershipDetails", "hasAppliedEarlier") ||
+        changed("membershipDetails", "previousApplicationDetails") ||
+        changed("membershipDetails", "isValidMember") ||
+        changed("membershipDetails", "isExecutiveMember")
+      ) {
         reqData.similarMembershipInquiry = {
-          is_member_of_similar_org: (data.membershipDetails.isMemberOfOrg === "Yes" || data.membershipDetails.isMemberOfOrg === "yes") ? "TRUE" : "FALSE",
+          is_member_of_similar_org:
+            data.membershipDetails.isMemberOfOrg === "Yes" ||
+            data.membershipDetails.isMemberOfOrg === "yes"
+              ? "TRUE"
+              : "FALSE",
           org_details: data.membershipDetails.orgDetails || "",
-          has_applied_earlier: (data.membershipDetails.hasAppliedEarlier === "Yes" || data.membershipDetails.hasAppliedEarlier === "yes") ? "TRUE" : "FALSE",
-          previous_application_details: data.membershipDetails.previousApplicationDetails || "",
-          is_valid_member: (data.membershipDetails.isValidMember === "Yes" || data.membershipDetails.isValidMember === "yes") ? "TRUE" : "FALSE",
-          is_executive_member: (data.membershipDetails.isExecutiveMember === "Yes" || data.membershipDetails.isExecutiveMember === "yes") ? "TRUE" : "FALSE",
+          has_applied_earlier:
+            data.membershipDetails.hasAppliedEarlier === "Yes" ||
+            data.membershipDetails.hasAppliedEarlier === "yes"
+              ? "TRUE"
+              : "FALSE",
+          previous_application_details:
+            data.membershipDetails.previousApplicationDetails || "",
+          is_valid_member:
+            data.membershipDetails.isValidMember === "Yes" ||
+            data.membershipDetails.isValidMember === "yes"
+              ? "TRUE"
+              : "FALSE",
+          is_executive_member:
+            data.membershipDetails.isExecutiveMember === "Yes" ||
+            data.membershipDetails.isExecutiveMember === "yes"
+              ? "TRUE"
+              : "FALSE",
         };
         console.log("Membership Details:", {
           isMemberOfOrg: data.membershipDetails.isMemberOfOrg,
           hasAppliedEarlier: data.membershipDetails.hasAppliedEarlier,
           isValidMember: data.membershipDetails.isValidMember,
-          isExecutiveMember: data.membershipDetails.isExecutiveMember
+          isExecutiveMember: data.membershipDetails.isExecutiveMember,
         });
-        console.log("Similar Membership Inquiry:", reqData.similarMembershipInquiry);
+        console.log(
+          "Similar Membership Inquiry:",
+          reqData.similarMembershipInquiry
+        );
       }
 
       // partnerDetails diff
       const origPartners = original.representativeDetails.partners || [];
       const newPartners = data.representativeDetails.partners || [];
       reqData.partnerDetails = {
-        newPartnerDetails: newPartners.filter(p => !p.id).map(p => ({
-          partnerName: p.name,
-          partnerAadharNo: p.aadharNo,
-          partnerPanNo: p.pan,
-          contactNumber: p.contactNo,
-          emailId: p.email,
-        })),
-        updatePartnerDetails: newPartners.filter(p => {
-          const orig = origPartners.find(op => op.id === p.id);
-          return p.id && orig && (
-            orig.name !== p.name ||
-            orig.contactNo !== p.contactNo ||
-            orig.aadharNo !== p.aadharNo ||
-            orig.email !== p.email ||
-            orig.pan !== p.pan
-          );
-        }).map(p => ({
-          id: p.id,
-          partnerName: p.name,
-          partnerAadharNo: p.aadharNo,
-          partnerPanNo: p.pan,
-          contactNumber: p.contactNo,
-          emailId: p.email,
-        })),
-        deletePartnerDetails: origPartners.filter(op => op.id && !newPartners.some(p => p.id === op.id)).map(op => ({ id: op.id })),
+        newPartnerDetails: newPartners
+          .filter((p) => !p.id)
+          .map((p) => ({
+            partnerName: p.name,
+            partnerAadharNo: p.aadharNo,
+            partnerPanNo: p.pan,
+            contactNumber: p.contactNo,
+            emailId: p.email,
+          })),
+        updatePartnerDetails: newPartners
+          .filter((p) => {
+            const orig = origPartners.find((op) => op.id === p.id);
+            return (
+              p.id &&
+              orig &&
+              (orig.name !== p.name ||
+                orig.contactNo !== p.contactNo ||
+                orig.aadharNo !== p.aadharNo ||
+                orig.email !== p.email ||
+                orig.pan !== p.pan)
+            );
+          })
+          .map((p) => ({
+            id: p.id,
+            partnerName: p.name,
+            partnerAadharNo: p.aadharNo,
+            partnerPanNo: p.pan,
+            contactNumber: p.contactNo,
+            emailId: p.email,
+          })),
+        deletePartnerDetails: origPartners
+          .filter((op) => op.id && !newPartners.some((p) => p.id === op.id))
+          .map((op) => ({ id: op.id })),
       };
-
-
 
       // branchDetails diff
       const origBranches = original.branchDetails.branches || [];
       const newBranches = data.branchDetails.branches || [];
-      
+
       console.log("Original branches:", JSON.stringify(origBranches, null, 2));
       console.log("New branches:", JSON.stringify(newBranches, null, 2));
       reqData.branchDetails = {
-        newBranchSchema: newBranches.filter(b => !b.id).map(b => ({
-          electricalUscNumber: b.electricalUscNumber,
-          scNumber: b.scNumber,
-          proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
-          proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
-          sanctionedHP: parseFloat(b.sanctionedHP),
-          placeOfBusiness: b.placeOfBusiness,
-          machineryInformations: (b.machinery || []).map(m => ({
-            machineName: m.isOther ? m.machineName || "Custom" : m.type,
-            isOther: m.isOther ? "TRUE" : "FALSE",
-            machineCount: parseInt(m.quantity),
+        newBranchSchema: newBranches
+          .filter((b) => !b.id)
+          .map((b) => ({
+            electricalUscNumber: b.electricalUscNumber,
+            scNumber: b.scNumber,
+            proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
+            proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
+            sanctionedHP: parseFloat(b.sanctionedHP),
+            placeOfBusiness: b.placeOfBusiness,
+            machineryInformations: (b.machinery || []).map((m) => ({
+              machineName: m.isOther ? m.machineName || "Custom" : m.type,
+              isOther: m.isOther ? "TRUE" : "FALSE",
+              machineCount: parseInt(m.quantity),
+            })),
           })),
-        })),
-        updateBranchSchema: newBranches.filter(b => {
-          const orig = origBranches.find(ob => ob.id === b.id);
-          if (!b.id || !orig) return false;
-          
-          // Check basic branch fields
-          const basicFieldsChanged = (
-            orig.placeOfBusiness !== b.placeOfBusiness ||
-            orig.proprietorStatus !== b.proprietorStatus ||
-            orig.proprietorType !== b.proprietorType ||
-            orig.electricalUscNumber !== b.electricalUscNumber ||
-            orig.scNumber !== b.scNumber ||
-            orig.sanctionedHP !== b.sanctionedHP
-          );
-          
-          // Check machinery changes
-          const origMachinery = orig.machinery || [];
-          const newMachinery = b.machinery || [];
-          const machineryChanged = (
-            origMachinery.length !== newMachinery.length ||
-            origMachinery.some((om: any, index: number) => {
-              const nm = newMachinery[index];
-              return !nm || (
-                om.type !== nm.type ||
-                om.machineName !== nm.machineName ||
-                om.isOther !== nm.isOther ||
-                om.quantity !== nm.quantity
-              );
-            })
-          );
-          
+        updateBranchSchema: newBranches
+          .filter((b) => {
+            const orig = origBranches.find((ob) => ob.id === b.id);
+            if (!b.id || !orig) return false;
 
-          
-          return basicFieldsChanged || machineryChanged;
-        }).map(b => {
-          const orig = origBranches.find(ob => ob.id === b.id);
-          const origMachinery = orig?.machinery || [];
-          const newMachinery = b.machinery || [];
-          
-          // Diff machinery changes
-          const newMachineryItems = newMachinery.filter((m: any) => !('id' in m && m.id));
-          const updateMachineryItems = newMachinery.filter((m: any) => {
-            if (!('id' in m && m.id)) return false;
-            const orig = origMachinery.find((om: any) => 'id' in om && om.id === m.id);
-            return m.id && orig && (
-              orig.type !== m.type ||
-              orig.machineName !== m.machineName ||
-              orig.isOther !== m.isOther ||
-              orig.quantity !== m.quantity
+            // Check basic branch fields
+            const basicFieldsChanged =
+              orig.placeOfBusiness !== b.placeOfBusiness ||
+              orig.proprietorStatus !== b.proprietorStatus ||
+              orig.proprietorType !== b.proprietorType ||
+              orig.electricalUscNumber !== b.electricalUscNumber ||
+              orig.scNumber !== b.scNumber ||
+              orig.sanctionedHP !== b.sanctionedHP;
+
+            // Check machinery changes
+            const origMachinery = orig.machinery || [];
+            const newMachinery = b.machinery || [];
+            const machineryChanged =
+              origMachinery.length !== newMachinery.length ||
+              origMachinery.some((om: any, index: number) => {
+                const nm = newMachinery[index];
+                return (
+                  !nm ||
+                  om.type !== nm.type ||
+                  om.machineName !== nm.machineName ||
+                  om.isOther !== nm.isOther ||
+                  om.quantity !== nm.quantity
+                );
+              });
+
+            return basicFieldsChanged || machineryChanged;
+          })
+          .map((b) => {
+            const orig = origBranches.find((ob) => ob.id === b.id);
+            const origMachinery = orig?.machinery || [];
+            const newMachinery = b.machinery || [];
+
+            // Diff machinery changes
+            const newMachineryItems = newMachinery.filter(
+              (m: any) => !("id" in m && m.id)
             );
-          });
-          const deleteMachineryItems = origMachinery.filter((om: any) => 
-            'id' in om && om.id && !newMachinery.some((m: any) => 'id' in m && m.id === om.id)
-          );
-          
+            const updateMachineryItems = newMachinery.filter((m: any) => {
+              if (!("id" in m && m.id)) return false;
+              const orig = origMachinery.find(
+                (om: any) => "id" in om && om.id === m.id
+              );
+              return (
+                m.id &&
+                orig &&
+                (orig.type !== m.type ||
+                  orig.machineName !== m.machineName ||
+                  orig.isOther !== m.isOther ||
+                  orig.quantity !== m.quantity)
+              );
+            });
+            const deleteMachineryItems = origMachinery.filter(
+              (om: any) =>
+                "id" in om &&
+                om.id &&
+                !newMachinery.some((m: any) => "id" in m && m.id === om.id)
+            );
 
-          
-          return {
-          id: b.id,
-          electricalUscNumber: b.electricalUscNumber,
-          scNumber: b.scNumber,
-          proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
-          proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
-          sanctionedHP: parseFloat(b.sanctionedHP),
-          placeOfBusiness: b.placeOfBusiness,
-            newMachineryInformations: newMachineryItems.map((m: any) => ({
-              machineName: m.isOther ? m.machineName || "Custom" : m.type,
-              isOther: m.isOther ? "TRUE" : "FALSE",
-              machineCount: parseInt(m.quantity),
-            })),
-            updateMachineryInformations: updateMachineryItems.map((m: any) => ({
-              id: m.id,
-              machineName: m.isOther ? m.machineName || "Custom" : m.type,
-              isOther: m.isOther ? "TRUE" : "FALSE",
-              machineCount: parseInt(m.quantity),
-            })),
-            deleteMachineryInformations: deleteMachineryItems.map((m: any) => ({
-              id: m.id,
-            })),
-          };
-        }),
-        deleteBranchSchema: origBranches.filter(ob => ob.id && !newBranches.some(b => b.id === ob.id)).map(ob => ({ id: ob.id })),
+            return {
+              id: b.id,
+              electricalUscNumber: b.electricalUscNumber,
+              scNumber: b.scNumber,
+              proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
+              proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
+              sanctionedHP: parseFloat(b.sanctionedHP),
+              placeOfBusiness: b.placeOfBusiness,
+              newMachineryInformations: newMachineryItems.map((m: any) => ({
+                machineName: m.isOther ? m.machineName || "Custom" : m.type,
+                isOther: m.isOther ? "TRUE" : "FALSE",
+                machineCount: parseInt(m.quantity),
+              })),
+              updateMachineryInformations: updateMachineryItems.map(
+                (m: any) => ({
+                  id: m.id,
+                  machineName: m.isOther ? m.machineName || "Custom" : m.type,
+                  isOther: m.isOther ? "TRUE" : "FALSE",
+                  machineCount: parseInt(m.quantity),
+                })
+              ),
+              deleteMachineryInformations: deleteMachineryItems.map(
+                (m: any) => ({
+                  id: m.id,
+                })
+              ),
+            };
+          }),
+        deleteBranchSchema: origBranches
+          .filter((ob) => ob.id && !newBranches.some((b) => b.id === ob.id))
+          .map((ob) => ({ id: ob.id })),
       };
 
       // proposer
@@ -1093,7 +1320,9 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
             isOpen: true,
             type: "success",
             title: "Success",
-            message: `Member updated successfully! ID: ${updatedMember?.data?.membershipId || "unknown"}`,
+            message: `Member updated successfully! ID: ${
+              updatedMember?.data?.membershipId || "unknown"
+            }`,
             primaryButton: {
               text: "Go to Memberships",
               onClick: () => router.push("/admin/memberships"),
@@ -1199,11 +1428,7 @@ const checkForChanges = (data: FormValues, original: FormValues, uploadedFiles: 
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
               {currentStep === 1 && <Step1PersonalBusiness />}
               {currentStep === 2 && <Step2OperationDetails />}
-              {currentStep === 3 && (
-                <Step3ComplianceLegal 
-                  isEditMode 
-                />
-              )}
+              {currentStep === 3 && <Step3ComplianceLegal isEditMode />}
               {currentStep === 4 && <Step4MembershipDocs isEditMode />}
               {currentStep === 5 && <Step5ProposerDeclaration />}
             </form>

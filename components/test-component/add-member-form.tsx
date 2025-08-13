@@ -25,6 +25,7 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import { uploadFile } from "@/lib/client-file-upload";
 import { useToast } from "@/hooks/use-toast";
+import { renderRoleBasedPath } from "@/lib/utils";
 // import { addMemberAction } from "@/app/actions/member-actions";
 
 // Define the form schema
@@ -160,13 +161,15 @@ const formSchema = z.object({
   }),
   documentDetails: z.object({
     additionalDocuments: z.any().optional(),
-    additionalAttachments: z.array(
-      z.object({
-        name: z.string(),
-        file: z.any().optional(),
-        expiredAt: z.string().optional(),
-      })
-    ).default([]),
+    additionalAttachments: z
+      .array(
+        z.object({
+          name: z.string(),
+          file: z.any().optional(),
+          expiredAt: z.string().optional(),
+        })
+      )
+      .default([]),
   }),
   proposer1: z.object({
     name: z.string(),
@@ -355,7 +358,10 @@ const AddMemberForm = () => {
 
       // Upload compliance documents from step 3
       if (data.complianceDetails.gstinDoc) {
-        const result = await uploadFile(data.complianceDetails.gstinDoc, 'documents');
+        const result = await uploadFile(
+          data.complianceDetails.gstinDoc,
+          "documents"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.gstinDoc = result.filePath;
         } else {
@@ -366,7 +372,10 @@ const AddMemberForm = () => {
       }
 
       if (data.complianceDetails.factoryLicenseDoc) {
-        const result = await uploadFile(data.complianceDetails.factoryLicenseDoc, 'documents');
+        const result = await uploadFile(
+          data.complianceDetails.factoryLicenseDoc,
+          "documents"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.factoryLicenseDoc = result.filePath;
         } else {
@@ -377,7 +386,10 @@ const AddMemberForm = () => {
       }
 
       if (data.complianceDetails.tspcbOrderDoc) {
-        const result = await uploadFile(data.complianceDetails.tspcbOrderDoc, 'documents');
+        const result = await uploadFile(
+          data.complianceDetails.tspcbOrderDoc,
+          "documents"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.tspcbOrderDoc = result.filePath;
         } else {
@@ -388,7 +400,10 @@ const AddMemberForm = () => {
       }
 
       if (data.complianceDetails.mdlDoc) {
-        const result = await uploadFile(data.complianceDetails.mdlDoc, 'documents');
+        const result = await uploadFile(
+          data.complianceDetails.mdlDoc,
+          "documents"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.mdlDoc = result.filePath;
         } else {
@@ -399,7 +414,10 @@ const AddMemberForm = () => {
       }
 
       if (data.complianceDetails.udyamCertificateDoc) {
-        const result = await uploadFile(data.complianceDetails.udyamCertificateDoc, 'documents');
+        const result = await uploadFile(
+          data.complianceDetails.udyamCertificateDoc,
+          "documents"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.udyamCertificateDoc = result.filePath;
         } else {
@@ -411,7 +429,7 @@ const AddMemberForm = () => {
 
       // Upload new declaration files
       if (data.declaration.photoUpload) {
-        const result = await uploadFile(data.declaration.photoUpload, 'photos');
+        const result = await uploadFile(data.declaration.photoUpload, "photos");
         if (result.success && result.filePath) {
           uploadedFiles.photoUpload = result.filePath;
         } else {
@@ -422,7 +440,10 @@ const AddMemberForm = () => {
       }
 
       if (data.declaration.signatureUpload) {
-        const result = await uploadFile(data.declaration.signatureUpload, 'signatures');
+        const result = await uploadFile(
+          data.declaration.signatureUpload,
+          "signatures"
+        );
         if (result.success && result.filePath) {
           uploadedFiles.signatureUpload = result.filePath;
         } else {
@@ -434,15 +455,21 @@ const AddMemberForm = () => {
 
       // Upload additional attachments
       const additionalAttachments = [];
-      for (let i = 0; i < data.documentDetails.additionalAttachments.length; i++) {
+      for (
+        let i = 0;
+        i < data.documentDetails.additionalAttachments.length;
+        i++
+      ) {
         const attachment = data.documentDetails.additionalAttachments[i];
         if (attachment.file) {
-          const result = await uploadFile(attachment.file, 'documents');
+          const result = await uploadFile(attachment.file, "documents");
           if (result.success && result.filePath) {
             additionalAttachments.push({
               documentName: attachment.name,
               documentPath: result.filePath,
-              expiredAt: attachment.expiredAt ? new Date(attachment.expiredAt).toISOString() : null,
+              expiredAt: attachment.expiredAt
+                ? new Date(attachment.expiredAt).toISOString()
+                : null,
             });
           } else {
             alert(`Failed to upload ${attachment.name}: ${result.error}`);
@@ -507,8 +534,6 @@ const AddMemberForm = () => {
           data.labourDetails.estimatedFemaleWorkers
         ),
 
-
-
         branches: data.branchDetails.branches.map((branch) => ({
           electricalUscNumber: branch.electricalUscNumber,
           scNumber: branch.scNumber,
@@ -538,9 +563,7 @@ const AddMemberForm = () => {
               : "FALSE",
         },
 
-        attachments: [
-          ...additionalAttachments,
-        ],
+        attachments: [...additionalAttachments],
 
         proposer: {
           proposerID: data.proposer1.membershipId || null,
@@ -554,8 +577,10 @@ const AddMemberForm = () => {
 
         declarations: {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
-          membershipFormPath: uploadedFiles.photoUpload || "/uploads/membership-form.pdf",
-          applicationSignaturePath: uploadedFiles.signatureUpload || "/uploads/app-signature.pdf",
+          membershipFormPath:
+            uploadedFiles.photoUpload || "/uploads/membership-form.pdf",
+          applicationSignaturePath:
+            uploadedFiles.signatureUpload || "/uploads/app-signature.pdf",
         },
       };
 
@@ -563,22 +588,42 @@ const AddMemberForm = () => {
         requestData.complianceDetails = {
           gstInNumber: data.complianceDetails.gstinNo,
           gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
-          gstExpiredAt: data.complianceDetails.gstinExpiredAt ? new Date(data.complianceDetails.gstinExpiredAt).toISOString() : null,
+          gstExpiredAt: data.complianceDetails.gstinExpiredAt
+            ? new Date(data.complianceDetails.gstinExpiredAt).toISOString()
+            : null,
           factoryLicenseNumber: data.complianceDetails.factoryLicenseNo,
-          factoryLicensePath: uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
-          factoryLicenseExpiredAt: data.complianceDetails.factoryLicenseExpiredAt ? new Date(data.complianceDetails.factoryLicenseExpiredAt).toISOString() : null,
+          factoryLicensePath:
+            uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
+          factoryLicenseExpiredAt: data.complianceDetails
+            .factoryLicenseExpiredAt
+            ? new Date(
+                data.complianceDetails.factoryLicenseExpiredAt
+              ).toISOString()
+            : null,
           tspcbOrderNumber: data.complianceDetails.tspcbOrderNo,
-          tspcbCertificatePath: uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
-          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString() : null,
+          tspcbCertificatePath:
+            uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
+          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt
+            ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString()
+            : null,
           mdlNumber: data.complianceDetails.mdlNo,
           mdlCertificatePath: uploadedFiles.mdlDoc || "/uploads/mdl.pdf",
-          mdlExpiredAt: data.complianceDetails.mdlExpiredAt ? new Date(data.complianceDetails.mdlExpiredAt).toISOString() : null,
+          mdlExpiredAt: data.complianceDetails.mdlExpiredAt
+            ? new Date(data.complianceDetails.mdlExpiredAt).toISOString()
+            : null,
           udyamCertificateNumber: data.complianceDetails.udyamCertificateNo,
-          udyamCertificatePath: uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
-          udyamCertificateExpiredAt: data.complianceDetails.udyamCertificateExpiredAt ? new Date(data.complianceDetails.udyamCertificateExpiredAt).toISOString() : null,
+          udyamCertificatePath:
+            uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
+          udyamCertificateExpiredAt: data.complianceDetails
+            .udyamCertificateExpiredAt
+            ? new Date(
+                data.complianceDetails.udyamCertificateExpiredAt
+              ).toISOString()
+            : null,
           fullAddress: data.communicationDetails.fullAddress,
           partnerName: data.representativeDetails.partners[0]?.name || "",
-          contactNumber: data.representativeDetails.partners[0]?.contactNo || "",
+          contactNumber:
+            data.representativeDetails.partners[0]?.contactNo || "",
           AadharNumber: data.representativeDetails.partners[0]?.aadharNo || "",
           emailId: data.representativeDetails.partners[0]?.email,
           panNumber: data.representativeDetails.partners[0]?.pan,
@@ -590,7 +635,7 @@ const AddMemberForm = () => {
       if (session?.user.token) {
         setIsSubmitting(true);
         const response = await axios.post(
-         `${process.env.BACKEND_API_URL}/api/member/add_member`,
+          `${process.env.BACKEND_API_URL}/api/member/add_member`,
           requestData,
           {
             headers: {
@@ -607,7 +652,9 @@ const AddMemberForm = () => {
               addedMember?.memberId || "unknown"
             }`
           );
-          router.push("/admin/memberships");
+          router.push(
+            `/${renderRoleBasedPath(session?.user.role)}/memberships`
+          );
         } else {
           alert("⚠️ Something went wrong. Member not added.");
         }
@@ -653,20 +700,26 @@ const AddMemberForm = () => {
         "Are you sure you want to cancel? All unsaved changes will be lost."
       )
     ) {
-      router.push("/admin/memberships");
+      router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
     }
   };
 
   const handleBack = () => {
-    router.push("/admin/memberships");
+    router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
   };
 
   // Function to validate USC/SC numbers
-  const validateUscScNumbers = async (electricalUscNumber: string, scNumber: string) => {
-    console.log('validateUscScNumbers called with:', { electricalUscNumber, scNumber }); // Debug log
-    
+  const validateUscScNumbers = async (
+    electricalUscNumber: string,
+    scNumber: string
+  ) => {
+    console.log("validateUscScNumbers called with:", {
+      electricalUscNumber,
+      scNumber,
+    }); // Debug log
+
     if (!session?.user.token) {
-      console.log('No session token found'); // Debug log
+      console.log("No session token found"); // Debug log
       toast({
         title: "Error",
         description: "Authentication required",
@@ -676,9 +729,9 @@ const AddMemberForm = () => {
     }
 
     setIsValidating(true);
-    
+
     try {
-      console.log('Making API call to validate numbers...'); // Debug log
+      console.log("Making API call to validate numbers..."); // Debug log
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/validate_usc_sc_number`,
         {
@@ -692,7 +745,7 @@ const AddMemberForm = () => {
         }
       );
 
-      console.log('API response:', response.data); // Debug log
+      console.log("API response:", response.data); // Debug log
 
       // Clear previous validation errors and success messages
       setValidationErrors({});
@@ -711,7 +764,8 @@ const AddMemberForm = () => {
           errors.electricalUscNumber = `${memberInfo.message} (${memberInfo.member.membershipId} - ${memberInfo.member.firmName})`;
           hasErrors = true;
         } else {
-          success.electricalUscNumber = "This USC number is unique and can be used.";
+          success.electricalUscNumber =
+            "This USC number is unique and can be used.";
           hasSuccess = true;
         }
       }
@@ -729,15 +783,15 @@ const AddMemberForm = () => {
       }
 
       if (hasErrors) {
-        console.log('Numbers exist, setting errors...'); // Debug log
+        console.log("Numbers exist, setting errors..."); // Debug log
         setValidationErrors(errors);
-        console.log('Set validation errors:', errors); // Debug log
+        console.log("Set validation errors:", errors); // Debug log
       }
 
       if (hasSuccess) {
-        console.log('Numbers are unique, setting success...'); // Debug log
+        console.log("Numbers are unique, setting success..."); // Debug log
         setValidationSuccess(success);
-        console.log('Set validation success:', success); // Debug log
+        console.log("Set validation success:", success); // Debug log
       }
 
       return !hasErrors; // Return true if no errors
@@ -761,15 +815,17 @@ const AddMemberForm = () => {
 
     setIsValidating(true);
     try {
-      console.log('Making API call to validate compliance details...');
-      
+      console.log("Making API call to validate compliance details...");
+
       // Build payload with only non-empty values
       const payload: any = {};
       if (gstinNo.trim()) payload.gstInNumber = gstinNo.trim();
-      if (factoryLicenseNo.trim()) payload.factoryLicenseNumber = factoryLicenseNo.trim();
+      if (factoryLicenseNo.trim())
+        payload.factoryLicenseNumber = factoryLicenseNo.trim();
       if (tspcbOrderNo.trim()) payload.tspcbOrderNumber = tspcbOrderNo.trim();
       if (mdlNo.trim()) payload.mdlNumber = mdlNo.trim();
-      if (udyamCertificateNo.trim()) payload.udyamCertificateNumber = udyamCertificateNo.trim();
+      if (udyamCertificateNo.trim())
+        payload.udyamCertificateNumber = udyamCertificateNo.trim();
 
       // Only make API call if there's at least one value to validate
       if (Object.keys(payload).length === 0) {
@@ -787,10 +843,10 @@ const AddMemberForm = () => {
         }
       );
 
-      console.log('Compliance validation API response:', response.data);
+      console.log("Compliance validation API response:", response.data);
 
       // Clear previous validation errors and success messages
-      setValidationErrors(prev => ({
+      setValidationErrors((prev) => ({
         ...prev,
         gstinNo: undefined,
         factoryLicenseNo: undefined,
@@ -798,7 +854,7 @@ const AddMemberForm = () => {
         mdlNo: undefined,
         udyamCertificateNo: undefined,
       }));
-      setValidationSuccess(prev => ({
+      setValidationSuccess((prev) => ({
         ...prev,
         gstinNo: undefined,
         factoryLicenseNo: undefined,
@@ -826,29 +882,34 @@ const AddMemberForm = () => {
 
       if (response.data["Factory License Number"] && factoryLicenseNo.trim()) {
         if (response.data["Factory License Number"].isMember) {
-          const firmName = response.data["Factory License Number"].firmName || "Unknown Firm";
+          const firmName =
+            response.data["Factory License Number"].firmName || "Unknown Firm";
           errors.factoryLicenseNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
-          success.factoryLicenseNo = "This Factory License number is unique and can be used.";
+          success.factoryLicenseNo =
+            "This Factory License number is unique and can be used.";
           hasSuccess = true;
         }
       }
 
       if (response.data["TSPCB Order Number"] && tspcbOrderNo.trim()) {
         if (response.data["TSPCB Order Number"].isMember) {
-          const firmName = response.data["TSPCB Order Number"].firmName || "Unknown Firm";
+          const firmName =
+            response.data["TSPCB Order Number"].firmName || "Unknown Firm";
           errors.tspcbOrderNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
-          success.tspcbOrderNo = "This TSPCB Order number is unique and can be used.";
+          success.tspcbOrderNo =
+            "This TSPCB Order number is unique and can be used.";
           hasSuccess = true;
         }
       }
 
       if (response.data["MDL Number"] && mdlNo.trim()) {
         if (response.data["MDL Number"].isMember) {
-          const firmName = response.data["MDL Number"].firmName || "Unknown Firm";
+          const firmName =
+            response.data["MDL Number"].firmName || "Unknown Firm";
           errors.mdlNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
@@ -857,23 +918,29 @@ const AddMemberForm = () => {
         }
       }
 
-      if (response.data["Udyam Certificate Number"] && udyamCertificateNo.trim()) {
+      if (
+        response.data["Udyam Certificate Number"] &&
+        udyamCertificateNo.trim()
+      ) {
         if (response.data["Udyam Certificate Number"].isMember) {
-          const firmName = response.data["Udyam Certificate Number"].firmName || "Unknown Firm";
+          const firmName =
+            response.data["Udyam Certificate Number"].firmName ||
+            "Unknown Firm";
           errors.udyamCertificateNo = `Already added for ${firmName}`;
           hasErrors = true;
         } else {
-          success.udyamCertificateNo = "This Udyam Certificate number is unique and can be used.";
+          success.udyamCertificateNo =
+            "This Udyam Certificate number is unique and can be used.";
           hasSuccess = true;
         }
       }
 
       if (hasErrors) {
-        setValidationErrors(prev => ({ ...prev, ...errors }));
+        setValidationErrors((prev) => ({ ...prev, ...errors }));
       }
 
       if (hasSuccess) {
-        setValidationSuccess(prev => ({ ...prev, ...success }));
+        setValidationSuccess((prev) => ({ ...prev, ...success }));
       }
 
       return !hasErrors;
@@ -886,23 +953,26 @@ const AddMemberForm = () => {
   };
 
   // Single field compliance validation function
-  const validateSingleComplianceField = async (fieldName: string, value: string) => {
+  const validateSingleComplianceField = async (
+    fieldName: string,
+    value: string
+  ) => {
     if (!session?.user?.token || value.length < 3) return;
 
     setIsValidating(true);
     try {
       console.log(`Validating single field: ${fieldName} with value: ${value}`);
-      
+
       // Build payload with only the specific field
       const payload: any = {};
       const fieldMappings: { [key: string]: string } = {
-        gstinNo: 'gstInNumber',
-        factoryLicenseNo: 'factoryLicenseNumber',
-        tspcbOrderNo: 'tspcbOrderNumber',
-        mdlNo: 'mdlNumber',
-        udyamCertificateNo: 'udyamCertificateNumber'
+        gstinNo: "gstInNumber",
+        factoryLicenseNo: "factoryLicenseNumber",
+        tspcbOrderNo: "tspcbOrderNumber",
+        mdlNo: "mdlNumber",
+        udyamCertificateNo: "udyamCertificateNumber",
       };
-      
+
       const apiFieldName = fieldMappings[fieldName];
       if (apiFieldName) {
         payload[apiFieldName] = value.trim();
@@ -918,28 +988,35 @@ const AddMemberForm = () => {
         }
       );
 
-      console.log('Single field validation response:', response.data);
+      console.log("Single field validation response:", response.data);
 
       // Clear previous validation for this field only
-      setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-      setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
+      setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+      setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
 
       // Check the specific field response
       const responseKeys: { [key: string]: string } = {
-        gstinNo: 'GSTIN',
-        factoryLicenseNo: 'Factory License Number',
-        tspcbOrderNo: 'TSPCB Order Number',
-        mdlNo: 'MDL Number',
-        udyamCertificateNo: 'Udyam Certificate Number'
+        gstinNo: "GSTIN",
+        factoryLicenseNo: "Factory License Number",
+        tspcbOrderNo: "TSPCB Order Number",
+        mdlNo: "MDL Number",
+        udyamCertificateNo: "Udyam Certificate Number",
       };
 
       const responseKey = responseKeys[fieldName];
       if (response.data[responseKey]) {
         if (response.data[responseKey].isMember) {
-          const firmName = response.data[responseKey].firmName || "Unknown Firm";
-          setValidationErrors(prev => ({ ...prev, [fieldName]: `Already added for ${firmName}` }));
+          const firmName =
+            response.data[responseKey].firmName || "Unknown Firm";
+          setValidationErrors((prev) => ({
+            ...prev,
+            [fieldName]: `Already added for ${firmName}`,
+          }));
         } else {
-          setValidationSuccess(prev => ({ ...prev, [fieldName]: `This ${fieldName} is unique and can be used.` }));
+          setValidationSuccess((prev) => ({
+            ...prev,
+            [fieldName]: `This ${fieldName} is unique and can be used.`,
+          }));
         }
       }
     } catch (error) {
@@ -951,71 +1028,92 @@ const AddMemberForm = () => {
 
   // Real-time validation function
   const handleFieldChange = async (fieldName: string, value: string) => {
-    console.log('Field change detected:', fieldName, value); // Debug log
-    
+    console.log("Field change detected:", fieldName, value); // Debug log
+
     const currentData = methods.getValues();
-    
+
     // USC and SC Number validation
-    if (fieldName === 'electricalUscNumber' || fieldName === 'scNumber') {
-      const uscNumber = fieldName === 'electricalUscNumber' ? value : currentData.applicationDetails.electricalUscNumber;
-      const scNumber = fieldName === 'scNumber' ? value : currentData.applicationDetails.scNumber;
-      
-      console.log('Current values:', { uscNumber, scNumber }); // Debug log
-      
+    if (fieldName === "electricalUscNumber" || fieldName === "scNumber") {
+      const uscNumber =
+        fieldName === "electricalUscNumber"
+          ? value
+          : currentData.applicationDetails.electricalUscNumber;
+      const scNumber =
+        fieldName === "scNumber"
+          ? value
+          : currentData.applicationDetails.scNumber;
+
+      console.log("Current values:", { uscNumber, scNumber }); // Debug log
+
       // Validate each field independently if it has at least 3 characters
-      if (fieldName === 'electricalUscNumber' && value.length >= 3) {
-        console.log('Starting USC validation...'); // Debug log
-        
+      if (fieldName === "electricalUscNumber" && value.length >= 3) {
+        console.log("Starting USC validation..."); // Debug log
+
         // Add a small delay to avoid too many API calls
         setTimeout(async () => {
-          console.log('Executing USC validation...'); // Debug log
+          console.log("Executing USC validation..."); // Debug log
           const isValid = await validateUscScNumbers(value, scNumber);
-          console.log('USC validation result:', isValid); // Debug log
-          
+          console.log("USC validation result:", isValid); // Debug log
+
           if (isValid) {
             // Clear USC error if validation passes
-            setValidationErrors(prev => ({ ...prev, electricalUscNumber: undefined }));
-            setValidationSuccess(prev => ({ ...prev, electricalUscNumber: "This USC number is unique and can be used." }));
-            console.log('USC validation passed, cleared error'); // Debug log
+            setValidationErrors((prev) => ({
+              ...prev,
+              electricalUscNumber: undefined,
+            }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              electricalUscNumber: "This USC number is unique and can be used.",
+            }));
+            console.log("USC validation passed, cleared error"); // Debug log
           }
         }, 500); // 500ms delay
-      } else if (fieldName === 'scNumber' && value.length >= 3) {
-        console.log('Starting SC validation...'); // Debug log
-        
+      } else if (fieldName === "scNumber" && value.length >= 3) {
+        console.log("Starting SC validation..."); // Debug log
+
         // Add a small delay to avoid too many API calls
         setTimeout(async () => {
-          console.log('Executing SC validation...'); // Debug log
+          console.log("Executing SC validation..."); // Debug log
           const isValid = await validateUscScNumbers(uscNumber, value);
-          console.log('SC validation result:', isValid); // Debug log
-          
+          console.log("SC validation result:", isValid); // Debug log
+
           if (isValid) {
             // Clear SC error if validation passes
-            setValidationErrors(prev => ({ ...prev, scNumber: undefined }));
-            setValidationSuccess(prev => ({ ...prev, scNumber: "This SC number is unique and can be used." }));
-            console.log('SC validation passed, cleared error'); // Debug log
+            setValidationErrors((prev) => ({ ...prev, scNumber: undefined }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              scNumber: "This SC number is unique and can be used.",
+            }));
+            console.log("SC validation passed, cleared error"); // Debug log
           }
         }, 500); // 500ms delay
       } else if (value.length < 3) {
         // Clear errors if field is too short
-        setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-        setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
+        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
         console.log(`${fieldName} too short, cleared error`); // Debug log
       }
     }
-    
+
     // Compliance validation - single field only
-    if (fieldName === 'gstinNo' || fieldName === 'factoryLicenseNo' || fieldName === 'tspcbOrderNo' || fieldName === 'mdlNo' || fieldName === 'udyamCertificateNo') {
+    if (
+      fieldName === "gstinNo" ||
+      fieldName === "factoryLicenseNo" ||
+      fieldName === "tspcbOrderNo" ||
+      fieldName === "mdlNo" ||
+      fieldName === "udyamCertificateNo"
+    ) {
       if (value.length >= 3) {
         console.log(`Starting single field validation for ${fieldName}...`);
-        
+
         // Add a small delay to avoid too many API calls
         setTimeout(async () => {
           await validateSingleComplianceField(fieldName, value);
         }, 500); // 500ms delay
       } else if (value.length < 3) {
         // Clear errors if field is too short
-        setValidationErrors(prev => ({ ...prev, [fieldName]: undefined }));
-        setValidationSuccess(prev => ({ ...prev, [fieldName]: undefined }));
+        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
         console.log(`${fieldName} too short, cleared error`);
       }
     }
@@ -1091,7 +1189,7 @@ const AddMemberForm = () => {
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
               {currentStep === 1 && (
-                <Step1PersonalBusiness 
+                <Step1PersonalBusiness
                   validationErrors={validationErrors}
                   validationSuccess={validationSuccess}
                   onFieldChange={handleFieldChange}
@@ -1100,7 +1198,7 @@ const AddMemberForm = () => {
               )}
               {currentStep === 2 && <Step2OperationDetails />}
               {currentStep === 3 && (
-                <Step3ComplianceLegal 
+                <Step3ComplianceLegal
                   validationErrors={validationErrors}
                   validationSuccess={validationSuccess}
                   onFieldChange={handleFieldChange}

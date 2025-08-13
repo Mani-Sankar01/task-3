@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 import {
+  AlertCircle,
   BellIcon,
   CalendarDays,
   ChartColumn,
@@ -90,6 +91,16 @@ const data = {
           url: "/tsmwa/membership-fees",
           icon: IndianRupee,
         },
+        {
+          title: "Pending Approvals",
+          url: "/tsmwa/memberships/approval-pending",
+          icon: AlertCircle,
+        },
+        {
+          title: "Bill Approvals",
+          url: "/tsmwa/membership-fees/approval-pending",
+          icon: AlertCircle,
+        },
       ],
     },
 
@@ -136,7 +147,7 @@ const data = {
         },
         {
           title: "Add Meeting",
-          url: "/meetings/add",
+          url: "/tsmwa/meetings/add",
           icon: PlusSquare,
         },
       ],
@@ -176,52 +187,29 @@ export default function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [selectedVersion, setSelectedVersion] = React.useState(
-    data.versions[0]
-  );
-
   const pathname = usePathname();
   const { toast } = useToast();
-
+  const { data: session, status } = useSession();
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
           <SidebarMenu>
             <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                  >
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground">
-                      <UserIcon className="size-4" />
-                    </div>
-                    <div className="flex flex-col gap-0.5 leading-none">
-                      <span className="font-semibold">Mani Sankar</span>
-                      <span className="">{selectedVersion}</span>
-                    </div>
-                    <ChevronsUpDown className="ml-auto" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-[--radix-dropdown-menu-trigger-width]"
-                  align="start"
-                >
-                  {data.versions.map((version) => (
-                    <DropdownMenuItem
-                      key={version}
-                      onSelect={() => setSelectedVersion(version)}
-                    >
-                      {version}{" "}
-                      {version === selectedVersion && (
-                        <Check className="ml-auto" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-sidebar-primary-foreground font-bold text-lg">
+                  {(session?.user?.name?.[0] || "U").toUpperCase()}
+                </div>
+                <div className="flex flex-col gap-0.5 leading-none">
+                  <span className="font-semibold">{session?.user?.name}</span>
+                  <span className="capitalize text-xs text-muted-foreground">
+                    {session?.user?.role}
+                  </span>
+                </div>
+              </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
 

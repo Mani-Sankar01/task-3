@@ -51,6 +51,7 @@ import {
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import PopupMessage from "@/components/ui/popup-message";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Update the form schema
 const formSchema = z.object({
@@ -205,7 +206,8 @@ export default function AddEditTripForm({
             isOpen: true,
             type: "success",
             title: "Trip Updated Successfully!",
-            message: "The trip has been updated successfully. You will be redirected to the vehicle details.",
+            message:
+              "The trip has been updated successfully. You will be redirected to the vehicle details.",
           });
         } else {
           setPopupMessage({
@@ -243,7 +245,8 @@ export default function AddEditTripForm({
             isOpen: true,
             type: "success",
             title: "Trip Added Successfully!",
-            message: "The trip has been added successfully. You will be redirected to the vehicle details.",
+            message:
+              "The trip has been added successfully. You will be redirected to the vehicle details.",
           });
         } else {
           setPopupMessage({
@@ -273,17 +276,21 @@ export default function AddEditTripForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(`/admin/vehicle/${vehicleId}`);
+      router.push(
+        `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
+      );
     }
   };
 
   const handlePopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleSuccessPopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
-    router.push(`/admin/vehicle/${vehicleId}`);
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
+    );
     router.refresh();
   };
 

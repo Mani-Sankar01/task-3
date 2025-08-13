@@ -88,7 +88,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "../ui/badge";
-
+import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function InvoiceList() {
   const router = useRouter();
@@ -114,7 +114,7 @@ export default function InvoiceList() {
     console.log("Status:", status);
     console.log("Session:", session);
     console.log("BACKEND_API_URL:", process.env.BACKEND_API_URL);
-    
+
     if (status !== "authenticated" || !session?.user?.token) {
       console.log("Not authenticated or no token");
       return;
@@ -125,34 +125,39 @@ export default function InvoiceList() {
         setIsLoading(true);
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
         const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
-        
+
         console.log("API URL:", fullUrl);
         console.log("Token:", session.user.token ? "Token exists" : "No token");
-        
-        const response = await axios.get(
-          fullUrl,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+
+        const response = await axios.get(fullUrl, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
 
         console.log("Full API response:", response.data);
         console.log("Response status:", response.status);
-        
+
         // Handle different possible response structures
         let responseData;
         if (response.data && Array.isArray(response.data)) {
           responseData = response.data;
-        } else if (response.data && response.data.taxInvoices && Array.isArray(response.data.taxInvoices)) {
+        } else if (
+          response.data &&
+          response.data.taxInvoices &&
+          Array.isArray(response.data.taxInvoices)
+        ) {
           responseData = response.data.taxInvoices;
-        } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        } else if (
+          response.data &&
+          response.data.data &&
+          Array.isArray(response.data.data)
+        ) {
           responseData = response.data.data;
         } else {
           responseData = [];
         }
-        
+
         setInvoices(responseData);
         setFilteredInvoices(responseData);
         console.log("Invoices data:", responseData);
@@ -181,14 +186,11 @@ export default function InvoiceList() {
     const fetchMembers = async () => {
       try {
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const response = await axios.get(
-          `${apiUrl}/api/member/get_members`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${apiUrl}/api/member/get_members`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
         setMembers(response.data || []);
       } catch (err: unknown) {
         console.error("Error fetching members:", err);
@@ -223,9 +225,7 @@ export default function InvoiceList() {
     if (searchTerm) {
       filtered = filtered.filter(
         (invoice) =>
-          invoice.invoiceId
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
+          invoice.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
           invoice.membershipId.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -244,15 +244,17 @@ export default function InvoiceList() {
   const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
 
   const handleCreateInvoice = () => {
-    router.push("/admin/invoices/create");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices/create`);
   };
 
   const handleViewInvoice = (id: string) => {
-    router.push(`/admin/invoices/${id}`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices/${id}`);
   };
 
   const handleEditInvoice = (id: string) => {
-    router.push(`/admin/invoices/edit/${id}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/invoices/${id}/edit`
+    );
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
@@ -278,15 +280,19 @@ export default function InvoiceList() {
         );
 
         // Remove from local state after successful API call
-        setInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceId !== invoiceId));
-        setFilteredInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceId !== invoiceId));
-        
+        setInvoices((prevInvoices) =>
+          prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
+        );
+        setFilteredInvoices((prevInvoices) =>
+          prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
+        );
+
         alert("Invoice deleted successfully!");
       } catch (error: any) {
         console.error("Error deleting invoice:", error);
         console.error("Error response:", error.response?.data);
         console.error("Error status:", error.response?.status);
-        
+
         if (error.response?.status === 404) {
           alert("Invoice not found or already deleted");
         } else {
@@ -335,27 +341,29 @@ export default function InvoiceList() {
     // Generate CSV content for API invoices
     const csvHeaders = [
       "Invoice ID",
-      "Membership ID", 
+      "Membership ID",
       "Date",
       "CGST %",
       "SGST %",
       "IGST %",
       "Sub Total",
-      "Total"
+      "Total",
     ];
-    
+
     const csvContent = [
       csvHeaders.join(","),
-      ...filteredInvoices.map(invoice => [
-        invoice.invoiceId,
-        invoice.membershipId,
-        new Date(invoice.invoiceDate).toLocaleDateString(),
-        invoice.cGSTInPercent,
-        invoice.sGSTInPercent,
-        invoice.iGSTInPercent,
-        invoice.subTotal,
-        invoice.total
-      ].join(","))
+      ...filteredInvoices.map((invoice) =>
+        [
+          invoice.invoiceId,
+          invoice.membershipId,
+          new Date(invoice.invoiceDate).toLocaleDateString(),
+          invoice.cGSTInPercent,
+          invoice.sGSTInPercent,
+          invoice.iGSTInPercent,
+          invoice.subTotal,
+          invoice.total,
+        ].join(",")
+      ),
     ].join("\n");
 
     // Create a Blob with the CSV content
@@ -442,7 +450,10 @@ export default function InvoiceList() {
                 <SelectContent>
                   <SelectItem value="all">All Members</SelectItem>
                   {members.map((member) => (
-                    <SelectItem key={member.membershipId} value={member.membershipId}>
+                    <SelectItem
+                      key={member.membershipId}
+                      value={member.membershipId}
+                    >
                       {member.applicantName} - {member.firmName}
                     </SelectItem>
                   ))}
@@ -484,13 +495,13 @@ export default function InvoiceList() {
                     defaultMonth={dateRange.from}
                     selected={{
                       from: dateRange.from,
-                      to: dateRange.to
+                      to: dateRange.to,
                     }}
                     onSelect={(range) => {
                       if (range) {
                         setDateRange({
                           from: range.from,
-                          to: range.to
+                          to: range.to,
                         });
                       }
                     }}
@@ -526,7 +537,7 @@ export default function InvoiceList() {
                   <TableHead>IGST %</TableHead>
                   <TableHead>Sub Total</TableHead>
                   <TableHead>Total</TableHead>
-                   <TableHead>Status</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -585,14 +596,19 @@ export default function InvoiceList() {
                             >
                               <Eye className="mr-2 h-4 w-4" /> View
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditInvoice(invoice.invoiceId);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
+                            {(session?.user?.role === "ADMIN" ||
+                              session?.user?.role === "TSMWA_EDITOR" ||
+                              session?.user?.role === "TQMA_EDITOR") && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditInvoice(invoice.invoiceId);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                            )}
+
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -601,29 +617,32 @@ export default function InvoiceList() {
                             >
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
-                            {invoice.status === "PENDING" && (
-                              <DropdownMenuItem>
-                                <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                Approve
-                              </DropdownMenuItem>
+                            {session?.user?.role === "ADMIN" && (
+                              <>
+                                {invoice.status === "PENDING" && (
+                                  <DropdownMenuItem>
+                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                    Approve
+                                  </DropdownMenuItem>
+                                )}
+                                {invoice.status === "APPROVED" && (
+                                  <DropdownMenuItem>
+                                    <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                    Decline
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteInvoice(invoice.invoiceId);
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </>
                             )}
-                            {invoice.status === "APPROVED" && (
-                              <DropdownMenuItem>
-                                <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                Decline
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteInvoice(invoice.invoiceId);
-                              }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                            
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

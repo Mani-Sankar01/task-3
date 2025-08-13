@@ -56,6 +56,7 @@ import {
   type MembershipFee,
   type MembershipFeeStatus,
 } from "@/data/membership-fees";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function MembershipFeesList() {
   const router = useRouter();
@@ -305,17 +306,25 @@ export default function MembershipFeesList() {
 
   // Navigate to fee details
   const viewFeeDetails = (feeId: string) => {
-    router.push(`/admin/membership-fees/${feeId}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/${feeId}`
+    );
   };
 
   // Navigate to add new fee
   const addNewFee = () => {
-    router.push("/admin/membership-fees/add");
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/add`
+    );
   };
 
   // Navigate to edit fee
   const editFee = (feeId: string) => {
-    router.push(`/admin/membership-fees/${feeId}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user?.role
+      )}/membership-fees/${feeId}/edit`
+    );
   };
 
   // Delete a fee
@@ -658,15 +667,19 @@ export default function MembershipFeesList() {
                                 <EyeIcon className=" h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  editFee(fee.billingId);
-                                }}
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                                Edit Fee
-                              </DropdownMenuItem>
+                              {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TSMWA_EDITOR" ||
+                                session?.user?.role === "TQMA_EDITOR") && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editFee(fee.billingId);
+                                  }}
+                                >
+                                  <PencilIcon className="h-4 w-4" />
+                                  Edit Fee
+                                </DropdownMenuItem>
+                              )}
                               {session?.user.role === "ADMIN" && (
                                 <DropdownMenuItem
                                   onClick={(e) => {

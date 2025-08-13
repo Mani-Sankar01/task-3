@@ -59,13 +59,17 @@ import { downloadFile } from "@/lib/client-file-upload";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/lib/client-file-upload";
 import Link from "next/link";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 interface LabourDetailsProps {
   labour: any;
   refetchLabour?: () => Promise<void>;
 }
 
-export default function LabourDetails({ labour, refetchLabour }: LabourDetailsProps) {
+export default function LabourDetails({
+  labour,
+  refetchLabour,
+}: LabourDetailsProps) {
   const router = useRouter();
   const { data: session } = useSession();
   const { toast } = useToast();
@@ -79,19 +83,28 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
   // Document management state
   const [showDocDialog, setShowDocDialog] = useState(false);
   const [editDoc, setEditDoc] = useState<any>(null);
-  const [editPrimaryDoc, setEditPrimaryDoc] = useState<{type: string, path: string} | null>(null);
+  const [editPrimaryDoc, setEditPrimaryDoc] = useState<{
+    type: string;
+    path: string;
+  } | null>(null);
   const [docName, setDocName] = useState("");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState("");
-  const [filePathForUpload, setFilePathForUpload] = useState<string | null>(null);
+  const [filePathForUpload, setFilePathForUpload] = useState<string | null>(
+    null
+  );
 
   const handleEdit = () => {
-    router.push(`/admin/labour/${labour.labourId}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/labour/${
+        labour.labourId
+      }/edit`
+    );
   };
 
   const handleBack = () => {
-    router.push("/admin/labour");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
   };
 
   // Add or Edit Document
@@ -121,23 +134,29 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
         }
       } else if (editDoc) {
         // Editing additional document
-        payload.updateAdditionalDocs = [{
-          id: editDoc.id,
-          docName: docName,
-          docFilePath: filePath,
-        }];
+        payload.updateAdditionalDocs = [
+          {
+            id: editDoc.id,
+            docName: docName,
+            docFilePath: filePath,
+          },
+        ];
       } else {
         // Adding new additional document
-        payload.newAdditionalDocs = [{
-          docName: docName,
-          docFilePath: filePath,
-        }];
+        payload.newAdditionalDocs = [
+          {
+            docName: docName,
+            docFilePath: filePath,
+          },
+        ];
       }
 
       if (!session?.user.token) throw new Error("No auth token");
 
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`,
+        `${
+          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        }/api/labour/update_labour`,
         payload,
         {
           headers: {
@@ -153,21 +172,24 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
 
       setShowDocDialog(false);
       setEditPrimaryDoc(null);
-      toast({ 
-        title: editDoc || editPrimaryDoc ? "Document updated" : "Document added", 
-        description: `The document was successfully ${editDoc || editPrimaryDoc ? "updated" : "added"}.`, 
-        variant: "default" 
+      toast({
+        title:
+          editDoc || editPrimaryDoc ? "Document updated" : "Document added",
+        description: `The document was successfully ${
+          editDoc || editPrimaryDoc ? "updated" : "added"
+        }.`,
+        variant: "default",
       });
-      
+
       if (refetchLabour) {
         await refetchLabour();
       }
     } catch (err: any) {
       setDocError(err.message || "Failed to update document");
-      toast({ 
-        title: "Error", 
-        description: err.message || "Failed to update document", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update document",
+        variant: "destructive",
       });
     } finally {
       setDocLoading(false);
@@ -176,16 +198,17 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
 
   // Delete Document
   const handleDeleteDoc = async (doc: any) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) return;
-    
+    if (!window.confirm("Are you sure you want to delete this document?"))
+      return;
+
     setDocLoading(true);
     setDocError("");
-    
+
     if (!session?.user.token) {
-      toast({ 
-        title: "Error", 
-        description: "No auth token found. Please login again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
       });
       setDocLoading(false);
       return;
@@ -194,11 +217,13 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
     try {
       const payload = {
         labourId: labour.labourId,
-        deleteAdditionalDocs: [{ id: doc.id }]
+        deleteAdditionalDocs: [{ id: doc.id }],
       };
 
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`,
+        `${
+          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        }/api/labour/update_labour`,
         payload,
         {
           headers: {
@@ -212,21 +237,21 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
         throw new Error("Failed to delete document");
       }
 
-      toast({ 
-        title: "Document deleted", 
-        description: "The document was successfully deleted.", 
-        variant: "default" 
+      toast({
+        title: "Document deleted",
+        description: "The document was successfully deleted.",
+        variant: "default",
       });
-      
+
       if (refetchLabour) {
         await refetchLabour();
       }
     } catch (err: any) {
       setDocError(err.message || "Failed to delete document");
-      toast({ 
-        title: "Error", 
-        description: err.message || "Failed to delete document", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete document",
+        variant: "destructive",
       });
     } finally {
       setDocLoading(false);
@@ -251,7 +276,8 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
     setDocName(docName);
     setDocFile(null);
     // Try different possible field names for document path
-    const docPath = doc.documentPath || doc.docFilePath || doc.filePath || doc.path || "";
+    const docPath =
+      doc.documentPath || doc.docFilePath || doc.filePath || doc.path || "";
     setFilePathForUpload(docPath || null);
     setShowDocDialog(true);
   };
@@ -275,28 +301,32 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
   const prettyDate = (dateStr?: string) => {
     if (!dateStr) return "-";
     const d = new Date(dateStr);
-    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    return d.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
   // Download function
   const handleDownloadFile = async (filePath: string) => {
     try {
       // Extract filename from path
-      const filename = filePath.split('/').pop() || 'document';
-      console.log('Downloading file:', filename, 'from path:', filePath);
-      
-      const blob = await downloadFile(filename); 
+      const filename = filePath.split("/").pop() || "document";
+      console.log("Downloading file:", filename, "from path:", filePath);
+
+      const blob = await downloadFile(filename);
       if (blob) {
         // Create download link
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         toast({
           title: "Download Successful",
           description: `File ${filename} downloaded successfully.`,
@@ -309,7 +339,7 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
         });
       }
     } catch (error) {
-      console.error('Download error:', error);
+      console.error("Download error:", error);
       toast({
         title: "Download Failed",
         description: "An error occurred while downloading the file.",
@@ -338,9 +368,11 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
         <Card>
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage 
-                src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath}`} 
-                alt={labour.fullName} 
+              <AvatarImage
+                src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${
+                  labour.photoPath
+                }`}
+                alt={labour.fullName}
               />
               <AvatarFallback>{labour.fullName?.charAt(0)}</AvatarFallback>
             </Avatar>
@@ -380,7 +412,9 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>
                     Date of Birth:{" "}
-                    {labour.dob ? new Date(labour.dob).toLocaleDateString() : "Not provided"}
+                    {labour.dob
+                      ? new Date(labour.dob).toLocaleDateString()
+                      : "Not provided"}
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -473,7 +507,9 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                                   : "destructive"
                               }
                             >
-                              {employment.labourStatus?.charAt(0).toUpperCase() +
+                              {employment.labourStatus
+                                ?.charAt(0)
+                                .toUpperCase() +
                                 employment.labourStatus?.slice(1).toLowerCase()}
                             </Badge>
                           </TableCell>
@@ -562,19 +598,27 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                         <TableRow>
                           <TableCell className="font-medium">Photo</TableCell>
                           <TableCell>{labour.photoPath || "-"}</TableCell>
-                          <TableCell>{labour.createdAt ? prettyDate(labour.createdAt) : "-"}</TableCell>
+                          <TableCell>
+                            {labour.createdAt
+                              ? prettyDate(labour.createdAt)
+                              : "-"}
+                          </TableCell>
                           <TableCell className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => openEditPrimaryDoc("photo", labour.photoPath)}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                openEditPrimaryDoc("photo", labour.photoPath)
+                              }
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDownloadFile(labour.photoPath)}
+                              onClick={() =>
+                                handleDownloadFile(labour.photoPath)
+                              }
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -582,21 +626,31 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                         </TableRow>
                         {/* Aadhar Card */}
                         <TableRow>
-                          <TableCell className="font-medium">Aadhar Card</TableCell>
+                          <TableCell className="font-medium">
+                            Aadhar Card
+                          </TableCell>
                           <TableCell>{labour.aadharPath || "-"}</TableCell>
-                          <TableCell>{labour.createdAt ? prettyDate(labour.createdAt) : "-"}</TableCell>
+                          <TableCell>
+                            {labour.createdAt
+                              ? prettyDate(labour.createdAt)
+                              : "-"}
+                          </TableCell>
                           <TableCell className="flex gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => openEditPrimaryDoc("aadhar", labour.aadharPath)}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                openEditPrimaryDoc("aadhar", labour.aadharPath)
+                              }
                             >
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
-                              onClick={() => handleDownloadFile(labour.aadharPath)}
+                              onClick={() =>
+                                handleDownloadFile(labour.aadharPath)
+                              }
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -609,7 +663,8 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                   {/* Additional Documents */}
                   <div>
                     <h3 className="font-medium mb-4">Additional Documents</h3>
-                    {labour.laboursAdditionalDocs && labour.laboursAdditionalDocs.length > 0 ? (
+                    {labour.laboursAdditionalDocs &&
+                    labour.laboursAdditionalDocs.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -623,9 +678,18 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                           {labour.laboursAdditionalDocs.map((doc: any) => {
                             console.log("Document data:", doc);
                             // Try different possible field names for document name
-                            const docName = doc.documentName || doc.docName || doc.name || "Document";
+                            const docName =
+                              doc.documentName ||
+                              doc.docName ||
+                              doc.name ||
+                              "Document";
                             // Try different possible field names for document path
-                            const docPath = doc.documentPath || doc.docFilePath || doc.filePath || doc.path || "-";
+                            const docPath =
+                              doc.documentPath ||
+                              doc.docFilePath ||
+                              doc.filePath ||
+                              doc.path ||
+                              "-";
                             return (
                               <TableRow key={doc.id}>
                                 <TableCell className="font-medium">
@@ -633,26 +697,28 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                                 </TableCell>
                                 <TableCell>{docPath}</TableCell>
                                 <TableCell>
-                                  {doc.createdAt ? prettyDate(doc.createdAt) : "-"}
+                                  {doc.createdAt
+                                    ? prettyDate(doc.createdAt)
+                                    : "-"}
                                 </TableCell>
                                 <TableCell className="flex gap-2">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
                                     onClick={() => openEditDoc(doc)}
                                   >
                                     <Edit2 className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm" 
-                                    onClick={() => handleDeleteDoc(doc)} 
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDeleteDoc(doc)}
                                     disabled={docLoading}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
-                                  <Button 
-                                    variant="outline" 
+                                  <Button
+                                    variant="outline"
                                     size="sm"
                                     onClick={() => handleDownloadFile(docPath)}
                                   >
@@ -668,7 +734,9 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                       <div className="text-center py-8 text-muted-foreground">
                         <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                         <p>No additional documents uploaded yet.</p>
-                        <p className="text-sm">Click "Add Document" to upload additional files.</p>
+                        <p className="text-sm">
+                          Click "Add Document" to upload additional files.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -680,9 +748,15 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
             <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editDoc || editPrimaryDoc ? "Edit Document" : "Add Document"}</DialogTitle>
+                  <DialogTitle>
+                    {editDoc || editPrimaryDoc
+                      ? "Edit Document"
+                      : "Add Document"}
+                  </DialogTitle>
                   <DialogDescription>
-                    {editDoc || editPrimaryDoc ? "Update the document information" : "Upload a new document for this labour"}
+                    {editDoc || editPrimaryDoc
+                      ? "Update the document information"
+                      : "Upload a new document for this labour"}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -703,8 +777,16 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                       onFileSelect={setDocFile}
                       onUploadComplete={() => {}}
                       onUploadError={setDocError}
-                      subfolder={editPrimaryDoc?.type === "photo" ? "photos" : "documents"}
-                      accept={editPrimaryDoc?.type === "photo" ? ".jpg,.jpeg,.png" : ".pdf,.jpg,.jpeg,.png"}
+                      subfolder={
+                        editPrimaryDoc?.type === "photo"
+                          ? "photos"
+                          : "documents"
+                      }
+                      accept={
+                        editPrimaryDoc?.type === "photo"
+                          ? ".jpg,.jpeg,.png"
+                          : ".pdf,.jpg,.jpeg,.png"
+                      }
                       existingFilePath={filePathForUpload ?? undefined}
                       onDownload={handleDownloadFile}
                       onRemoveFile={() => setFilePathForUpload(null)}
@@ -712,11 +794,17 @@ export default function LabourDetails({ labour, refetchLabour }: LabourDetailsPr
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>
+                  <Button
+                    variant="outline"
+                    onClick={closeDocDialog}
+                    disabled={docLoading}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleDocSubmit} disabled={docLoading}>
-                    {editDoc || editPrimaryDoc ? "Save Changes" : "Add Document"}
+                    {editDoc || editPrimaryDoc
+                      ? "Save Changes"
+                      : "Add Document"}
                   </Button>
                 </DialogFooter>
                 {docError && (

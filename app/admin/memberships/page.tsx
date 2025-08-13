@@ -5,7 +5,19 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, BananaIcon, BanIcon, CheckCheck, EyeIcon, MoreHorizontal, PencilIcon, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  ArrowUpDown,
+  BananaIcon,
+  BanIcon,
+  CheckCheck,
+  EyeIcon,
+  MoreHorizontal,
+  PencilIcon,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -44,8 +56,16 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Define the Member type based on API response
 interface Member {
@@ -120,17 +140,14 @@ const page = () => {
       try {
         setIsLoading(true);
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const response = await axios.get(
-          `${apiUrl}/api/member/get_members`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${apiUrl}/api/member/get_members`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
 
         console.log("Members API response:", response.data);
-        
+
         // Handle the response structure
         let membersData: Member[] = [];
         if (response.data && Array.isArray(response.data)) {
@@ -140,7 +157,7 @@ const page = () => {
         } else if (response.data && Array.isArray(response.data.members)) {
           membersData = response.data.members;
         }
-        
+
         console.log("Processed members data:", membersData);
         setMembers(membersData);
         setError(null);
@@ -157,17 +174,17 @@ const page = () => {
 
   // Filter members based on search term and status filters
   const filteredMembers = members.filter((member) => {
-    const matchesSearch = 
+    const matchesSearch =
       member.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.firmName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       member.membershipId.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = 
+
+    const matchesStatus =
       statusFilter === "all" || member.membershipStatus === statusFilter;
-    
-    const matchesApproval = 
+
+    const matchesApproval =
       approvalFilter === "all" || member.approvalStatus === approvalFilter;
-    
+
     return matchesSearch && matchesStatus && matchesApproval;
   });
 
@@ -236,7 +253,10 @@ const page = () => {
   };
 
   // Delete a member
-  const handleDeleteMember = async (memberId: string, closeDialog?: () => void) => {
+  const handleDeleteMember = async (
+    memberId: string,
+    closeDialog?: () => void
+  ) => {
     // Close dialog if provided
     if (closeDialog) {
       closeDialog();
@@ -256,7 +276,7 @@ const page = () => {
       await axios.post(
         `${apiUrl}/api/member/delete_members`,
         {
-          membershipIds: [memberId]
+          membershipIds: [memberId],
         },
         {
           headers: {
@@ -267,18 +287,27 @@ const page = () => {
       );
 
       // Refresh the list
-      const refreshResponse = await axios.get(`${apiUrl}/api/member/get_members`, {
-        headers: {
-          Authorization: `Bearer ${session.user.token}`,
-        },
-      });
+      const refreshResponse = await axios.get(
+        `${apiUrl}/api/member/get_members`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
 
       let updatedMembersData: Member[] = [];
       if (refreshResponse.data && Array.isArray(refreshResponse.data)) {
         updatedMembersData = refreshResponse.data;
-      } else if (refreshResponse.data && Array.isArray(refreshResponse.data.data)) {
+      } else if (
+        refreshResponse.data &&
+        Array.isArray(refreshResponse.data.data)
+      ) {
         updatedMembersData = refreshResponse.data.data;
-      } else if (refreshResponse.data && Array.isArray(refreshResponse.data.members)) {
+      } else if (
+        refreshResponse.data &&
+        Array.isArray(refreshResponse.data.members)
+      ) {
         updatedMembersData = refreshResponse.data.members;
       }
 
@@ -297,11 +326,12 @@ const page = () => {
         title: "Member Deleted",
         description: "The member has been deleted successfully.",
       });
-
     } catch (error: any) {
       console.error("Error deleting member:", error);
-      const errorMessage = error.response?.data?.message || "Failed to delete member. Please try again.";
-      
+      const errorMessage =
+        error.response?.data?.message ||
+        "Failed to delete member. Please try again.";
+
       // Show toast notification
       toast({
         title: "Delete Failed",
@@ -383,7 +413,7 @@ const page = () => {
                     }}
                   />
                 </div>
-                
+
                 {/* Filter dropdowns */}
                 <div className="flex gap-4">
                   <Select
@@ -402,7 +432,7 @@ const page = () => {
                       <SelectItem value="INACTIVE">Inactive</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   <Select
                     value={approvalFilter}
                     onValueChange={(value) => {
@@ -474,7 +504,7 @@ const page = () => {
                     </TableHead>
 
                     <TableHead className="hidden md:table-cell">
-                        Approval
+                      Approval
                     </TableHead>
 
                     <TableHead className="w-[100px]">Actions</TableHead>
@@ -513,8 +543,7 @@ const page = () => {
                           {new Date(member.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                        <Badge
-                        
+                          <Badge
                             variant={
                               member.approvalStatus === "APPROVED"
                                 ? "default"
@@ -543,7 +572,7 @@ const page = () => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem>
                                 <Link
-                                  href={`/admin/memberships/${member.membershipId}`}
+                                  href={`/tsmwa/memberships/${member.membershipId}`}
                                   className="flex items-center gap-2 cursor-pointer"
                                 >
                                   <EyeIcon className=" h-4 w-4" />
@@ -552,7 +581,7 @@ const page = () => {
                               </DropdownMenuItem>
 
                               {/* Show Edit option only for Admin or Editor roles */}
-                              {(session?.user.role! === "ADMIN") && (
+                              {session?.user.role! === "ADMIN" && (
                                 <DropdownMenuItem>
                                   <Link
                                     href={`/admin/memberships/${member.membershipId}/edit`}
@@ -567,69 +596,78 @@ const page = () => {
                               {/* Show Delete option only for Admin role */}
                               {session?.user.role! === "ADMIN" && (
                                 <>
-                                {member.membershipStatus === "ACTIVE" && (
-                                  <>
-                                  <DropdownMenuItem className="cursor-pointer">
-                                    <X className="h-4 w-4 text-red-600" />
-                                    Make Inactivate
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem className="cursor-pointer">
-                                    <X className="h-4 w-4 text-red-600" />
-                                    Cancel Membership
-                                  </DropdownMenuItem>
-                                  </>
-                                )}
-                                
-                                {member.approvalStatus === "APPROVED" ? (
-                                  <DropdownMenuItem className="cursor-pointer">
-                                    <BanIcon className="h-4 w-4 text-red-600" />
-                                    Decline
-                                  </DropdownMenuItem>
-                                ): (
-                                  <DropdownMenuItem className="cursor-pointer">
-                                    <CheckCheck className="h-4 w-4 text-red-600" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                )}
+                                  {member.membershipStatus === "ACTIVE" && (
+                                    <>
+                                      <DropdownMenuItem className="cursor-pointer">
+                                        <X className="h-4 w-4 text-red-600" />
+                                        Make Inactivate
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem className="cursor-pointer">
+                                        <X className="h-4 w-4 text-red-600" />
+                                        Cancel Membership
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
 
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      <Trash2 className="h-4 w-4 text-red-600" />
-                                      Delete Member
+                                  {member.approvalStatus === "APPROVED" ? (
+                                    <DropdownMenuItem className="cursor-pointer">
+                                      <BanIcon className="h-4 w-4 text-red-600" />
+                                      Decline
                                     </DropdownMenuItem>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                      <DialogTitle className="flex items-center gap-2">
-                                        <span className="text-destructive">⚠️</span>
-                                        Confirm Delete
-                                      </DialogTitle>
-                                      <DialogDescription>
-                                        Are you sure you want to delete <span className="font-semibold">{member.applicantName}</span>? 
-                                        This action cannot be undone.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter className="gap-2">
-                                      <DialogClose asChild>
-                                        <Button variant="outline">Cancel</Button>
-                                      </DialogClose>
-                                      <DialogClose asChild>
-                                        <Button 
-                                          variant="destructive"
-                                          onClick={() => handleDeleteMember(member.membershipId)}
-                                        >
-                                          Delete Member
-                                        </Button>
-                                      </DialogClose>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
+                                  ) : (
+                                    <DropdownMenuItem className="cursor-pointer">
+                                      <CheckCheck className="h-4 w-4 text-red-600" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                  )}
 
-                                 
+                                  <Dialog>
+                                    <DialogTrigger asChild>
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onSelect={(e) => e.preventDefault()}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600" />
+                                        Delete Member
+                                      </DropdownMenuItem>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-md">
+                                      <DialogHeader>
+                                        <DialogTitle className="flex items-center gap-2">
+                                          <span className="text-destructive">
+                                            ⚠️
+                                          </span>
+                                          Confirm Delete
+                                        </DialogTitle>
+                                        <DialogDescription>
+                                          Are you sure you want to delete{" "}
+                                          <span className="font-semibold">
+                                            {member.applicantName}
+                                          </span>
+                                          ? This action cannot be undone.
+                                        </DialogDescription>
+                                      </DialogHeader>
+                                      <DialogFooter className="gap-2">
+                                        <DialogClose asChild>
+                                          <Button variant="outline">
+                                            Cancel
+                                          </Button>
+                                        </DialogClose>
+                                        <DialogClose asChild>
+                                          <Button
+                                            variant="destructive"
+                                            onClick={() =>
+                                              handleDeleteMember(
+                                                member.membershipId
+                                              )
+                                            }
+                                          >
+                                            Delete Member
+                                          </Button>
+                                        </DialogClose>
+                                      </DialogFooter>
+                                    </DialogContent>
+                                  </Dialog>
                                 </>
                               )}
                             </DropdownMenuContent>

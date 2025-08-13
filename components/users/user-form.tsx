@@ -28,12 +28,8 @@ import { ArrowLeft, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import {
-  UserRole,
-  UserStatus,
-  UserGender,
-  userSchema,
-} from "@/data/users";
+import { UserRole, UserStatus, UserGender, userSchema } from "@/data/users";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Extend the user schema for the form
 const formSchema = userSchema;
@@ -65,7 +61,12 @@ export default function UserForm({ userId }: UserFormProps) {
 
   // Load user data for edit mode
   useEffect(() => {
-    if (isEditMode && userId && status === "authenticated" && session?.user?.token) {
+    if (
+      isEditMode &&
+      userId &&
+      status === "authenticated" &&
+      session?.user?.token
+    ) {
       const fetchUser = async () => {
         try {
           setIsLoading(true);
@@ -122,8 +123,8 @@ export default function UserForm({ userId }: UserFormProps) {
           ...data,
         };
         console.log("Update payload:", updatePayload);
-        console.log(data)
-        
+        console.log(data);
+
         const response = await axios.post(
           `${process.env.BACKEND_API_URL}/api/user/update_user`,
           updatePayload,
@@ -140,11 +141,11 @@ export default function UserForm({ userId }: UserFormProps) {
           title: "Success",
           description: "User updated successfully",
         });
-        router.push(`/admin/users/`);
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/users/`);
       } else {
         // Create new user
         console.log("Create payload:", data);
-        
+
         const response = await axios.post(
           `${process.env.BACKEND_API_URL}/api/user/add_user`,
           data,
@@ -161,23 +162,23 @@ export default function UserForm({ userId }: UserFormProps) {
           title: "Success",
           description: "User created successfully",
         });
-        router.push(`/admin/users/${response.data.id}`);
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/users/`);
       }
     } catch (error: any) {
       console.error("Error saving user:", error);
       console.error("Error details:", {
         message: error.message,
         status: error.response?.status,
-        response: error.response?.data
+        response: error.response?.data,
       });
-      
+
       let errorMessage = "Failed to save user. Please try again.";
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -273,9 +274,7 @@ export default function UserForm({ userId }: UserFormProps) {
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      Select the user's gender
-                    </FormDescription>
+                    <FormDescription>Select the user's gender</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -400,7 +399,11 @@ export default function UserForm({ userId }: UserFormProps) {
               </Button>
               <Button type="submit" disabled={isSubmitting || isLoading}>
                 <Save className="mr-2 h-4 w-4" />
-                {isSubmitting ? "Saving..." : isEditMode ? "Update User" : "Create User"}
+                {isSubmitting
+                  ? "Saving..."
+                  : isEditMode
+                  ? "Update User"
+                  : "Create User"}
               </Button>
             </div>
           </form>

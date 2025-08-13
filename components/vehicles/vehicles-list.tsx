@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function VehiclesList() {
   const router = useRouter();
@@ -56,8 +57,6 @@ export default function VehiclesList() {
   const [isLoading, setIsLoading] = useState(true);
   const { data: session, status } = useSession();
   const { toast } = useToast();
-
-
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
@@ -161,26 +160,35 @@ export default function VehiclesList() {
 
   // Navigate to vehicle details
   const viewVehicleDetails = (vehicleId: string) => {
-    router.push(`/admin/vehicle/${vehicleId}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user.role)}/vehicle/${vehicleId}`
+    );
   };
 
   // Navigate to add new vehicle
   const addNewVehicle = () => {
-    router.push("/admin/vehicle/add");
+    router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle/add`);
   };
 
   // Navigate to edit vehicle
   const editVehicle = (vehicleId: string) => {
-    router.push(`/admin/vehicle/${vehicleId}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user.role)}/vehicle/${vehicleId}/edit`
+    );
   };
 
   // Handle vehicle deletion with simple confirmation
-  const handleDeleteVehicle = async (vehicleId: string, vehicleNumber: string) => {
+  const handleDeleteVehicle = async (
+    vehicleId: string,
+    vehicleNumber: string
+  ) => {
     if (!session?.user?.token) return;
 
     // Use simple browser confirmation
-    const confirmed = window.confirm(`Are you sure you want to delete vehicle "${vehicleNumber}"? This action cannot be undone.`);
-    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete vehicle "${vehicleNumber}"? This action cannot be undone.`
+    );
+
     if (!confirmed) return;
 
     console.log("Starting delete operation for vehicle:", vehicleNumber);
@@ -197,14 +205,14 @@ export default function VehiclesList() {
 
       if (response.status === 200 || response.status === 204) {
         // Remove the vehicle from the local state
-        setVehicles(prevVehicles => 
-          prevVehicles.filter(vehicle => vehicle.vehicleId !== vehicleId)
+        setVehicles((prevVehicles) =>
+          prevVehicles.filter((vehicle) => vehicle.vehicleId !== vehicleId)
         );
 
         // Show success toast
         toast({
           title: "Vehicle Deleted Successfully!",
-          description: `Vehicle ${vehicleNumber} has been deleted.`
+          description: `Vehicle ${vehicleNumber} has been deleted.`,
         });
 
         // Adjust pagination if needed
@@ -230,8 +238,6 @@ export default function VehiclesList() {
       });
     }
   };
-
-
 
   // Get route name by ID
   const getRouteName = (routeId: string) => {
@@ -389,33 +395,45 @@ export default function VehiclesList() {
                             >
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                editVehicle(vehicle.vehicleId);
-                              }}
-                            >
-                              Edit Vehicle
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(
-                                  `/admin/vehicle/${vehicle.vehicleId}/add-trip`
-                                );
-                              }}
-                            >
-                              Add Trip
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteVehicle(vehicle.vehicleId, vehicle.vehicleNumber);
-                              }}
-                            >
-                              Delete Vehicle
-                            </DropdownMenuItem>
+                            {session?.user?.role === "ADMIN" && (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteVehicle(
+                                    vehicle.vehicleId,
+                                    vehicle.vehicleNumber
+                                  );
+                                }}
+                              >
+                                Delete Vehicle
+                              </DropdownMenuItem>
+                            )}
+
+                            {(session?.user?.role === "TSMWA_EDITOR" ||
+                              session?.user?.role === "TQMA_EDITOR" ||
+                              session?.user?.role === "ADMIN") && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editVehicle(vehicle.vehicleId);
+                                  }}
+                                >
+                                  Edit Vehicle
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push(
+                                      `/admin/vehicle/${vehicle.vehicleId}/add-trip`
+                                    );
+                                  }}
+                                >
+                                  Add Trip
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -463,8 +481,6 @@ export default function VehiclesList() {
           </div>
         </CardContent>
       </Card>
-
-
     </div>
   );
 }

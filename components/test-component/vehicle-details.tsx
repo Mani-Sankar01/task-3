@@ -38,6 +38,7 @@ import {
   TableRow,
 } from "../ui/table";
 import { useRouter } from "next/navigation";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function VehicleDetailsWithID({ id }: any) {
   const [isLoading, setIsLoading] = useState(true);
@@ -171,19 +172,29 @@ export default function VehicleDetailsWithID({ id }: any) {
   }
 
   const handleEdit = () => {
-    router.push(`/admin/vehicle/${vehicleId}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user.role)}/vehicle/${vehicleId}/edit`
+    );
   };
 
   const handleBack = () => {
-    router.push("/admin/vehicle");
+    router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
   };
 
   const handleAddTrip = () => {
-    router.push(`/admin/vehicle/${vehicleId}/add-trip`);
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user.role
+      )}/vehicle/${vehicleId}/add-trip`
+    );
   };
 
   const handleEditTrip = (tripId: string) => {
-    router.push(`/admin/vehicle/${vehicleId}/edit-trip/${tripId}`);
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user.role
+      )}/vehicle/${vehicleId}/edit-trip/${tripId}`
+    );
   };
 
   const handleDeleteTrip = (tripId: string) => {

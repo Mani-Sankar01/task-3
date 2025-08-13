@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
 import { Badge } from "../ui/badge";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // API Invoice interface
 interface ApiInvoice {
@@ -89,7 +90,7 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
         const response = await axios.get(
           `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${invoiceId}`,
@@ -101,19 +102,23 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
         );
 
         console.log("Invoice API response:", response.data);
-        
+
         // Handle the response structure with taxInvoice array
         let invoiceData: ApiInvoice | null = null;
-        if (response.data && response.data.taxInvoice && Array.isArray(response.data.taxInvoice)) {
+        if (
+          response.data &&
+          response.data.taxInvoice &&
+          Array.isArray(response.data.taxInvoice)
+        ) {
           invoiceData = response.data.taxInvoice[0]; // Get the first invoice from the array
         } else if (response.data && !response.data.taxInvoice) {
           // Fallback: if response.data is the invoice directly
           invoiceData = response.data;
         }
-        
+
         if (invoiceData) {
           setInvoice(invoiceData);
-          
+
           // Fetch member details
           const memberResponse = await axios.get(
             `${apiUrl}/api/member/get_member/${invoiceData.membershipId}`,
@@ -123,7 +128,7 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
               },
             }
           );
-          
+
           console.log("Member API response:", memberResponse.data);
           setMember(memberResponse.data);
         } else {
@@ -145,11 +150,13 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
   }, [invoiceId, status, session?.user?.token]);
 
   const handleBack = () => {
-    router.push("/admin/invoices");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices`);
   };
 
   const handleEdit = () => {
-    router.push(`/admin/invoices/${invoiceId}/edit/`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/invoices/${invoiceId}/edit/`
+    );
   };
 
   const handlePrint = () => {
@@ -231,12 +238,12 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
             <div>
               <p className="font-bold">Invoice No: {invoice.invoiceId}</p>
               {invoice.status === "APPROVED" ? (
-                          <Badge variant="default">Approved</Badge>
-                        ) : invoice.status === "PENDING" ? (
-                          <Badge variant="outline">Pending</Badge>
-                        ) : (
-                          <Badge variant="destructive">DECLINED</Badge>
-                        )}
+                <Badge variant="default">Approved</Badge>
+              ) : invoice.status === "PENDING" ? (
+                <Badge variant="outline">Pending</Badge>
+              ) : (
+                <Badge variant="destructive">DECLINED</Badge>
+              )}
             </div>
             <div className="text-right mt-4 md:mt-0">
               <p className="font-bold">
@@ -249,8 +256,14 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
               {member.firmName}
             </CardTitle>
 
-            <p className="text-muted-foreground">{member.complianceDetails?.fullAddress || "Address not available"}</p>
-            <p className="text-muted-foreground">GSTIN: {member.complianceDetails?.gstInNumber || "GST Number not available"}</p>
+            <p className="text-muted-foreground">
+              {member.complianceDetails?.fullAddress || "Address not available"}
+            </p>
+            <p className="text-muted-foreground">
+              GSTIN:{" "}
+              {member.complianceDetails?.gstInNumber ||
+                "GST Number not available"}
+            </p>
             <div className="mt-2 border border-black px-4 py-1 rounded">
               <p className="font-bold">TAX INVOICE</p>
             </div>
@@ -264,59 +277,63 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
             <h3 className="font-semibold mb-2">Invoice Summary</h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="font-medium">Member ID:</span> {invoice.membershipId}
+                <span className="font-medium">Member ID:</span>{" "}
+                {invoice.membershipId}
               </div>
               <div>
-                <span className="font-medium">Member Name:</span> {member.applicantName}
+                <span className="font-medium">Member Name:</span>{" "}
+                {member.applicantName}
               </div>
               <div>
-                <span className="font-medium">Invoice Date:</span> {format(new Date(invoice.invoiceDate), "dd/MM/yyyy")}
+                <span className="font-medium">Invoice Date:</span>{" "}
+                {format(new Date(invoice.invoiceDate), "dd/MM/yyyy")}
               </div>
               <div>
-                <span className="font-medium">Created:</span> {format(new Date(invoice.createdAt), "dd/MM/yyyy")}
+                <span className="font-medium">Created:</span>{" "}
+                {format(new Date(invoice.createdAt), "dd/MM/yyyy")}
               </div>
             </div>
           </div>
 
           {/* Invoice Items */}
           {invoice.invoiceItems && invoice.invoiceItems.length > 0 && (
-          <div>
+            <div>
               <h3 className="font-semibold mb-4">Invoice Items</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>HSN Code</TableHead>
-                  <TableHead>Particulars</TableHead>
-                  <TableHead className="text-right">No. of Stones</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>HSN Code</TableHead>
+                    <TableHead>Particulars</TableHead>
+                    <TableHead className="text-right">No. of Stones</TableHead>
                     <TableHead>Size</TableHead>
-                  <TableHead className="text-right">Total Sq. Ft.</TableHead>
-                  <TableHead className="text-right">Rate (₹)</TableHead>
-                  <TableHead className="text-right">Amount (₹)</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                  {invoice.invoiceItems.map((item, index) => (
-                  <TableRow key={item.id || index}>
-                    <TableCell>{item.hsnCode}</TableCell>
-                      <TableCell>{item.particular}</TableCell>
-                    <TableCell className="text-right">
-                        {item.stoneCount}
-                    </TableCell>
-                      <TableCell>{item.size}</TableCell>
-                    <TableCell className="text-right">
-                      {item.totalSqFeet}
-                    </TableCell>
-                    <TableCell className="text-right">
-                        ₹{parseFloat(item.ratePerSqFeet).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                        ₹{parseFloat(item.amount).toLocaleString()}
-                    </TableCell>
+                    <TableHead className="text-right">Total Sq. Ft.</TableHead>
+                    <TableHead className="text-right">Rate (₹)</TableHead>
+                    <TableHead className="text-right">Amount (₹)</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {invoice.invoiceItems.map((item, index) => (
+                    <TableRow key={item.id || index}>
+                      <TableCell>{item.hsnCode}</TableCell>
+                      <TableCell>{item.particular}</TableCell>
+                      <TableCell className="text-right">
+                        {item.stoneCount}
+                      </TableCell>
+                      <TableCell>{item.size}</TableCell>
+                      <TableCell className="text-right">
+                        {item.totalSqFeet}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{parseFloat(item.ratePerSqFeet).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        ₹{parseFloat(item.amount).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           {/* Invoice Totals */}
@@ -324,9 +341,7 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
             <div className="w-full max-w-xs">
               <div className="grid grid-cols-2 gap-2">
                 <div className="font-medium">Sub Total:</div>
-                <div className="text-right">
-                  ₹{subTotal.toLocaleString()}
-                </div>
+                <div className="text-right">₹{subTotal.toLocaleString()}</div>
 
                 {invoice.cGSTInPercent > 0 && (
                   <>

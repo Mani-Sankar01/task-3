@@ -44,6 +44,7 @@ import axios from "axios";
 import { FileUpload } from "@/components/ui/file-upload";
 import PopupMessage from "@/components/ui/popup-message";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -52,8 +53,13 @@ const formSchema = z.object({
     required_error: "Date of birth is required",
   }),
   phoneNumber: z.string().min(10, "Phone number must be at least 10 digits"),
-  emailId: z.string().email("Invalid email address").optional().or(z.literal("")),
-  aadharNumber: z.string()
+  emailId: z
+    .string()
+    .email("Invalid email address")
+    .optional()
+    .or(z.literal("")),
+  aadharNumber: z
+    .string()
     .min(12, "Aadhar number must be exactly 12 digits")
     .max(12, "Aadhar number must be exactly 12 digits")
     .regex(/^\d{12}$/, "Aadhar number must contain only digits"),
@@ -61,7 +67,8 @@ const formSchema = z.object({
   presentAddress: z.string().min(1, "Present address is required"),
   photoPath: z.string().min(1, "Photo upload is required"),
   aadharPath: z.string().min(1, "Aadhar card upload is required"),
-  panNumber: z.string()
+  panNumber: z
+    .string()
     .max(12, "PAN number must be at most 12 characters")
     .optional()
     .or(z.literal("")),
@@ -133,11 +140,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           eShramId: labour.eShramId || "",
           assignedTo: labour.assignedTo || "",
           branchId: "",
-          additionalDocs: labour.laboursAdditionalDocs?.map((doc: any) => ({
-            id: doc.id,
-            docName: doc.documentName || doc.docName || "",
-            docFilePath: doc.documentPath || doc.docFilePath || ""
-          })) || [],
+          additionalDocs:
+            labour.laboursAdditionalDocs?.map((doc: any) => ({
+              id: doc.id,
+              docName: doc.documentName || doc.docName || "",
+              docFilePath: doc.documentPath || doc.docFilePath || "",
+            })) || [],
         }
       : {
           fullName: "",
@@ -169,10 +177,10 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     if (labour) {
       console.log("Labour data loaded:", labour);
       console.log("Additional documents:", labour.laboursAdditionalDocs);
-      
+
       setPhotoPath(labour.photoPath || "");
       setAadharPath(labour.aadharPath || "");
-      
+
       // Reset form with labour data including additional documents
       form.reset({
         fullName: labour.fullName || "",
@@ -190,13 +198,14 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         eShramId: labour.eShramId || "",
         assignedTo: labour.assignedTo || "",
         branchId: "",
-        additionalDocs: labour.laboursAdditionalDocs?.map((doc: any) => ({
-          id: doc.id,
-          docName: doc.documentName || doc.docName || "",
-          docFilePath: doc.documentPath || doc.docFilePath || ""
-        })) || [],
+        additionalDocs:
+          labour.laboursAdditionalDocs?.map((doc: any) => ({
+            id: doc.id,
+            docName: doc.documentName || doc.docName || "",
+            docFilePath: doc.documentPath || doc.docFilePath || "",
+          })) || [],
       });
-      
+
       console.log("Form values after reset:", form.getValues());
     }
   }, [labour, form]);
@@ -207,7 +216,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       if (sessionStatus === "authenticated" && session?.user?.token) {
         try {
           const response = await axios.get(
-            `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_members`,
+            `${
+              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            }/api/member/get_members`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
@@ -230,8 +241,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     if (memberSearchTerm) {
       const filtered = members.filter(
         (member) =>
-          member.applicantName?.toLowerCase().includes(memberSearchTerm.toLowerCase()) ||
-          member.firmName?.toLowerCase().includes(memberSearchTerm.toLowerCase())
+          member.applicantName
+            ?.toLowerCase()
+            .includes(memberSearchTerm.toLowerCase()) ||
+          member.firmName
+            ?.toLowerCase()
+            .includes(memberSearchTerm.toLowerCase())
       );
       setFilteredMembers(filtered);
     } else {
@@ -242,16 +257,23 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
   // Fetch branches when a member is selected
   useEffect(() => {
     const selectedMemberId = form.watch("assignedTo");
-    if (selectedMemberId && sessionStatus === "authenticated" && session?.user?.token) {
+    if (
+      selectedMemberId &&
+      sessionStatus === "authenticated" &&
+      session?.user?.token
+    ) {
       setIsLoadingBranches(true);
-      axios.get(
-        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/member/get_member/${selectedMemberId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        }
-      )
+      axios
+        .get(
+          `${
+            process.env.BACKEND_API_URL || "https://tsmwa.online"
+          }/api/member/get_member/${selectedMemberId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        )
         .then((response) => {
           const memberData = response.data;
           setBranches(memberData.branches || []);
@@ -320,7 +342,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           isOpen: true,
           type: "error",
           title: "Missing Required Files",
-          message: `Please upload the following required files:\n${missingFiles.join('\n')}`,
+          message: `Please upload the following required files:\n${missingFiles.join(
+            "\n"
+          )}`,
         });
         setIsSubmitting(false);
         return;
@@ -350,69 +374,75 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       if (data.additionalDocs && data.additionalDocs.length > 0) {
         if (isEditMode) {
           // For edit mode: separate new and existing documents
-          const newDocs: Array<{docName: string, docFilePath: string}> = [];
-          const updateDocs: Array<{id: number, docName: string, docFilePath: string}> = [];
-          
-          data.additionalDocs.forEach(doc => {
+          const newDocs: Array<{ docName: string; docFilePath: string }> = [];
+          const updateDocs: Array<{
+            id: number;
+            docName: string;
+            docFilePath: string;
+          }> = [];
+
+          data.additionalDocs.forEach((doc) => {
             // Check if this is an existing document (has an ID)
             if (doc.id) {
               // This is an existing document being updated
               updateDocs.push({
                 id: doc.id,
                 docName: doc.docName,
-                docFilePath: doc.docFilePath
+                docFilePath: doc.docFilePath,
               });
             } else {
               // This is a new document
               newDocs.push({
                 docName: doc.docName,
-                docFilePath: doc.docFilePath
+                docFilePath: doc.docFilePath,
               });
             }
           });
-          
+
           if (newDocs.length > 0) {
             payload.newAdditionalDocs = newDocs;
           }
-          
+
           if (updateDocs.length > 0) {
             payload.updateAdditionalDocs = updateDocs;
           }
-      } else {
+        } else {
           // For add mode: put all documents directly in additionalDocs
-          payload.additionalDocs = data.additionalDocs.map(doc => ({
+          payload.additionalDocs = data.additionalDocs.map((doc) => ({
             docName: doc.docName,
-            docFilePath: doc.docFilePath
+            docFilePath: doc.docFilePath,
           }));
         }
       }
-      
+
       console.log("API payload:", JSON.stringify(payload));
 
       // Call API
-      const apiEndpoint = isEditMode 
-        ? `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`
-        : `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/add_labour`;
-      
+      const apiEndpoint = isEditMode
+        ? `${
+            process.env.BACKEND_API_URL || "https://tsmwa.online"
+          }/api/labour/update_labour`
+        : `${
+            process.env.BACKEND_API_URL || "https://tsmwa.online"
+          }/api/labour/add_labour`;
+
       console.log("Making API call to:", apiEndpoint);
-      const response = await axios.post(
-        apiEndpoint,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
+      const response = await axios.post(apiEndpoint, payload, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
       console.log("API response:", JSON.stringify(response.data));
 
       setPopupMessage({
         isOpen: true,
         type: "success",
-        title: isEditMode ? "Labour Updated Successfully!" : "Labour Added Successfully!",
-        message: isEditMode 
+        title: isEditMode
+          ? "Labour Updated Successfully!"
+          : "Labour Added Successfully!",
+        message: isEditMode
           ? "The labour record has been updated successfully. You will be redirected to the labour list."
           : "The labour record has been added successfully. You will be redirected to the labour list.",
       });
@@ -422,7 +452,10 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         isOpen: true,
         type: "error",
         title: isEditMode ? "Failed to Update Labour" : "Failed to Add Labour",
-        message: error?.response?.data?.message || error.message || "Failed to save labour record. Please try again.",
+        message:
+          error?.response?.data?.message ||
+          error.message ||
+          "Failed to save labour record. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
@@ -435,17 +468,17 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push("/admin/labour");
+      router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
     }
   };
 
   const handlePopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleSuccessPopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
-    router.push("/admin/labour");
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
     router.refresh();
   };
 
@@ -453,14 +486,14 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
   const handleDownloadFile = async (filePath: string) => {
     try {
       // Extract filename from path
-      const filename = filePath.split('/').pop() || 'document';
-      console.log('Downloading file:', filename, 'from path:', filePath);
-      
+      const filename = filePath.split("/").pop() || "document";
+      console.log("Downloading file:", filename, "from path:", filePath);
+
       const blob = await downloadFile(filename);
       if (blob) {
         // Create download link
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
         link.download = filename;
         document.body.appendChild(link);
@@ -468,10 +501,10 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
       } else {
-        console.error('Download failed: Could not get file blob');
+        console.error("Download failed: Could not get file blob");
       }
     } catch (error) {
-      console.error('Download error:', error);
+      console.error("Download error:", error);
     }
   };
 
@@ -490,20 +523,27 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
-              console.log("Form validation errors:", errors);
-              
-              // Show popup for validation errors
-              const errorMessages = Object.values(errors).map(error => error?.message).filter(Boolean);
-              if (errorMessages.length > 0) {
-                setPopupMessage({
-                  isOpen: true,
-                  type: "error",
-                  title: "Validation Error",
-                  message: `Please fix the following errors:\n${errorMessages.join('\n')}`,
-                });
-              }
-            })} className="space-y-8">
+            <form
+              onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.log("Form validation errors:", errors);
+
+                // Show popup for validation errors
+                const errorMessages = Object.values(errors)
+                  .map((error) => error?.message)
+                  .filter(Boolean);
+                if (errorMessages.length > 0) {
+                  setPopupMessage({
+                    isOpen: true,
+                    type: "error",
+                    title: "Validation Error",
+                    message: `Please fix the following errors:\n${errorMessages.join(
+                      "\n"
+                    )}`,
+                  });
+                }
+              })}
+              className="space-y-8"
+            >
               <div className="space-y-6">
                 <h3 className="text-lg font-medium">Assignment Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -530,12 +570,19 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                             <Input
                               placeholder="Search by name or firm..."
                               value={memberSearchTerm}
-                              onChange={(e) => setMemberSearchTerm(e.target.value)}
+                              onChange={(e) =>
+                                setMemberSearchTerm(e.target.value)
+                              }
                               className="w-full mb-2"
                             />
                             {filteredMembers.map((member) => (
-                              <SelectItem key={member.membershipId} value={member.membershipId}>
-                                {(member.applicantName || "Unknown") + " - " + (member.firmName || "Unknown")}
+                              <SelectItem
+                                key={member.membershipId}
+                                value={member.membershipId}
+                              >
+                                {(member.applicantName || "Unknown") +
+                                  " - " +
+                                  (member.firmName || "Unknown")}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -554,24 +601,39 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
-                          disabled={!form.watch("assignedTo") || isLoadingBranches}
+                          disabled={
+                            !form.watch("assignedTo") || isLoadingBranches
+                          }
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder={isLoadingBranches ? "Loading branches..." : "Select a branch"} />
+                              <SelectValue
+                                placeholder={
+                                  isLoadingBranches
+                                    ? "Loading branches..."
+                                    : "Select a branch"
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {branches.map((branch) => (
-                              <SelectItem key={branch.id} value={String(branch.id)}>
-                                {branch.placeOfBusiness || `Branch ${branch.id}`}
+                              <SelectItem
+                                key={branch.id}
+                                value={String(branch.id)}
+                              >
+                                {branch.placeOfBusiness ||
+                                  `Branch ${branch.id}`}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         <FormMessage />
                         {!form.watch("assignedTo") && (
-                          <p className="text-xs text-muted-foreground">Please select a member first to see available branches.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Please select a member first to see available
+                            branches.
+                          </p>
                         )}
                       </FormItem>
                     )}
@@ -804,7 +866,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                       subfolder="photos"
                       existingFilePath={photoPath}
                     />
-                    {photoError && <p className="text-sm text-destructive">{photoError}</p>}
+                    {photoError && (
+                      <p className="text-sm text-destructive">{photoError}</p>
+                    )}
                   </div>
 
                   <div>
@@ -827,7 +891,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                       subfolder="documents"
                       existingFilePath={aadharPath}
                     />
-                    {aadharError && <p className="text-sm text-destructive">{aadharError}</p>}
+                    {aadharError && (
+                      <p className="text-sm text-destructive">{aadharError}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -839,9 +905,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() =>
-                      append({ docName: "", docFilePath: "" })
-                    }
+                    onClick={() => append({ docName: "", docFilePath: "" })}
                   >
                     <Plus className="mr-2 h-4 w-4" /> Add Document
                   </Button>
@@ -869,30 +933,41 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         />
 
                         <div>
-                              <FormLabel>Document Upload</FormLabel>
+                          <FormLabel>Document Upload</FormLabel>
                           <FileUpload
                             onFileSelect={(file) => {
                               // Handle file upload for additional documents
                               if (file) {
                                 // You would need to implement file upload logic here
                                 // For now, we'll just update the form field
-                                form.setValue(`additionalDocs.${index}.docFilePath`, file.name);
+                                form.setValue(
+                                  `additionalDocs.${index}.docFilePath`,
+                                  file.name
+                                );
                               }
                             }}
                             onUploadComplete={(path) => {
-                              form.setValue(`additionalDocs.${index}.docFilePath`, path);
+                              form.setValue(
+                                `additionalDocs.${index}.docFilePath`,
+                                path
+                              );
                             }}
                             onUploadError={(error) => {
                               console.error("Upload error:", error);
                             }}
                             onDownload={handleDownloadFile}
                             onRemoveFile={() => {
-                              form.setValue(`additionalDocs.${index}.docFilePath`, "");
+                              form.setValue(
+                                `additionalDocs.${index}.docFilePath`,
+                                ""
+                              );
                             }}
                             accept=".pdf,.jpg,.jpeg,.png"
                             maxSize={10 * 1024 * 1024}
                             subfolder="documents"
-                            existingFilePath={form.watch(`additionalDocs.${index}.docFilePath`)}
+                            existingFilePath={form.watch(
+                              `additionalDocs.${index}.docFilePath`
+                            )}
                           />
                         </div>
                       </div>

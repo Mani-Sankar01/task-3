@@ -24,6 +24,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function AddVehicleList() {
   const router = useRouter();
@@ -40,12 +41,16 @@ export default function AddVehicleList() {
 
   const handleContinue = () => {
     if (selectedVehicle) {
-      router.push(`/admin/vehicle/${selectedVehicle}/add-trip`);
+      router.push(
+        `/${renderRoleBasedPath(
+          session?.user?.role
+        )}/vehicle/${selectedVehicle}/add-trip`
+      );
     }
   };
 
   const handleCancel = () => {
-    router.push("/admin/vehicle/trips");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/vehicle/trips`);
   };
 
   useEffect(() => {

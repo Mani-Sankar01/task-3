@@ -41,6 +41,7 @@ import {
 import { AlertCircle, FileText, Plus, Trash2, Upload } from "lucide-react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Form schema
 const leaseQueryAttachmentSchema = z.object({
@@ -67,31 +68,39 @@ interface LeaseQueryFormProps {
 }
 
 export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
-  const [members, setMembers] = useState<Array<{
-    id: string;
-    membershipId: string;
-    applicantName: string;
-    firmName: string;
-  }>>([]);
+  const [members, setMembers] = useState<
+    Array<{
+      id: string;
+      membershipId: string;
+      applicantName: string;
+      firmName: string;
+    }>
+  >([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredMembers, setFilteredMembers] = useState<Array<{
-    id: string;
-    membershipId: string;
-    applicantName: string;
-    firmName: string;
-  }>>([]);
+  const [filteredMembers, setFilteredMembers] = useState<
+    Array<{
+      id: string;
+      membershipId: string;
+      applicantName: string;
+      firmName: string;
+    }>
+  >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<
     Record<number, File | null>
   >({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [existingAttachments, setExistingAttachments] = useState<Array<{
-    id: number;
-    documentName: string;
-    documentPath: string;
-  }>>([]);
-  const [deletedAttachments, setDeletedAttachments] = useState<Array<{ id: number }>>([]);
+  const [existingAttachments, setExistingAttachments] = useState<
+    Array<{
+      id: number;
+      documentName: string;
+      documentPath: string;
+    }>
+  >([]);
+  const [deletedAttachments, setDeletedAttachments] = useState<
+    Array<{ id: number }>
+  >([]);
   const [formPopulated, setFormPopulated] = useState(false);
   const [leaseQueryData, setLeaseQueryData] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -122,24 +131,30 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     const fetchMembers = async () => {
       console.log("Fetching members...");
       console.log("Status:", status);
-      console.log("Session token:", session?.user?.token ? "Exists" : "Missing");
-      
+      console.log(
+        "Session token:",
+        session?.user?.token ? "Exists" : "Missing"
+      );
+
       if (status === "authenticated" && session?.user?.token) {
         try {
           setIsLoading(true);
           const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
           const fullUrl = `${apiUrl}/api/member/get_members`;
           console.log("API URL:", fullUrl);
-          
+
           const response = await axios.get(fullUrl, {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
             },
           });
-          
+
           console.log("Members API response:", response.data);
-          console.log("Number of members:", Array.isArray(response.data) ? response.data.length : "Not an array");
-          
+          console.log(
+            "Number of members:",
+            Array.isArray(response.data) ? response.data.length : "Not an array"
+          );
+
           // Handle different possible response structures
           let membersData;
           if (Array.isArray(response.data)) {
@@ -151,7 +166,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           } else {
             membersData = [];
           }
-          
+
           console.log("Processed members data:", membersData);
           if (membersData.length > 0) {
             console.log("First member structure:", membersData[0]);
@@ -193,18 +208,21 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           );
 
           console.log("Lease query data:", response.data);
-          
+
           const leaseQueryData = response.data.data || response.data;
           console.log("Processed lease query data:", leaseQueryData);
           console.log("Lease query ID:", leaseQueryData.leaseQueryId);
           console.log("Membership ID:", leaseQueryData.membershipId);
           console.log("Status:", leaseQueryData.status);
-          
+
           // Store the lease query data
           setLeaseQueryData(leaseQueryData);
 
           // Set existing attachments - handle case where attachments might not exist in response
-          if (leaseQueryData.leaseQueryAttachments && Array.isArray(leaseQueryData.leaseQueryAttachments)) {
+          if (
+            leaseQueryData.leaseQueryAttachments &&
+            Array.isArray(leaseQueryData.leaseQueryAttachments)
+          ) {
             setExistingAttachments(leaseQueryData.leaseQueryAttachments);
           } else {
             // If no attachments in response, set empty array
@@ -226,27 +244,43 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   // Populate form when both lease query data and members are available
   useEffect(() => {
     if (id && leaseQueryData && members.length > 0) {
-      console.log("Both lease query data and members available, populating form");
+      console.log(
+        "Both lease query data and members available, populating form"
+      );
       console.log("Lease query membershipId:", leaseQueryData.membershipId);
-      console.log("Available members:", members.map(m => m.membershipId));
-      
+      console.log(
+        "Available members:",
+        members.map((m) => m.membershipId)
+      );
+
       // Check if the membershipId exists in the loaded members
-      const memberExists = members.some(member => member.membershipId === leaseQueryData.membershipId);
+      const memberExists = members.some(
+        (member) => member.membershipId === leaseQueryData.membershipId
+      );
       console.log("Member exists in loaded members:", memberExists);
-      
+
       if (memberExists) {
         // Populate form with existing data
         form.reset({
           membershipId: leaseQueryData.membershipId || "",
           presentLeaseHolder: leaseQueryData.presentLeaseHolder || "",
-          dateOfLease: leaseQueryData.dateOfLease ? new Date(leaseQueryData.dateOfLease).toISOString().split('T')[0] : "",
-          expiryOfLease: leaseQueryData.expiryOfLease ? new Date(leaseQueryData.expiryOfLease).toISOString().split('T')[0] : "",
-          dateOfRenewal: leaseQueryData.dateOfRenewal ? new Date(leaseQueryData.dateOfRenewal).toISOString().split('T')[0] : "",
+          dateOfLease: leaseQueryData.dateOfLease
+            ? new Date(leaseQueryData.dateOfLease).toISOString().split("T")[0]
+            : "",
+          expiryOfLease: leaseQueryData.expiryOfLease
+            ? new Date(leaseQueryData.expiryOfLease).toISOString().split("T")[0]
+            : "",
+          dateOfRenewal: leaseQueryData.dateOfRenewal
+            ? new Date(leaseQueryData.dateOfRenewal).toISOString().split("T")[0]
+            : "",
           status: leaseQueryData.status || "PENDING",
           leaseQueryAttachments: [],
         });
-        
-        console.log("Form populated with membershipId:", leaseQueryData.membershipId);
+
+        console.log(
+          "Form populated with membershipId:",
+          leaseQueryData.membershipId
+        );
         setFormPopulated(true);
       } else {
         console.log("Member not found in loaded members, cannot populate form");
@@ -258,13 +292,21 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   useEffect(() => {
     if (id && members.length > 0 && form.getValues("membershipId")) {
       const currentMembershipId = form.getValues("membershipId");
-      console.log("Members loaded, checking membershipId:", currentMembershipId);
-      console.log("Available members:", members.map(m => m.membershipId));
-      
+      console.log(
+        "Members loaded, checking membershipId:",
+        currentMembershipId
+      );
+      console.log(
+        "Available members:",
+        members.map((m) => m.membershipId)
+      );
+
       // Check if the current membershipId exists in the loaded members
-      const memberExists = members.some(member => member.membershipId === currentMembershipId);
+      const memberExists = members.some(
+        (member) => member.membershipId === currentMembershipId
+      );
       console.log("Member exists in loaded members:", memberExists);
-      
+
       // If the member exists, ensure the form field is properly set
       if (memberExists) {
         form.setValue("membershipId", currentMembershipId);
@@ -278,13 +320,13 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     if (searchTerm) {
       const filtered = members.filter(
         (member) =>
-          member.membershipId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          member.membershipId
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
           member.applicantName
             .toLowerCase()
             .includes(searchTerm.toLowerCase()) ||
-          member.firmName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())
+          member.firmName.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredMembers(filtered);
     } else {
@@ -314,14 +356,18 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           expiryOfLease: data.expiryOfLease,
           dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
-          newAttachments: data.leaseQueryAttachments.map((attachment, index) => {
-            const file = uploadedFiles[index];
-            return {
-              documentName: attachment.documentName,
-              documentPath: file ? `/uploads/documents/${file.name}` : attachment.documentPath || "",
-            };
-          }),
-          updateAttachments: existingAttachments.map(attachment => ({
+          newAttachments: data.leaseQueryAttachments.map(
+            (attachment, index) => {
+              const file = uploadedFiles[index];
+              return {
+                documentName: attachment.documentName,
+                documentPath: file
+                  ? `/uploads/documents/${file.name}`
+                  : attachment.documentPath || "",
+              };
+            }
+          ),
+          updateAttachments: existingAttachments.map((attachment) => ({
             id: attachment.id,
             documentName: attachment.documentName,
           })),
@@ -352,13 +398,17 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           expiryOfLease: data.expiryOfLease,
           dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
-          leaseQueryAttachments: data.leaseQueryAttachments.map((attachment, index) => {
-            const file = uploadedFiles[index];
-            return {
-              documentName: attachment.documentName,
-              documentPath: file ? `/uploads/documents/${file.name}` : attachment.documentPath || "",
-            };
-          }),
+          leaseQueryAttachments: data.leaseQueryAttachments.map(
+            (attachment, index) => {
+              const file = uploadedFiles[index];
+              return {
+                documentName: attachment.documentName,
+                documentPath: file
+                  ? `/uploads/documents/${file.name}`
+                  : attachment.documentPath || "",
+              };
+            }
+          ),
         };
 
         console.log("Add API Payload:", JSON.stringify(addPayload));
@@ -377,20 +427,31 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
         console.log("Add API Response:", response.data);
         alert("Lease query added successfully!");
       }
-      
+
       // Redirect back to list
-      router.push(`/admin/lease-queries`);
+      router.push(`/${renderRoleBasedPath(session?.user?.role)}/lease-queries`);
     } catch (error: any) {
       console.error("Error submitting form:", error);
       console.error("Error response:", error.response?.data);
-      alert(id ? "Failed to update lease query. Please try again." : "Failed to add lease query. Please try again.");
+      alert(
+        id
+          ? "Failed to update lease query. Please try again."
+          : "Failed to add lease query. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getMemberLabel = (member: { id: string; membershipId: string; applicantName: string; firmName: string }) => {
-    return `${member.membershipId || "No ID"} - ${member.applicantName} (${member.firmName})`;
+  const getMemberLabel = (member: {
+    id: string;
+    membershipId: string;
+    applicantName: string;
+    firmName: string;
+  }) => {
+    return `${member.membershipId || "No ID"} - ${member.applicantName} (${
+      member.firmName
+    })`;
   };
 
   const addAttachment = () => {
@@ -411,14 +472,20 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   };
 
   const deleteExistingAttachment = (attachmentId: number) => {
-    setDeletedAttachments(prev => [...prev, { id: attachmentId }]);
-    setExistingAttachments(prev => prev.filter(att => att.id !== attachmentId));
+    setDeletedAttachments((prev) => [...prev, { id: attachmentId }]);
+    setExistingAttachments((prev) =>
+      prev.filter((att) => att.id !== attachmentId)
+    );
   };
 
   const removeDeletedAttachment = (attachmentId: number) => {
-    setDeletedAttachments(prev => prev.filter(att => att.id !== attachmentId));
+    setDeletedAttachments((prev) =>
+      prev.filter((att) => att.id !== attachmentId)
+    );
     // Restore the attachment to existing attachments
-    const deletedAtt = deletedAttachments.find(att => att.id === attachmentId);
+    const deletedAtt = deletedAttachments.find(
+      (att) => att.id === attachmentId
+    );
     if (deletedAtt) {
       // This would need to be handled based on your data structure
       // For now, we'll just remove it from deleted list
@@ -457,13 +524,16 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder={
-                                isLoading 
-                                  ? "Loading members..." 
-                                  : formPopulated && form.getValues("membershipId")
-                                  ? "Loading selected member..."
-                                  : "Select a membership"
-                              } />
+                              <SelectValue
+                                placeholder={
+                                  isLoading
+                                    ? "Loading members..."
+                                    : formPopulated &&
+                                      form.getValues("membershipId")
+                                    ? "Loading selected member..."
+                                    : "Select a membership"
+                                }
+                              />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -605,15 +675,21 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-muted-foreground" />
                               <div>
-                                <p className="font-medium">{attachment.documentName}</p>
-                                <p className="text-sm text-muted-foreground">{attachment.documentPath}</p>
+                                <p className="font-medium">
+                                  {attachment.documentName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {attachment.documentPath}
+                                </p>
                               </div>
                             </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => deleteExistingAttachment(attachment.id)}
+                              onClick={() =>
+                                deleteExistingAttachment(attachment.id)
+                              }
                               className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -630,7 +706,9 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
               {id && deletedAttachments.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium text-muted-foreground">Deleted Documents</h3>
+                    <h3 className="text-lg font-medium text-muted-foreground">
+                      Deleted Documents
+                    </h3>
                   </div>
                   <div className="space-y-4">
                     {deletedAttachments.map((attachment) => (
@@ -639,13 +717,17 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <FileText className="h-4 w-4 text-muted-foreground" />
-                              <p className="text-muted-foreground">Document ID: {attachment.id}</p>
+                              <p className="text-muted-foreground">
+                                Document ID: {attachment.id}
+                              </p>
                             </div>
                             <Button
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => removeDeletedAttachment(attachment.id)}
+                              onClick={() =>
+                                removeDeletedAttachment(attachment.id)
+                              }
                               className="text-green-600"
                             >
                               <Plus className="h-4 w-4" />
@@ -677,7 +759,11 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                     <p className="text-muted-foreground">
                       No documents added yet.
                     </p>
-                    <Button type="button" variant="link" onClick={addAttachment}>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={addAttachment}
+                    >
                       Add a document
                     </Button>
                   </div>
@@ -780,9 +866,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() =>
-                    router.push(`/admin/lease-queries`)
-                  }
+                  onClick={() => router.push(`/admin/lease-queries`)}
                 >
                   Cancel
                 </Button>

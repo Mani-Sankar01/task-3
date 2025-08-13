@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2, AlertTriangle } from "lucide-react";
 import { UserStatus } from "@/data/users";
-import { formatDate } from "@/lib/utils";
+import { formatDate, renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -35,7 +35,12 @@ interface User {
   gender: "MALE" | "FEMALE" | "OTHER";
   email: string;
   phone: string;
-  role: "TSMWA_ADMIN" | "TSMWA_EDITOR" | "TSMWA_VIEWER" | "TQMWA_EDITOR" | "TQMWA_VIEWER";
+  role:
+    | "TSMWA_ADMIN"
+    | "TSMWA_EDITOR"
+    | "TSMWA_VIEWER"
+    | "TQMWA_EDITOR"
+    | "TQMWA_VIEWER";
   status: "ACTIVE" | "INACTIVE";
   createdAt?: string;
   updatedAt?: string;
@@ -136,7 +141,11 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <Button onClick={() => router.push("/admin/users")}>
+          <Button
+            onClick={() =>
+              router.push(`/${renderRoleBasedPath(session?.user?.role)}/users`)
+            }
+          >
             Back to Users List
           </Button>
         </CardFooter>
@@ -145,7 +154,9 @@ export default function UserDetails({ userId }: UserDetailsProps) {
   }
 
   const handleEdit = () => {
-    router.push(`/admin/users/${userId}/edit/`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/users/${userId}/edit/`
+    );
   };
 
   const handleDelete = async () => {
@@ -168,12 +179,12 @@ export default function UserDetails({ userId }: UserDetailsProps) {
           },
         }
       );
-      
+
       toast({
         title: "Success",
         description: "User deleted successfully",
       });
-      router.push("/admin/users");
+      router.push(`/${renderRoleBasedPath(session?.user?.role)}/users`);
     } catch (error: any) {
       console.error("Error deleting user:", error);
       toast({
@@ -286,13 +297,13 @@ export default function UserDetails({ userId }: UserDetailsProps) {
             <p className="text-sm font-medium text-muted-foreground">
               Created At
             </p>
-            <p>{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</p>
+            <p>{user.createdAt ? formatDate(user.createdAt) : "N/A"}</p>
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-muted-foreground">
               Last Updated
             </p>
-            <p>{user.updatedAt ? formatDate(user.updatedAt) : 'N/A'}</p>
+            <p>{user.updatedAt ? formatDate(user.updatedAt) : "N/A"}</p>
           </div>
         </div>
       </CardContent>

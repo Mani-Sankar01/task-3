@@ -22,6 +22,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const userRole = token.role;
+  console.log("userRole", userRole);
 
   // Check role-based access
   const pathname = request.nextUrl.pathname;

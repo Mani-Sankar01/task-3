@@ -41,6 +41,7 @@ import {
 } from "@/data/vehicles";
 import { useSession } from "next-auth/react";
 import PopupMessage from "@/components/ui/popup-message";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 const formSchema = z.object({
   vehicleId: z.string().optional(),
@@ -160,7 +161,8 @@ export default function EditVehicleForm({
             isOpen: true,
             type: "success",
             title: "Vehicle Updated Successfully!",
-            message: "The vehicle has been updated successfully. You will be redirected to the vehicle list.",
+            message:
+              "The vehicle has been updated successfully. You will be redirected to the vehicle list.",
           });
         } else {
           setPopupMessage({
@@ -188,7 +190,8 @@ export default function EditVehicleForm({
             isOpen: true,
             type: "success",
             title: "Vehicle Added Successfully!",
-            message: "The vehicle has been added successfully. You will be redirected to the vehicle list.",
+            message:
+              "The vehicle has been added successfully. You will be redirected to the vehicle list.",
           });
         } else {
           setPopupMessage({
@@ -218,17 +221,17 @@ export default function EditVehicleForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push("/admin/vehicle");
+      router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
     }
   };
 
   const handlePopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleSuccessPopupClose = () => {
-    setPopupMessage(prev => ({ ...prev, isOpen: false }));
-    router.push("/admin/vehicle");
+    setPopupMessage((prev) => ({ ...prev, isOpen: false }));
+    router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
     router.refresh();
   };
 

@@ -41,7 +41,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UserRole, UserStatus } from "@/data/users";
-import { formatDate } from "@/lib/utils";
+import { formatDate, renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -189,11 +189,13 @@ export default function UsersList() {
 
   // Navigation handlers
   const handleViewUser = (id: string) => {
-    router.push(`/admin/users/${id}`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/users/${id}`);
   };
 
   const handleEditUser = (id: string) => {
-    router.push(`/admin/users/${id}/edit/`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/users/${id}/edit/`
+    );
   };
 
   const handleDeleteUser = (id: number) => {
@@ -239,7 +241,7 @@ export default function UsersList() {
   };
 
   const handleAddUser = () => {
-    router.push("/admin/users/add");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/users/add`);
   };
 
   // Render status badge with appropriate color

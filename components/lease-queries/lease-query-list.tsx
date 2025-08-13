@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the lease query type based on API response
 interface ApiLeaseQuery {
@@ -67,31 +67,38 @@ export default function LeaseQueryList() {
     const fetchLeaseQueries = async () => {
       console.log("Fetching lease queries...");
       console.log("Status:", status);
-      console.log("Session token:", session?.user?.token ? "Exists" : "Missing");
-      
+      console.log(
+        "Session token:",
+        session?.user?.token ? "Exists" : "Missing"
+      );
+
       if (status === "authenticated" && session?.user?.token) {
         try {
           setIsLoading(true);
           const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
           const fullUrl = `${apiUrl}/api/lease_query/get_all_lease_queries`;
           console.log("API URL:", fullUrl);
-          
+
           const response = await axios.get(fullUrl, {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
             },
           });
-          
+
           console.log("Lease queries API response:", response.data);
-          
+
           // Handle the response structure
           let queriesData: ApiLeaseQuery[] = [];
-          if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          if (
+            response.data &&
+            response.data.data &&
+            Array.isArray(response.data.data)
+          ) {
             queriesData = response.data.data;
           } else if (Array.isArray(response.data)) {
             queriesData = response.data;
           }
-          
+
           console.log("Processed lease queries data:", queriesData);
           setQueries(queriesData);
           setFilteredQueries(queriesData);
@@ -112,8 +119,6 @@ export default function LeaseQueryList() {
     };
     fetchLeaseQueries();
   }, [status, session?.user?.token]);
-
-
 
   // Filter queries based on search term
   useEffect(() => {
@@ -189,17 +194,25 @@ export default function LeaseQueryList() {
 
   // Navigate to query details
   const viewQueryDetails = (queryId: string) => {
-    router.push(`/admin/lease-queries/${queryId}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/lease-queries/${queryId}`
+    );
   };
 
   // Navigate to add new query
   const addNewQuery = () => {
-    router.push(`/admin/lease-queries/add`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/lease-queries/add`
+    );
   };
 
   // Navigate to edit query - only available for admin or editor roles
   const editQuery = (queryId: string) => {
-    router.push(`/admin/lease-queries/edit/${queryId}`);
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user?.role
+      )}/lease-queries/${queryId}/edit`
+    );
   };
 
   // Delete a query
@@ -227,7 +240,7 @@ export default function LeaseQueryList() {
 
         console.log("Delete response:", response.data);
         alert("Lease query deleted successfully!");
-        
+
         // Refresh the list
         const refreshResponse = await axios.get(
           `${apiUrl}/api/lease_query/get_all_lease_queries`,
@@ -237,7 +250,7 @@ export default function LeaseQueryList() {
             },
           }
         );
-        
+
         if (refreshResponse.data && refreshResponse.data.data) {
           setQueries(refreshResponse.data.data);
           setFilteredQueries(refreshResponse.data.data);
@@ -248,8 +261,6 @@ export default function LeaseQueryList() {
       }
     }
   };
-
-
 
   return (
     <div className="container mx-auto p-6">
@@ -364,7 +375,9 @@ export default function LeaseQueryList() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => viewQueryDetails(query.leaseQueryId)}
                     >
-                      <TableCell className="font-medium">{query.leaseQueryId}</TableCell>
+                      <TableCell className="font-medium">
+                        {query.leaseQueryId}
+                      </TableCell>
                       <TableCell>{query.membershipId}</TableCell>
                       <TableCell>{query.presentLeaseHolder}</TableCell>
                       <TableCell className="hidden md:table-cell">
@@ -417,25 +430,25 @@ export default function LeaseQueryList() {
                             {/* Show Edit option only for Admin or Editor roles */}
                             {/* Removed role-based UI */}
                             <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  editQuery(query.leaseQueryId);
-                                }}
-                              >
-                                Edit Query
-                              </DropdownMenuItem>
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                editQuery(query.leaseQueryId);
+                              }}
+                            >
+                              Edit Query
+                            </DropdownMenuItem>
 
                             {/* Show Delete option only for Admin role */}
                             {/* Removed role-based UI */}
                             <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteQuery(query.leaseQueryId);
-                                }}
-                              >
-                                Delete Query
-                              </DropdownMenuItem>
+                              className="text-destructive focus:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteQuery(query.leaseQueryId);
+                              }}
+                            >
+                              Delete Query
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

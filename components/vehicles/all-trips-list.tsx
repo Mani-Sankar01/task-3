@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { getVehicleById } from "@/data/vehicles";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the trip type based on API response
 interface ApiTrip {
@@ -76,7 +77,7 @@ export default function AllTripsList() {
     console.log("Status:", status);
     console.log("Session:", session);
     console.log("BACKEND_API_URL:", process.env.BACKEND_API_URL);
-    
+
     if (status !== "authenticated" || !session?.user?.token) {
       console.log("Not authenticated or no token");
       return;
@@ -87,32 +88,33 @@ export default function AllTripsList() {
         setIsLoading(true);
         const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
         const fullUrl = `${apiUrl}/api/vehicle/get_all_trip`;
-        
+
         console.log("API URL:", fullUrl);
         console.log("Token:", session.user.token ? "Token exists" : "No token");
-        
-        const response = await axios.get(
-          fullUrl,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+
+        const response = await axios.get(fullUrl, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
 
         console.log("Full API response:", response.data);
         console.log("Response status:", response.status);
-        
+
         // Handle different possible response structures
         let responseData;
-        if (response.data && response.data.trips && Array.isArray(response.data.trips)) {
+        if (
+          response.data &&
+          response.data.trips &&
+          Array.isArray(response.data.trips)
+        ) {
           responseData = response.data.trips;
         } else if (response.data && Array.isArray(response.data)) {
           responseData = response.data;
         } else {
           responseData = [];
         }
-        
+
         setTrips(responseData);
         console.log("Trips data:", responseData);
         console.log("Number of trips:", responseData.length);
@@ -223,17 +225,25 @@ export default function AllTripsList() {
 
   // Navigate to trip details
   const viewVehicleDetails = (vehicleId: string) => {
-    router.push(`/admin/vehicle/${vehicleId}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
+    );
   };
 
   // Navigate to add new trip
   const addNewTrip = () => {
-    router.push("/admin/vehicle/trips/add");
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/trips/add`
+    );
   };
 
   // Navigate to edit trip
   const editTrip = (vehicleId: string, tripId: string) => {
-    router.push(`/admin/vehicle/${vehicleId}/edit-trip/${tripId}`);
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user?.role
+      )}/vehicle/${vehicleId}/edit-trip/${tripId}`
+    );
   };
 
   // Get vehicle details
@@ -281,186 +291,208 @@ export default function AllTripsList() {
                 </div>
               </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[100px]">
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("tripId")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Trip ID
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("tripDate")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Date
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Driver</TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("numberOfTrips")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Trips
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("amountPerTrip")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Amount/Trip
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("totalAmount")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Total
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleSort("paymentStatus")}
-                      className="flex items-center p-0 h-auto font-medium"
-                    >
-                      Status
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                  </TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedTrips.length > 0 ? (
-                  paginatedTrips.map((trip) => {
-                    const vehicle = getVehicleDetails(trip.vehicleId);
-                    return (
-                      <TableRow key={trip.id}>
-                        <TableCell className="font-medium">{trip.tripId}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span>
-                              {new Date(trip.tripDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {vehicle?.vehicleNumber || "Unknown"}
-                        </TableCell>
-                        <TableCell>
-                          {vehicle?.driverName || "Unknown"}
-                        </TableCell>
-                        <TableCell>{trip.numberOfTrips}</TableCell>
-                        <TableCell>₹{trip.amountPerTrip}</TableCell>
-                        <TableCell>₹{trip.totalAmount}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              trip.paymentStatus === "PAID"
-                                ? "default"
-                                : trip.paymentStatus === "PARTIAL"
-                                ? "secondary"
-                                : "destructive"
-                            }
-                          >
-                            {trip.paymentStatus.charAt(0).toUpperCase() +
-                              trip.paymentStatus.slice(1).toLowerCase()}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("tripId")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Trip ID
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("tripDate")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Date
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead>Driver</TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("numberOfTrips")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Trips
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("amountPerTrip")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Amount/Trip
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("totalAmount")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Total
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead>
+                        <Button
+                          variant="ghost"
+                          onClick={() => handleSort("paymentStatus")}
+                          className="flex items-center p-0 h-auto font-medium"
+                        >
+                          Status
+                          <ArrowUpDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedTrips.length > 0 ? (
+                      paginatedTrips.map((trip) => {
+                        const vehicle = getVehicleDetails(trip.vehicleId);
+                        return (
+                          <TableRow key={trip.id}>
+                            <TableCell className="font-medium">
+                              {trip.tripId}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
+                                <span>
+                                  {new Date(trip.tripDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {vehicle?.vehicleNumber || "Unknown"}
+                            </TableCell>
+                            <TableCell>
+                              {vehicle?.driverName || "Unknown"}
+                            </TableCell>
+                            <TableCell>{trip.numberOfTrips}</TableCell>
+                            <TableCell>₹{trip.amountPerTrip}</TableCell>
+                            <TableCell>₹{trip.totalAmount}</TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  trip.paymentStatus === "PAID"
+                                    ? "default"
+                                    : trip.paymentStatus === "PARTIAL"
+                                    ? "secondary"
+                                    : "destructive"
+                                }
+                              >
+                                {trip.paymentStatus.charAt(0).toUpperCase() +
+                                  trip.paymentStatus.slice(1).toLowerCase()}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
 
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  viewVehicleDetails(trip.vehicleId)
-                                }
-                              >
-                                Vehicle Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  editTrip(trip.vehicleId, trip.tripId)
-                                }
-                              >
-                                Edit Trip
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Delete Trip</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                  <DropdownMenuItem>
+                                    View Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      viewVehicleDetails(trip.vehicleId)
+                                    }
+                                  >
+                                    Vehicle Details
+                                  </DropdownMenuItem>
+                                  {(session?.user?.role === "TSMWA_EDITOR" ||
+                                    session?.user?.role === "TQMA_EDITOR" ||
+                                    session?.user?.role === "ADMIN") && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          editTrip(trip.vehicleId, trip.tripId)
+                                        }
+                                      >
+                                        Edit Trip
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+
+                                  {session?.user?.role === "ADMIN" && (
+                                    <>
+                                      <DropdownMenuItem>
+                                        Delete Trip
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={9} className="h-24 text-center">
+                          No trips found.
                         </TableCell>
                       </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
-                      No trips found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedTrips.length} of {sortedTrips.length} trips
-            </p>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <div className="flex items-center justify-center text-sm font-medium">
-                Page {currentPage} of {totalPages || 1}
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages || totalPages === 0}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
+
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {paginatedTrips.length} of {sortedTrips.length} trips
+                </p>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center justify-center text-sm font-medium">
+                    Page {currentPage} of {totalPages || 1}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                    }
+                    disabled={currentPage === totalPages || totalPages === 0}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </>
           )}
         </CardContent>

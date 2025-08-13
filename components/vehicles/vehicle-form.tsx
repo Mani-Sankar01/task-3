@@ -33,6 +33,8 @@ import {
 } from "@/components/ui/card";
 import { addVehicle, updateVehicle, type Vehicle } from "@/data/vehicles";
 import { getAllRoutes } from "@/data/routes";
+import { renderRoleBasedPath } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 const formSchema = z.object({
   vehicleNumber: z.string().min(1, "Vehicle number is required"),
@@ -60,6 +62,7 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const routes = getAllRoutes();
+  const session = useSession();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -99,7 +102,7 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
       }
 
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      router.push("/admin/vehicles");
+      router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicles`);
       router.refresh();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -115,7 +118,7 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push("/admin/vehicle");
+      router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicle`);
     }
   };
 

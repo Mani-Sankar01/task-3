@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getMemberNameById, type MembershipFee } from "@/data/membership-fees";
+import { renderRoleBasedPath } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 interface MembershipFeeDetailsProps {
   fee: MembershipFee;
@@ -30,13 +32,20 @@ export default function MembershipFeeDetails({
 }: MembershipFeeDetailsProps) {
   const router = useRouter();
   const memberName = getMemberNameById(fee.memberId);
+  const session = useSession();
 
   const handleEdit = () => {
-    router.push(`/admin/membership-fees/${fee.id}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(session?.data?.user.role)}/membership-fees/${
+        fee.id
+      }/edit`
+    );
   };
 
   const handleBack = () => {
-    router.push("/admin/membership-fees");
+    router.push(
+      `/${renderRoleBasedPath(session?.data?.user.role)}/membership-fees`
+    );
   };
 
   return (

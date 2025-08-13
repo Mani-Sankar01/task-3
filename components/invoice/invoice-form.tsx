@@ -49,6 +49,7 @@ import {
   calculateInvoiceAmounts,
   type Invoice,
 } from "@/data/invoices";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const invoiceFormSchema = z.object({
@@ -709,9 +710,11 @@ export default function InvoiceForm({
       )
     ) {
       if (isEditMode && invoiceId) {
-        router.push(`/admin/invoices/${invoiceId}`);
+        router.push(
+          `/${renderRoleBasedPath(session?.user?.role)}/invoices/${invoiceId}`
+        );
       } else {
-        router.push("/admin/invoices");
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices`);
       }
     }
   };

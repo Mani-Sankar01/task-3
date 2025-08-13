@@ -60,6 +60,8 @@ import {
 } from "recharts";
 import { VehicleOverviewPaymentStatusCard } from "./vehicleOverviewPaymentStatusCard";
 import { MonthlyTripStatusChart } from "./monthlyTripStatusChart";
+import { renderRoleBasedPath } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 interface VehicleDetailsProps {
   vehicle: Vehicle;
@@ -77,6 +79,8 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
     getTripStatistics(vehicle.id)
   );
 
+  const session = useSession();
+
   // Update filtered trips when date range changes
   useEffect(() => {
     if (dateRange && dateRange.from && dateRange.to) {
@@ -88,19 +92,31 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
   }, [dateRange, vehicle.id]);
 
   const handleEdit = () => {
-    router.push(`/admin/vehicle/${vehicle.id}/edit`);
+    router.push(
+      `/${renderRoleBasedPath(session?.data?.user.role)}/vehicle/${
+        vehicle.id
+      }/edit`
+    );
   };
 
   const handleBack = () => {
-    router.push("/admin/vehicle");
+    router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicle`);
   };
 
   const handleAddTrip = () => {
-    router.push(`/admin/vehicle/${vehicle.id}/add-trip`);
+    router.push(
+      `/${renderRoleBasedPath(session?.data?.user.role)}/vehicle/${
+        vehicle.id
+      }/add-trip`
+    );
   };
 
   const handleEditTrip = (tripId: number) => {
-    router.push(`/admin/vehicle/${vehicle.id}/edit-trip/${tripId}`);
+    router.push(
+      `/${renderRoleBasedPath(session?.data?.user.role)}/vehicle/${
+        vehicle.id
+      }/edit-trip/${tripId}`
+    );
   };
 
   const handleDeleteTrip = (tripId: number) => {
@@ -171,9 +187,9 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                                     <span>
-                     Added on: {new Date(vehicle.createdAt).toLocaleDateString()}
-                   </span>
+                  <span>
+                    Added on: {new Date(vehicle.createdAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
               <div className="space-y-4">
@@ -183,10 +199,10 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                                     <span>
-                     Last Updated:{" "}
-                     {new Date(vehicle.modifiedAt).toLocaleDateString()}
-                   </span>
+                  <span>
+                    Last Updated:{" "}
+                    {new Date(vehicle.modifiedAt).toLocaleDateString()}
+                  </span>
                 </div>
               </div>
             </div>
@@ -378,11 +394,11 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
                           <TableCell className="font-medium">
                             {trip.id}
                           </TableCell>
-                                                     <TableCell>
-                             {new Date(trip.tripDate).toLocaleDateString()}
-                           </TableCell>
-                                                     <TableCell>{trip.numberOfTrips}</TableCell>
-                           <TableCell>₹{trip.totalAmount}</TableCell>
+                          <TableCell>
+                            {new Date(trip.tripDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>{trip.numberOfTrips}</TableCell>
+                          <TableCell>₹{trip.totalAmount}</TableCell>
                           <TableCell>₹{trip.amountPaid}</TableCell>
                           <TableCell>
                             <Badge
