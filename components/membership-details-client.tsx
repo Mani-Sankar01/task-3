@@ -1108,6 +1108,12 @@ export default function MembershipDetailsClient({
                         {member.scNumber}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-sm font-medium">Membership Type</p>
+                      <p className="text-sm text-muted-foreground">
+                        {member.membershipType || "-"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </CardContent>

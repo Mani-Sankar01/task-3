@@ -51,6 +51,22 @@ import {
 } from "@/data/invoices";
 import { renderRoleBasedPath } from "@/lib/utils";
 
+// GST percentage options
+const GST_PERCENTAGE_OPTIONS = [
+  { value: 0, label: "0%" },
+  { value: 0.1, label: "0.1%" },
+  { value: 0.25, label: "0.25%" },
+  { value: 1, label: "1%" },
+  { value: 1.5, label: "1.5%" },
+  { value: 3, label: "3%" },
+  { value: 5, label: "5%" },
+  { value: 6, label: "6%" },
+  { value: 7.5, label: "7.5%" },
+  { value: 12, label: "12%" },
+  { value: 18, label: "18%" },
+  { value: 28, label: "28%" },
+];
+
 // Define the form schema
 const invoiceFormSchema = z.object({
   invoiceDate: z.string().min(1, "Invoice date is required"),
@@ -63,18 +79,25 @@ const invoiceFormSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   companyAddress: z.string().min(1, "Company address is required"),
   companyGstin: z.string().min(1, "Company GSTIN is required"),
+  // New customer fields
+  customerName: z.string().min(1, "Customer name is required"),
+  gstInNumber: z.string().min(1, "GSTIN number is required"),
+  billingAddress: z.string().min(1, "Billing address is required"),
+  shippingAddress: z.string().min(1, "Shipping address is required"),
+  eWayNumber: z.string().optional(),
+  phoneNumber: z.string().min(1, "Phone number is required"),
   items: z
     .array(
-      z.object({
-        id: z.string().optional(),
-        hsnCode: z.string().min(1, "HSN code is required"),
-        particulars: z.string().min(1, "Particulars are required"),
-        noOfStones: z.coerce.number().min(1, "Number of stones is required"),
-        sizes: z.string().min(1, "Size is required"),
-        totalSqFeet: z.coerce.number().min(0.1, "Total sq. feet is required"),
-        ratePerSqFt: z.coerce.number().min(0.1, "Rate per sq. ft. is required"),
-        amount: z.coerce.number().min(0),
-      })
+              z.object({
+          id: z.string().optional(),
+          hsnCode: z.string().min(1, "HSN code is required"),
+          particulars: z.string().min(1, "Particulars are required"),
+          noOfStones: z.coerce.number().optional(),
+          sizes: z.string().optional(),
+          totalSqFeet: z.coerce.number().min(0.1, "Total sq. feet is required"),
+          ratePerSqFt: z.coerce.number().min(0.1, "Rate per sq. ft. is required"),
+          amount: z.coerce.number().min(0),
+        })
     )
     .min(1, "At least one item is required"),
   cgstPercentage: z.coerce.number().min(0),
@@ -134,7 +157,7 @@ export default function InvoiceForm({
   // Initialize form with default values or invoice data if editing
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
-    defaultValues: invoice
+            defaultValues: invoice
       ? {
           invoiceDate: invoice.invoiceDate,
           memberId: invoice.memberId,
@@ -146,6 +169,13 @@ export default function InvoiceForm({
           companyName: invoice.companyName,
           companyAddress: invoice.companyAddress,
           companyGstin: invoice.companyGstin,
+          // New customer fields
+          customerName: invoice.customerName || "",
+          gstInNumber: invoice.gstInNumber || "",
+          billingAddress: invoice.billingAddress || "",
+          shippingAddress: invoice.shippingAddress || "",
+          eWayNumber: invoice.eWayNumber || "",
+          phoneNumber: invoice.phoneNumber || "",
           items: invoice.items,
           cgstPercentage: invoice.cgstPercentage,
           sgstPercentage: invoice.sgstPercentage,
@@ -156,7 +186,7 @@ export default function InvoiceForm({
           igstAmount: invoice.igstAmount,
           totalAmount: invoice.totalAmount,
         }
-      : {
+              : {
           invoiceDate: new Date().toISOString().split("T")[0],
           memberId: "",
           memberName: "",
@@ -167,11 +197,18 @@ export default function InvoiceForm({
           companyName: "",
           companyAddress: "",
           companyGstin: "36AIMPT1151B1ZG",
+          // New customer fields
+          customerName: "",
+          gstInNumber: "",
+          billingAddress: "",
+          shippingAddress: "",
+          eWayNumber: "",
+          phoneNumber: "",
           items: [
             {
               hsnCode: "",
               particulars: "",
-              noOfStones: 0,
+              noOfStones: undefined,
               sizes: "",
               totalSqFeet: 0,
               ratePerSqFt: 0,
@@ -257,12 +294,19 @@ export default function InvoiceForm({
               companyName: "TSMWA",
               companyAddress: "Telangana State Mineral Workers Association",
               companyGstin: "36AIMPT1151B1ZG",
+              // Customer fields from API
+              customerName: invoiceData.customerName || "",
+              gstInNumber: invoiceData.gstInNumber || "",
+              billingAddress: invoiceData.billingAddress || "",
+              shippingAddress: invoiceData.shippingAddress || "",
+              eWayNumber: invoiceData.eWayNumber || "",
+              phoneNumber: invoiceData.phoneNumber || "",
               items: invoiceData.invoiceItems?.map((item: any) => ({
                 id: item.id?.toString(),
                 hsnCode: item.hsnCode,
                 particulars: item.particular,
-                noOfStones: item.stoneCount,
-                sizes: item.size.toString(),
+                noOfStones: item.stoneCount || undefined,
+                sizes: item.size?.toString() || "",
                 totalSqFeet: parseFloat(item.totalSqFeet),
                 ratePerSqFt: parseFloat(item.ratePerSqFeet),
                 amount: parseFloat(item.amount),
@@ -270,7 +314,7 @@ export default function InvoiceForm({
                 {
                   hsnCode: "",
                   particulars: "",
-                  noOfStones: 0,
+                  noOfStones: undefined,
                   sizes: "",
                   totalSqFeet: 0,
                   ratePerSqFt: 0,
@@ -422,7 +466,7 @@ export default function InvoiceForm({
     append({
       hsnCode: "",
       particulars: "",
-      noOfStones: 0,
+      noOfStones: undefined,
       sizes: "",
       totalSqFeet: 0,
       ratePerSqFt: 0,
@@ -448,6 +492,12 @@ export default function InvoiceForm({
           invoiceId: invoiceId,
           membershipId: data.memberId,
           invoiceDate: data.invoiceDate,
+          customerName: data.customerName,
+          gstInNumber: data.gstInNumber,
+          billingAddress: data.billingAddress,
+          shippingAddress: data.shippingAddress,
+          eWayNumber: data.eWayNumber,
+          phoneNumber: data.phoneNumber,
           cGSTInPercent: data.cgstPercentage,
           sGSTInPercent: data.sgstPercentage,
           iGSTInPercent: data.igstPercentage,
@@ -459,7 +509,7 @@ export default function InvoiceForm({
               hsnCode: item.hsnCode,
               particular: item.particulars,
               stoneCount: item.noOfStones,
-              size: parseFloat(item.sizes),
+              size: item.sizes, // Send as string, not parseFloat
               totalSqFeet: item.totalSqFeet,
               ratePerSqFeet: item.ratePerSqFt,
               amount: item.amount,
@@ -471,7 +521,7 @@ export default function InvoiceForm({
               hsnCode: item.hsnCode,
               particular: item.particulars,
               stoneCount: item.noOfStones,
-              size: parseFloat(item.sizes),
+              size: item.sizes, // Send as string, not parseFloat
               totalSqFeet: item.totalSqFeet,
               ratePerSqFeet: item.ratePerSqFt,
               amount: item.amount,
@@ -519,6 +569,12 @@ export default function InvoiceForm({
         const addPayload = {
           membershipId: data.memberId,
           invoiceDate: data.invoiceDate,
+          customerName: data.customerName,
+          gstInNumber: data.gstInNumber,
+          billingAddress: data.billingAddress,
+          shippingAddress: data.shippingAddress,
+          eWayNumber: data.eWayNumber,
+          phoneNumber: data.phoneNumber,
           cGSTInPercent: data.cgstPercentage,
           sGSTInPercent: data.sgstPercentage,
           iGSTInPercent: data.igstPercentage,
@@ -528,7 +584,7 @@ export default function InvoiceForm({
             hsnCode: item.hsnCode,
             particular: item.particulars,
             stoneCount: item.noOfStones,
-            size: parseFloat(item.sizes),
+            size: item.sizes, // Send as string, not parseFloat
             totalSqFeet: item.totalSqFeet,
             ratePerSqFeet: item.ratePerSqFt,
             amount: item.amount,
@@ -561,141 +617,51 @@ export default function InvoiceForm({
   };
 
   // Handle download invoice
-  const handleDownloadInvoice = (invoiceId: string) => {
-    // In a real app, this would generate and download a PDF
+  const handleDownloadInvoice = async (invoiceId: string) => {
     try {
-      // Create a printable version in a new window
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(`
-        <html>
-          <head>
-            <title>Invoice ${invoiceId}</title>
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; }
-              .invoice-header { text-align: center; margin-bottom: 20px; }
-              .invoice-title { font-size: 24px; font-weight: bold; }
-              .invoice-details { display: flex; justify-content: space-between; margin-bottom: 20px; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-              th { background-color: #f2f2f2; }
-              .totals { margin-left: auto; width: 300px; }
-              .note { margin-top: 30px; font-style: italic; }
-            </style>
-          </head>
-          <body>
-            <div class="invoice-header">
-              <div class="invoice-title">${form.getValues("companyName")}</div>
-              <p>Suppliers of: All Kinds of Rough & Polished Stones</p>
-              <p>${form.getValues("companyAddress")}</p>
-              <p>GSTIN: ${form.getValues("companyGstin")}</p>
-              <div style="border: 1px solid black; display: inline-block; padding: 5px 15px; margin-top: 10px;">
-                <p style="font-weight: bold; margin: 0;">TAX INVOICE</p>
-              </div>
-            </div>
-            
-            <div class="invoice-details">
-              <div>
-                <p><strong>Invoice No:</strong> ${
-                  isEditMode ? invoice?.invoiceNumber : "New Invoice"
-                }</p>
-                <p><strong>Member Name:</strong> ${form.getValues(
-                  "memberName"
-                )}</p>
-                <p><strong>Firm Name:</strong> ${form.getValues("firmName")}</p>
-                <p><strong>Address:</strong> ${form.getValues(
-                  "firmAddress"
-                )}</p>
-                <p><strong>GSTIN:</strong> ${form.getValues("gstNumber")}</p>
-              </div>
-              <div>
-                <p><strong>Date:</strong> ${new Date(
-                  form.getValues("invoiceDate")
-                ).toLocaleDateString()}</p>
-              </div>
-            </div>
-            
-            <table>
-              <thead>
-                <tr>
-                  <th>HSN Code</th>
-                  <th>Particulars</th>
-                  <th>No. of Stones</th>
-                  <th>Sizes</th>
-                  <th>Total Sq. Ft.</th>
-                  <th>Rate (₹)</th>
-                  <th>Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${form
-                  .getValues("items")
-                  .map(
-                    (item) => `
-                  <tr>
-                    <td>${item.hsnCode}</td>
-                    <td>${item.particulars}</td>
-                    <td>${item.noOfStones}</td>
-                    <td>${item.sizes}</td>
-                    <td>${item.totalSqFeet}</td>
-                    <td>${item.ratePerSqFt.toLocaleString()}</td>
-                    <td>${item.amount.toLocaleString()}</td>
-                  </tr>
-                `
-                  )
-                  .join("")}
-              </tbody>
-            </table>
-            
-            <div class="totals">
-              <p><strong>Sub Total:</strong> ₹${form
-                .getValues("subTotal")
-                .toLocaleString()}</p>
-              ${
-                form.getValues("cgstPercentage") > 0
-                  ? `<p><strong>CGST (${form.getValues(
-                      "cgstPercentage"
-                    )}%):</strong> ₹${form
-                      .getValues("cgstAmount")
-                      .toLocaleString()}</p>`
-                  : ""
-              }
-              ${
-                form.getValues("sgstPercentage") > 0
-                  ? `<p><strong>SGST (${form.getValues(
-                      "sgstPercentage"
-                    )}%):</strong> ₹${form
-                      .getValues("sgstAmount")
-                      .toLocaleString()}</p>`
-                  : ""
-              }
-              ${
-                form.getValues("igstPercentage") > 0
-                  ? `<p><strong>IGST (${form.getValues(
-                      "igstPercentage"
-                    )}%):</strong> ₹${form
-                      .getValues("igstAmount")
-                      .toLocaleString()}</p>`
-                  : ""
-              }
-              <p style="font-weight: bold; font-size: 18px;"><strong>Total:</strong> ₹${form
-                .getValues("totalAmount")
-                .toLocaleString()}</p>
-            </div>
-            
-            <div class="note">
-              <p>Note: This is a computer-generated invoice and does not require signature or stamp.</p>
-            </div>
-          </body>
-        </html>
-      `);
-        printWindow.document.close();
-        printWindow.print();
-      } else {
-        alert(
-          "Unable to open print window. Please check your browser settings."
-        );
-      }
+      // Import the PDF generator
+      const { generateTaxInvoicePDF } = await import("@/lib/invoice-generator");
+      
+      // Create invoice data object from form values
+      const formData = form.getValues();
+      const invoiceData = {
+        invoiceId: invoiceId,
+        membershipId: formData.memberId,
+        invoiceDate: formData.invoiceDate,
+        customerName: formData.customerName,
+        gstInNumber: formData.gstInNumber,
+        billingAddress: formData.billingAddress,
+        shippingAddress: formData.shippingAddress,
+        eWayNumber: formData.eWayNumber,
+        phoneNumber: formData.phoneNumber,
+        cGSTInPercent: formData.cgstPercentage,
+        sGSTInPercent: formData.sgstPercentage,
+        iGSTInPercent: formData.igstPercentage,
+        subTotal: formData.subTotal,
+        total: formData.totalAmount,
+        invoiceItems: formData.items.map((item) => ({
+          hsnCode: item.hsnCode,
+          particular: item.particulars,
+          stoneCount: item.noOfStones || 0,
+          size: item.sizes || "",
+          totalSqFeet: item.totalSqFeet,
+          ratePerSqFeet: item.ratePerSqFt,
+          amount: item.amount,
+        })),
+      };
+
+      // Create member data object
+      const memberData = {
+        applicantName: formData.memberName,
+        firmName: formData.firmName,
+        complianceDetails: {
+          fullAddress: formData.firmAddress,
+          gstInNumber: formData.gstNumber,
+        },
+      };
+
+      // Generate and download PDF
+      await generateTaxInvoicePDF(invoiceData, memberData);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
@@ -932,6 +898,96 @@ export default function InvoiceForm({
                 </div>
               </div>
 
+              {/* Customer Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Customer Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="customerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Customer Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter customer name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="gstInNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>GSTIN Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter GSTIN number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phoneNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter phone number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="eWayNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>E-Way Number (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter E-Way number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="billingAddress"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Billing Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter billing address" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="shippingAddress"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Shipping Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter shipping address" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
               {/* Invoice Items */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -990,11 +1046,11 @@ export default function InvoiceForm({
                             name={`items.${index}.noOfStones`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>No. of Stones</FormLabel>
+                                <FormLabel>No. of Stones (Optional)</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    placeholder="Enter quantity"
+                                    placeholder="Enter quantity (optional)"
                                     {...field}
                                     onChange={(e) => {
                                       field.onChange(e);
@@ -1011,9 +1067,9 @@ export default function InvoiceForm({
                             name={`items.${index}.sizes`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Sizes</FormLabel>
+                                <FormLabel>Sizes (Optional)</FormLabel>
                                 <FormControl>
-                                  <Input placeholder="Enter sizes" {...field} />
+                                  <Input placeholder="Enter sizes (optional)" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -1109,16 +1165,29 @@ export default function InvoiceForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>CGST %</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              handleTaxChange();
-                            }}
-                          />
-                        </FormControl>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(parseFloat(value));
+                            handleTaxChange();
+                          }}
+                          value={field.value?.toString() || "0"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select CGST %" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GST_PERCENTAGE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value.toString()}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1130,16 +1199,29 @@ export default function InvoiceForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>SGST %</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              handleTaxChange();
-                            }}
-                          />
-                        </FormControl>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(parseFloat(value));
+                            handleTaxChange();
+                          }}
+                          value={field.value?.toString() || "0"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select SGST %" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GST_PERCENTAGE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value.toString()}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1151,16 +1233,29 @@ export default function InvoiceForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>IGST %</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              handleTaxChange();
-                            }}
-                          />
-                        </FormControl>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(parseFloat(value));
+                            handleTaxChange();
+                          }}
+                          value={field.value?.toString() || "0"}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select IGST %" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GST_PERCENTAGE_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option.value}
+                                value={option.value.toString()}
+                              >
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1233,7 +1328,7 @@ export default function InvoiceForm({
                 </Button>
                 <Button
                   type="button"
-                  onClick={form.handleSubmit((data) => onSubmit(data, true))}
+                  onClick={() => form.handleSubmit((data) => onSubmit(data, true))()}
                   disabled={isSubmitting}
                   variant="default"
                 >

@@ -28,6 +28,7 @@ import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const formSchema = z.object({
+  membershipType: z.enum(["TSMWA", "TQMWA"]).default("TSMWA"),
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(1, "USC Number is required"),
     dateOfApplication: z.string().min(1, "Date is required"),
@@ -260,6 +261,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{
+    [key: string]: string | undefined;
+  }>({});
+  const [validationSuccess, setValidationSuccess] = useState<{
+    [key: string]: string | undefined;
+  }>({});
+  const [isValidating, setIsValidating] = useState(false);
 
   const { data: session, status } = useSession();
   const originalDataRef = useRef<FormValues | null>(null);
@@ -296,6 +304,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      membershipType: "TSMWA",
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
@@ -406,6 +415,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         console.log("reponseData", JSON.stringify(reponseData));
 
         const mappedData: FormValues = {
+          membershipType: (reponseData.membershipType as "TSMWA" | "TQMWA") || "TSMWA",
           applicationDetails: {
             electricalUscNumber: reponseData.electricalUscNumber,
             dateOfApplication: reponseData.doj, // or from API if available
@@ -642,6 +652,158 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
     fetchData();
   }, [status, session?.user?.token, memberId]);
 
+  // USC and SC Number validation function
+  const validateUscScNumbers = async (uscNumber: string, scNumber: string) => {
+    if (!session?.user?.token) return false;
+
+    setIsValidating(true);
+    try {
+      console.log("Making API call to validate USC/SC numbers...");
+
+      const payload = {
+        electricalUscNumber: uscNumber.trim(),
+        scNumber: scNumber.trim(),
+      };
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/validate_usc_sc_numbers`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      console.log("USC/SC validation API response:", response.data);
+
+      const errors: any = {};
+      let hasErrors = false;
+
+      // Check USC number
+      if (response.data["Electrical USC Number"]) {
+        if (response.data["Electrical USC Number"].isMember) {
+          const firmName =
+            response.data["Electrical USC Number"].firmName || "Unknown Firm";
+          errors.electricalUscNumber = `Already added for ${firmName}`;
+          hasErrors = true;
+        }
+      }
+
+      // Check SC number
+      if (response.data["SC Number"]) {
+        if (response.data["SC Number"].isMember) {
+          const firmName =
+            response.data["SC Number"].firmName || "Unknown Firm";
+          errors.scNumber = `Already added for ${firmName}`;
+          hasErrors = true;
+        }
+      }
+
+      if (hasErrors) {
+        setValidationErrors((prev) => ({ ...prev, ...errors }));
+      }
+
+      return !hasErrors;
+    } catch (error) {
+      console.error("Validation error:", error);
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  // Real-time validation function
+  const handleFieldChange = async (fieldName: string, value: string) => {
+    console.log("Field change detected:", fieldName, value);
+
+    const currentData = methods.getValues();
+
+    // USC and SC Number validation (Step 1)
+    if (fieldName === "electricalUscNumber" || fieldName === "scNumber") {
+      const uscNumber =
+        fieldName === "electricalUscNumber"
+          ? value
+          : currentData.applicationDetails.electricalUscNumber;
+      const scNumber =
+        fieldName === "scNumber"
+          ? value
+          : currentData.applicationDetails.scNumber;
+
+      if (fieldName === "electricalUscNumber" && value.length >= 3) {
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(value, scNumber);
+          if (isValid) {
+            setValidationErrors((prev) => ({
+              ...prev,
+              electricalUscNumber: undefined,
+            }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              electricalUscNumber: "This USC number is unique and can be used.",
+            }));
+          }
+        }, 500);
+      } else if (fieldName === "scNumber" && value.length >= 3) {
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(uscNumber, value);
+          if (isValid) {
+            setValidationErrors((prev) => ({ ...prev, scNumber: undefined }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              scNumber: "This SC number is unique and can be used.",
+            }));
+          }
+        }, 500);
+      } else if (value.length < 3) {
+        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
+      }
+    }
+
+    // Branch USC and SC Number validation (Step 2)
+    if (fieldName.includes('branch_') && (fieldName.includes('electricalUscNumber') || fieldName.includes('scNumber'))) {
+      const branchIndex = fieldName.split('_')[1];
+      const fieldType = fieldName.split('_')[2];
+      
+      const branches = currentData.branchDetails?.branches || [];
+      const currentBranch = branches[parseInt(branchIndex)] || {};
+      
+      const uscNumber = fieldType === 'electricalUscNumber' ? value : currentBranch.electricalUscNumber || '';
+      const scNumber = fieldType === 'scNumber' ? value : currentBranch.scNumber || '';
+
+      if (fieldType === 'electricalUscNumber' && value.length >= 3) {
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(value, scNumber);
+          if (isValid) {
+            setValidationErrors((prev) => ({
+              ...prev,
+              [fieldName]: undefined,
+            }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              [fieldName]: "This USC number is unique and can be used.",
+            }));
+          }
+        }, 500);
+      } else if (fieldType === 'scNumber' && value.length >= 3) {
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(uscNumber, value);
+          if (isValid) {
+            setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              [fieldName]: "This SC number is unique and can be used.",
+            }));
+          }
+        }, 500);
+      } else if (value.length < 3) {
+        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
+      }
+    }
+  };
+
   const totalSteps = 5;
 
   // Helper function to determine which fields to validate for each step
@@ -649,6 +811,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
     switch (step) {
       case 1:
         return [
+          "membershipType",
           "applicationDetails",
           "memberDetails",
           "firmDetails",
@@ -881,10 +1044,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
     return false;
   };
 
-  // Real-time validation function
-  const handleFieldChange = async (fieldName: string, value: string) => {
-    console.log("Field change detected:", fieldName, value);
-  };
+
 
   const handleSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
@@ -931,6 +1091,10 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       };
 
       // Basic member fields
+      if (changed("membershipType")) {
+        reqData.membershipType = data.membershipType;
+        console.log("Added membershipType:", data.membershipType);
+      }
       if (changed("memberDetails", "applicantName")) {
         reqData.applicantName = data.memberDetails.applicantName;
         console.log("Added applicantName:", data.memberDetails.applicantName);
@@ -1426,8 +1590,22 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           {/* Form Steps */}
           <FormProvider {...methods}>
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
-              {currentStep === 1 && <Step1PersonalBusiness />}
-              {currentStep === 2 && <Step2OperationDetails />}
+              {currentStep === 1 && (
+                <Step1PersonalBusiness
+                  validationErrors={validationErrors}
+                  validationSuccess={validationSuccess}
+                  onFieldChange={handleFieldChange}
+                  isValidating={isValidating}
+                />
+              )}
+              {currentStep === 2 && (
+                <Step2OperationDetails
+                  validationErrors={validationErrors}
+                  validationSuccess={validationSuccess}
+                  onFieldChange={handleFieldChange}
+                  isValidating={isValidating}
+                />
+              )}
               {currentStep === 3 && <Step3ComplianceLegal isEditMode />}
               {currentStep === 4 && <Step4MembershipDocs isEditMode />}
               {currentStep === 5 && <Step5ProposerDeclaration />}

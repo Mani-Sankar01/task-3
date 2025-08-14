@@ -200,6 +200,7 @@ export const authApi = {
 
 // Types based on the API response
 export interface Member {
+  membershipType?: "TSMWA" | "TQMWA";
   membershipId: string;
   approvalStatus: "APPROVED" | "PENDING" | "REJECTED";
   membershipStatus: "ACTIVE" | "INACTIVE";

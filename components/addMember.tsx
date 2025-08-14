@@ -47,6 +47,7 @@ import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const formSchema = z.object({
+  membershipType: z.enum(["TSMWA", "TQMWA"]).default("TSMWA"),
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(1, "USC Number is required"),
     dateOfApplication: z.string().min(1, "Date is required"),
@@ -212,6 +213,7 @@ const AddMember = ({
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      membershipType: "TSMWA",
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
@@ -598,7 +600,14 @@ const AddMember = ({
             <FormProvider {...methods}>
               <form onSubmit={methods.handleSubmit(onSubmit)}>
                 {currentStep === 1 && <Step1PersonalBusiness />}
-                {currentStep === 2 && <Step2OperationDetails />}
+                {currentStep === 2 && (
+                <Step2OperationDetails
+                  validationErrors={{}}
+                  validationSuccess={{}}
+                  onFieldChange={() => {}}
+                  isValidating={false}
+                />
+              )}
                 {currentStep === 3 && <Step3ComplianceLegal />}
                 {currentStep === 4 && <Step4MembershipDocs />}
                 {currentStep === 5 && (

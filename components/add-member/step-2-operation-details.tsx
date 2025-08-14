@@ -29,7 +29,25 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-export default function Step2OperationDetails() {
+interface Step2OperationDetailsProps {
+  isEditMode?: boolean;
+  validationErrors?: {
+    [key: string]: string;
+  };
+  validationSuccess?: {
+    [key: string]: string;
+  };
+  onFieldChange?: (fieldName: string, value: string) => void;
+  isValidating?: boolean;
+}
+
+export default function Step2OperationDetails({ 
+  isEditMode = false, 
+  validationErrors = {},
+  validationSuccess = {},
+  onFieldChange,
+  isValidating = false
+}: Step2OperationDetailsProps) {
   const { control, register, watch, setValue, getValues } = useFormContext();
 
   // Branch details field array
@@ -242,9 +260,30 @@ export default function Step2OperationDetails() {
                         <FormItem>
                           <FormLabel>Electrical USC Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter USC number" {...field} />
+                            <Input 
+                              placeholder="Enter USC number" 
+                              {...field} 
+                              readOnly={isEditMode}
+                              className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (onFieldChange && !isEditMode) {
+                                  onFieldChange(`branch_${branchIndex}_electricalUscNumber`, e.target.value);
+                                }
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
+                          {validationErrors[`branch_${branchIndex}_electricalUscNumber`] && (
+                            <p className="text-sm text-destructive">
+                              {validationErrors[`branch_${branchIndex}_electricalUscNumber`]}
+                            </p>
+                          )}
+                          {validationSuccess[`branch_${branchIndex}_electricalUscNumber`] && (
+                            <p className="text-sm text-green-600">
+                              {validationSuccess[`branch_${branchIndex}_electricalUscNumber`]}
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />
@@ -256,9 +295,30 @@ export default function Step2OperationDetails() {
                         <FormItem>
                           <FormLabel>SC Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter SC number" {...field} />
+                            <Input 
+                              placeholder="Enter SC number" 
+                              {...field} 
+                              readOnly={isEditMode}
+                              className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (onFieldChange && !isEditMode) {
+                                  onFieldChange(`branch_${branchIndex}_scNumber`, e.target.value);
+                                }
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
+                          {validationErrors[`branch_${branchIndex}_scNumber`] && (
+                            <p className="text-sm text-destructive">
+                              {validationErrors[`branch_${branchIndex}_scNumber`]}
+                            </p>
+                          )}
+                          {validationSuccess[`branch_${branchIndex}_scNumber`] && (
+                            <p className="text-sm text-green-600">
+                              {validationSuccess[`branch_${branchIndex}_scNumber`]}
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />

@@ -28,6 +28,12 @@ interface ApiInvoice {
   invoiceId: string;
   membershipId: string;
   invoiceDate: string;
+  customerName?: string;
+  gstInNumber?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  eWayNumber?: string;
+  phoneNumber?: string;
   cGSTInPercent: number;
   sGSTInPercent: number;
   iGSTInPercent: number;
@@ -80,6 +86,12 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
 
   // Fetch invoice details from API
   useEffect(() => {
+    // Don't fetch data if still loading session
+    if (status === "loading") {
+      return;
+    }
+
+    // Show error if not authenticated
     if (status !== "authenticated" || !session?.user?.token) {
       setError("Authentication required");
       setIsLoading(false);
@@ -177,13 +189,14 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
     }
   };
 
-  if (isLoading) {
+  // Show loading state while session is loading or data is being fetched
+  if (status === "loading" || isLoading) {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p>Loading invoice details...</p>
+            <p>{status === "loading" ? "Loading..." : "Loading invoice details..."}</p>
           </div>
         </div>
       </div>
@@ -245,6 +258,11 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
                 <Badge variant="destructive">DECLINED</Badge>
               )}
             </div>
+            <div className="flex-1 flex justify-center">
+              <div className="border border-black px-4 py-1 rounded">
+                <p className="font-bold">TAX INVOICE</p>
+              </div>
+            </div>
             <div className="text-right mt-4 md:mt-0">
               <p className="font-bold">
                 Date: {format(new Date(invoice.invoiceDate), "dd/MM/yyyy")}
@@ -264,36 +282,55 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
               {member.complianceDetails?.gstInNumber ||
                 "GST Number not available"}
             </p>
-            <div className="mt-2 border border-black px-4 py-1 rounded">
-              <p className="font-bold">TAX INVOICE</p>
-            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
           <Separator className="my-4" />
 
-          {/* Invoice Summary */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold mb-2">Invoice Summary</h3>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Member ID:</span>{" "}
-                {invoice.membershipId}
-              </div>
-              <div>
-                <span className="font-medium">Member Name:</span>{" "}
-                {member.applicantName}
-              </div>
-              <div>
-                <span className="font-medium">Invoice Date:</span>{" "}
-                {format(new Date(invoice.invoiceDate), "dd/MM/yyyy")}
-              </div>
-              <div>
-                <span className="font-medium">Created:</span>{" "}
-                {format(new Date(invoice.createdAt), "dd/MM/yyyy")}
+          {/* Customer Information */}
+          {invoice.customerName && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2">Customer Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Customer Name:</span>{" "}
+                  {invoice.customerName}
+                </div>
+                {invoice.gstInNumber && (
+                  <div>
+                    <span className="font-medium">GSTIN Number:</span>{" "}
+                    {invoice.gstInNumber}
+                  </div>
+                )}
+                {invoice.phoneNumber && (
+                  <div>
+                    <span className="font-medium">Phone Number:</span>{" "}
+                    {invoice.phoneNumber}
+                  </div>
+                )}
+                {invoice.eWayNumber && (
+                  <div>
+                    <span className="font-medium">E-Way Number:</span>{" "}
+                    {invoice.eWayNumber}
+                  </div>
+                )}
+                {invoice.billingAddress && (
+                  <div className="md:col-span-2">
+                    <span className="font-medium">Billing Address:</span>{" "}
+                    {invoice.billingAddress}
+                  </div>
+                )}
+                {invoice.shippingAddress && (
+                  <div className="md:col-span-2">
+                    <span className="font-medium">Shipping Address:</span>{" "}
+                    {invoice.shippingAddress}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
+
+
 
           {/* Invoice Items */}
           {invoice.invoiceItems && invoice.invoiceItems.length > 0 && (

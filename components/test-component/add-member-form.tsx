@@ -30,6 +30,9 @@ import { renderRoleBasedPath } from "@/lib/utils";
 
 // Define the form schema
 const formSchema = z.object({
+  membershipType: z.enum(["TSMWA", "TQMWA"], {
+    required_error: "Membership Type is required",
+  }),
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(1, "USC Number is required"),
     dateOfApplication: z.string().min(1, "Date is required"),
@@ -211,6 +214,7 @@ const AddMemberForm = () => {
     tspcbOrderNo?: string;
     mdlNo?: string;
     udyamCertificateNo?: string;
+    [key: string]: string | undefined;
   }>({});
   const [validationSuccess, setValidationSuccess] = useState<{
     electricalUscNumber?: string;
@@ -220,6 +224,7 @@ const AddMemberForm = () => {
     tspcbOrderNo?: string;
     mdlNo?: string;
     udyamCertificateNo?: string;
+    [key: string]: string | undefined;
   }>({});
   const [isValidating, setIsValidating] = useState(false);
 
@@ -233,6 +238,7 @@ const AddMemberForm = () => {
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      membershipType: "TSMWA",
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
@@ -493,6 +499,7 @@ const AddMemberForm = () => {
         uploadedFiles.udyamCertificateDoc;
 
       const requestData: any = {
+        membershipType: data.membershipType,
         electricalUscNumber: data.applicationDetails.electricalUscNumber,
         scNumber: data.applicationDetails.scNumber,
         applicantName: data.memberDetails.applicantName,
@@ -672,6 +679,7 @@ const AddMemberForm = () => {
     switch (step) {
       case 1:
         return [
+          "membershipType",
           "applicationDetails",
           "memberDetails",
           "firmDetails",
@@ -1032,7 +1040,7 @@ const AddMemberForm = () => {
 
     const currentData = methods.getValues();
 
-    // USC and SC Number validation
+    // USC and SC Number validation (Step 1)
     if (fieldName === "electricalUscNumber" || fieldName === "scNumber") {
       const uscNumber =
         fieldName === "electricalUscNumber"
@@ -1092,6 +1100,64 @@ const AddMemberForm = () => {
         setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
         setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
         console.log(`${fieldName} too short, cleared error`); // Debug log
+      }
+    }
+
+    // Branch USC and SC Number validation (Step 2)
+    if (fieldName.includes('branch_') && (fieldName.includes('electricalUscNumber') || fieldName.includes('scNumber'))) {
+      const branchIndex = fieldName.split('_')[1];
+      const fieldType = fieldName.split('_')[2];
+      
+      // Get current branch data
+      const branches = currentData.branchDetails?.branches || [];
+      const currentBranch = branches[parseInt(branchIndex)] || {};
+      
+      const uscNumber = fieldType === 'electricalUscNumber' ? value : currentBranch.electricalUscNumber || '';
+      const scNumber = fieldType === 'scNumber' ? value : currentBranch.scNumber || '';
+
+      console.log(`Branch ${branchIndex} validation - USC: ${uscNumber}, SC: ${scNumber}`);
+
+      // Validate each field independently if it has at least 3 characters
+      if (fieldType === 'electricalUscNumber' && value.length >= 3) {
+        console.log(`Starting branch ${branchIndex} USC validation...`);
+
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(value, scNumber);
+          console.log(`Branch ${branchIndex} USC validation result:`, isValid);
+
+          if (isValid) {
+            setValidationErrors((prev) => ({
+              ...prev,
+              [fieldName]: undefined,
+            }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              [fieldName]: "This USC number is unique and can be used.",
+            }));
+            console.log(`Branch ${branchIndex} USC validation passed`);
+          }
+        }, 500);
+      } else if (fieldType === 'scNumber' && value.length >= 3) {
+        console.log(`Starting branch ${branchIndex} SC validation...`);
+
+        setTimeout(async () => {
+          const isValid = await validateUscScNumbers(uscNumber, value);
+          console.log(`Branch ${branchIndex} SC validation result:`, isValid);
+
+          if (isValid) {
+            setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+            setValidationSuccess((prev) => ({
+              ...prev,
+              [fieldName]: "This SC number is unique and can be used.",
+            }));
+            console.log(`Branch ${branchIndex} SC validation passed`);
+          }
+        }, 500);
+      } else if (value.length < 3) {
+        // Clear errors if field is too short
+        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
+        console.log(`${fieldName} too short, cleared error`);
       }
     }
 
@@ -1196,7 +1262,14 @@ const AddMemberForm = () => {
                   isValidating={isValidating}
                 />
               )}
-              {currentStep === 2 && <Step2OperationDetails />}
+              {currentStep === 2 && (
+                <Step2OperationDetails
+                  validationErrors={validationErrors}
+                  validationSuccess={validationSuccess}
+                  onFieldChange={handleFieldChange}
+                  isValidating={isValidating}
+                />
+              )}
               {currentStep === 3 && (
                 <Step3ComplianceLegal
                   validationErrors={validationErrors}

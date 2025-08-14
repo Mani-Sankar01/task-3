@@ -63,7 +63,7 @@ export default function Step1PersonalBusiness({
             </span>
           )}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={control}
             name="applicationDetails.electricalUscNumber"
@@ -130,6 +130,28 @@ export default function Step1PersonalBusiness({
                     {validationSuccess.scNumber}
                   </p>
                 )}
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="membershipType"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Membership Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select membership type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="TSMWA">Tandur Stone Merchant</SelectItem>
+                    <SelectItem value="TQMWA">Tandur Query Mandal</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
               </FormItem>
             )}
           />

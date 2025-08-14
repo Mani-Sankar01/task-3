@@ -4,11 +4,11 @@
 import { getMemberById } from "./members";
 
 export interface InvoiceItem {
-  id: string;
+  id?: string;
   hsnCode: string;
   particulars: string;
-  noOfStones: number;
-  sizes: string;
+  noOfStones?: number;
+  sizes?: string;
   totalSqFeet: number;
   ratePerSqFt: number;
   amount: number;
@@ -24,6 +24,16 @@ export interface Invoice {
   firmAddress: string;
   gstNumber: string;
   state: string;
+  companyName: string;
+  companyAddress: string;
+  companyGstin: string;
+  // New customer fields
+  customerName?: string;
+  gstInNumber?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  eWayNumber?: string;
+  phoneNumber?: string;
   items: InvoiceItem[];
   cgstPercentage: number;
   sgstPercentage: number;
@@ -50,6 +60,15 @@ const invoices: Invoice[] = [
     firmAddress: "123 Industrial Area, Greenville, Telangana - 500001",
     gstNumber: "27AAPFU0939F1ZV",
     state: "telangana",
+    companyName: "Doe Industries",
+    companyAddress: "123 Industrial Area, Greenville, Telangana - 500001",
+    companyGstin: "27AAPFU0939F1ZV",
+    customerName: "ABC Constructions Pvt Ltd",
+    gstInNumber: "36ABCDE1234F1Z5",
+    billingAddress: "123 Industrial Area, Hyderabad, Telangana, 500001",
+    shippingAddress: "456 Construction Site, Warangal, Telangana, 506002",
+    eWayNumber: "EWAY-987654321",
+    phoneNumber: "9876543210",
     items: [
       {
         id: "ITEM001",
@@ -94,6 +113,15 @@ const invoices: Invoice[] = [
     firmAddress: "456 Manufacturing Hub, Riverside, Telangana - 500018",
     gstNumber: "36AADCS1234A1ZX",
     state: "telangana",
+    companyName: "Smith Manufacturing",
+    companyAddress: "456 Manufacturing Hub, Riverside, Telangana - 500018",
+    companyGstin: "36AADCS1234A1ZX",
+    customerName: "XYZ Builders Ltd",
+    gstInNumber: "29XYZBU5678G2Z9",
+    billingAddress: "789 Business Park, Bangalore, Karnataka, 560001",
+    shippingAddress: "321 Project Site, Mysore, Karnataka, 570001",
+    eWayNumber: "EWAY-123456789",
+    phoneNumber: "8765432109",
     items: [
       {
         id: "ITEM003",

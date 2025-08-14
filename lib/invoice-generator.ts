@@ -46,7 +46,7 @@ export async function generateTaxInvoicePDF(
   const { jsPDF } = await import("jspdf");
   const autoTable = (await import("jspdf-autotable")).default;
 
-  // Create a new PDF document
+  // Create a new PDF document with proper margins
   const doc = new jsPDF();
 
   // Set document properties
@@ -57,84 +57,174 @@ export async function generateTaxInvoicePDF(
     creator: "TSMWA Management System",
   });
 
-  // Add organization header
-  addTaxInvoiceHeader(doc, member);
+  // Add header section (matching the web layout exactly)
+  addInvoiceHeader(doc, invoice, member);
 
-  // Add invoice information
-  addTaxInvoiceInfo(doc, invoice, member);
+  // Add customer information section (if available)
+  if (invoice.customerName || invoice.gstInNumber || invoice.billingAddress || invoice.shippingAddress || invoice.phoneNumber || invoice.eWayNumber) {
+    addCustomerInformation(doc, invoice);
+  }
 
-  // Add invoice items table if available
+  // Add invoice items table
   if (invoice.invoiceItems && invoice.invoiceItems.length > 0) {
-    addTaxInvoiceItemsTable(doc, invoice, autoTable);
+    addInvoiceItemsTable(doc, invoice, autoTable);
   }
 
   // Add totals section
-  addTaxInvoiceTotals(doc, invoice);
+  addInvoiceTotals(doc, invoice);
 
   // Add footer
-  addTaxInvoiceFooter(doc);
+  addInvoiceFooter(doc);
 
   // Save the PDF with a filename
   doc.save(`Tax_Invoice_${invoice.invoiceId}_${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
-// Function to add tax invoice header
-function addTaxInvoiceHeader(doc: any, member: any): void {
-  // Add member firm name
-  doc.setFontSize(16);
+// Function to add invoice header (matching image exactly)
+function addInvoiceHeader(doc: any, invoice: any, member: any): void {
+  // Top row: Invoice number, TAX INVOICE box, and date
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text(member?.firmName || "Firm Name", 105, 20, { align: "center" });
-
-  // Add member address and GST
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(member?.complianceDetails?.fullAddress || "Address not available", 105, 27, { align: "center" });
-  doc.text(`GSTIN: ${member?.complianceDetails?.gstInNumber || "GST Number not available"}`, 105, 34, { align: "center" });
-
-  // Add invoice title box
+  
+  // Left: Invoice number and status badge
+  doc.text(`Invoice No: ${invoice.invoiceId}`, 20, 25);
+  
+  // Blue "Approved" badge (rounded rectangle)
+  const status = invoice.status || "PENDING";
+  const statusText = status === "APPROVED" ? "Approved" : status;
+  
+  // Draw blue badge background
+  doc.setFillColor(59, 130, 246); // Blue color
+  doc.setDrawColor(59, 130, 246);
+  doc.roundedRect(20, 28, 25, 6, 3, 3, 'F');
+  
+  // Add white text on blue background
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  doc.text(statusText, 32.5, 32, { align: "center" });
+  
+  // Reset text color to black
+  doc.setTextColor(0, 0, 0);
+  
+  // Center: TAX INVOICE box
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
-  doc.rect(85, 40, 40, 10);
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text("TAX INVOICE", 105, 47, { align: "center" });
-}
-
-// Function to add tax invoice information
-function addTaxInvoiceInfo(doc: any, invoice: any, member: any): void {
-  const startY = 65;
-
-  // Invoice details on the left
+  doc.rect(80, 20, 35, 8);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("Invoice Details:", 15, startY);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Invoice No: ${invoice.invoiceId}`, 15, startY + 7);
-  doc.text(`Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`, 15, startY + 14);
-
-  // Member details on the right
+  doc.text("TAX INVOICE", 97.5, 25, { align: "center" });
+  
+  // Right: Date
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
-  doc.text("Member Details:", 120, startY);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Member ID: ${invoice.membershipId}`, 120, startY + 7);
-  doc.text(`Member Name: ${member?.applicantName || "N/A"}`, 120, startY + 14);
+  const invoiceDate = new Date(invoice.invoiceDate).toLocaleDateString('en-GB');
+  doc.text(`Date: ${invoiceDate}`, 190, 25, { align: "right" });
 
-  // Add horizontal line
+  // Company information section (centered)
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(member?.firmName || "Company Name", 105, 45, { align: "center" });
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(member?.complianceDetails?.fullAddress || "Address not available", 105, 52, { align: "center" });
+  doc.text(`GSTIN: ${member?.complianceDetails?.gstInNumber || "GST Number not available"}`, 105, 59, { align: "center" });
+
+  // Add separator line
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.3);
-  doc.line(15, startY + 20, 195, startY + 20);
+  doc.line(20, 65, 190, 65);
 }
 
+// Function to add customer information section (with grey box like image)
+function addCustomerInformation(doc: any, invoice: any): void {
+  const startY = 75;
+  const boxHeight = 45;
 
+  // Draw grey background box for customer information
+  doc.setFillColor(249, 250, 251); // Light grey color
+  doc.setDrawColor(229, 231, 235); // Border grey
+  doc.setLineWidth(0.3);
+  doc.roundedRect(20, startY - 5, 170, boxHeight, 2, 2, 'FD');
 
-// Function to add tax invoice items table
-function addTaxInvoiceItemsTable(doc: any, invoice: any, autoTable: any): void {
-  const startY = 100;
+  // Customer Information title
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(0, 0, 0);
+  doc.text("Customer Information", 25, startY);
+
+  // Customer details in two columns (matching image layout)
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+
+  // Left column
+  const leftX = 25;
+  let currentY = startY + 12;
+
+  if (invoice.customerName) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Customer Name:", leftX, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.customerName, leftX + 35, currentY);
+    currentY += 8;
+  }
+
+  if (invoice.phoneNumber) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Phone Number:", leftX, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.phoneNumber, leftX + 35, currentY);
+    currentY += 8;
+  }
+
+  if (invoice.billingAddress) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Billing Address:", leftX, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.billingAddress, leftX + 35, currentY);
+    currentY += 8;
+  }
+
+  if (invoice.shippingAddress) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Shipping Address:", leftX, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.shippingAddress, leftX + 35, currentY);
+    currentY += 8;
+  }
+
+  // Right column
+  const rightX = 110;
+  let rightY = startY + 12;
+
+  if (invoice.gstInNumber) {
+    doc.setFont("helvetica", "bold");
+    doc.text("GSTIN Number:", rightX, rightY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.gstInNumber, rightX + 35, rightY);
+    rightY += 8;
+  }
+
+  if (invoice.eWayNumber) {
+    doc.setFont("helvetica", "bold");
+    doc.text("E-Way Number:", rightX, rightY);
+    doc.setFont("helvetica", "normal");
+    doc.text(invoice.eWayNumber, rightX + 35, rightY);
+    rightY += 8;
+  }
+}
+
+// Function to add invoice items table (matching image exactly)
+function addInvoiceItemsTable(doc: any, invoice: any, autoTable: any): void {
+  // Calculate start Y position after customer information
+  const customerInfoHeight = invoice.customerName ? 50 : 0; // Height of customer info section
+  const startY = 75 + customerInfoHeight;
 
   // Items title
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("Invoice Items", 15, startY);
+  doc.text("Invoice Items", 20, startY);
 
   // Prepare table data
   const headers = [
@@ -150,21 +240,21 @@ function addTaxInvoiceItemsTable(doc: any, invoice: any, autoTable: any): void {
   const data = invoice.invoiceItems.map((item: any) => [
     item.hsnCode,
     item.particular,
-    item.stoneCount.toString(),
-    item.size,
+    item.stoneCount?.toString() || "",
+    item.size || "",
     item.totalSqFeet,
-    `₹${parseFloat(item.ratePerSqFeet).toLocaleString()}`,
-    `₹${parseFloat(item.amount).toLocaleString()}`
+    parseFloat(item.ratePerSqFeet).toLocaleString(),
+    parseFloat(item.amount).toLocaleString()
   ]);
 
-  // Create table
+  // Create table with exact styling from image
   autoTable(doc, {
     head: [headers],
     body: data,
-    startY: startY + 5,
+    startY: startY + 8,
     theme: 'grid',
     headStyles: {
-      fillColor: [41, 128, 185],
+      fillColor: [41, 128, 185], // Exact blue color from image
       textColor: 255,
       fontStyle: 'bold',
       fontSize: 7
@@ -181,12 +271,13 @@ function addTaxInvoiceItemsTable(doc: any, invoice: any, autoTable: any): void {
       4: { cellWidth: 22, halign: 'center' }, // Total Sq. Ft.
       5: { cellWidth: 22, halign: 'right' }, // Rate
       6: { cellWidth: 22, halign: 'right' }  // Amount
-    }
+    },
+    margin: { left: 20, right: 20 }
   });
 }
 
-// Function to add tax invoice totals
-function addTaxInvoiceTotals(doc: any, invoice: any): void {
+// Function to add invoice totals (matching image exactly)
+function addInvoiceTotals(doc: any, invoice: any): void {
   // Get the Y position after the items table
   const finalY = (doc as any).lastAutoTable.finalY || 250;
   const startY = finalY + 10;
@@ -198,70 +289,63 @@ function addTaxInvoiceTotals(doc: any, invoice: any): void {
   const sgstAmount = (subTotal * (invoice.sGSTInPercent || 0)) / 100;
   const igstAmount = (subTotal * (invoice.iGSTInPercent || 0)) / 100;
 
-  // Totals section
-  const totalsX = 115;
-  const totalsWidth = 80;
+  // Totals section (right-aligned like image, within margins)
+  const totalsX = 100; // Moved left to stay within margins
+  const totalsWidth = 70; // Reduced width to fit better
   
-  // Create totals box
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.rect(totalsX, startY, totalsWidth, 40);
-
-  // Totals content
+  // Totals content (grid layout like image)
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
 
-  let currentY = startY + 5;
+  let currentY = startY;
 
   // Sub Total
-  doc.text("Sub Total:", totalsX + 3, currentY);
-  doc.text(`₹${subTotal.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
-  currentY += 5;
+  doc.text("Sub Total:", totalsX, currentY);
+  doc.text(`${subTotal.toLocaleString()}`, totalsX + totalsWidth, currentY, { align: "right" });
+  currentY += 8;
 
   // CGST
   if (invoice.cGSTInPercent > 0) {
-    doc.text(`CGST (${invoice.cGSTInPercent}%):`, totalsX + 3, currentY);
-    doc.text(`₹${cgstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
-    currentY += 5;
+    doc.text(`CGST (${invoice.cGSTInPercent}%):`, totalsX, currentY);
+    doc.text(`${cgstAmount.toLocaleString()}`, totalsX + totalsWidth, currentY, { align: "right" });
+    currentY += 8;
   }
 
   // SGST
   if (invoice.sGSTInPercent > 0) {
-    doc.text(`SGST (${invoice.sGSTInPercent}%):`, totalsX + 3, currentY);
-    doc.text(`₹${sgstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
-    currentY += 5;
+    doc.text(`SGST (${invoice.sGSTInPercent}%):`, totalsX, currentY);
+    doc.text(`${sgstAmount.toLocaleString()}`, totalsX + totalsWidth, currentY, { align: "right" });
+    currentY += 8;
   }
 
   // IGST
   if (invoice.iGSTInPercent > 0) {
-    doc.text(`IGST (${invoice.iGSTInPercent}%):`, totalsX + 3, currentY);
-    doc.text(`₹${igstAmount.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
-    currentY += 5;
+    doc.text(`IGST (${invoice.iGSTInPercent}%):`, totalsX, currentY);
+    doc.text(`${igstAmount.toLocaleString()}`, totalsX + totalsWidth, currentY, { align: "right" });
+    currentY += 8;
   }
 
   // Separator line
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.3);
-  doc.line(totalsX + 3, currentY, totalsX + totalsWidth - 3, currentY);
-  currentY += 5;
+  doc.line(totalsX, currentY, totalsX + totalsWidth, currentY);
+  currentY += 8;
 
-  // Total
+  // Total (bold and larger like image)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("Total:", totalsX + 3, currentY);
-  doc.text(`₹${total.toLocaleString()}`, totalsX + totalsWidth - 3, currentY, { align: "right" });
+  doc.setFontSize(10);
+  doc.text("Total:", totalsX, currentY);
+  doc.text(`${total.toLocaleString()}`, totalsX + totalsWidth, currentY, { align: "right" });
 }
 
-// Function to add tax invoice footer
-function addTaxInvoiceFooter(doc: any): void {
+// Function to add invoice footer (matching image exactly)
+function addInvoiceFooter(doc: any): void {
   const pageHeight = doc.internal.pageSize.height;
   
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "italic");
-  doc.text("Note: This is a computer-generated invoice and does not require signature or stamp.", 15, pageHeight - 20);
-  
+  // Footer note (centered like image)
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("Generated on: " + new Date().toLocaleString(), 15, pageHeight - 15);
+  doc.text("Note: This is a computer-generated invoice and does not require signature or stamp.", 105, pageHeight - 20, { align: "center" });
 }
 
 

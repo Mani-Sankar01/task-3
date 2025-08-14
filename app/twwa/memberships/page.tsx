@@ -96,6 +96,7 @@ interface Member {
   pinCode: string;
   estimatedMaleWorker: number;
   estimatedFemaleWorker: number;
+  membershipType?: "TSMWA" | "TQMWA";
   modifiedBy: number | null;
   approvedOrDeclinedBy: number | null;
   approvedOrDeclinedAt: string | null;
@@ -489,6 +490,14 @@ const page = () => {
                         variant="ghost"
                         className="flex items-center p-0 h-auto font-medium"
                       >
+                        Membership Type
+                      </Button>
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center p-0 h-auto font-medium"
+                      >
                         Status
                       </Button>
                     </TableHead>
@@ -525,6 +534,15 @@ const page = () => {
                         </TableCell>
                         <TableCell>{member.applicantName}</TableCell>
                         <TableCell>{member.firmName}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          <Badge variant="outline">
+                            {member.membershipType === "TSMWA" 
+                              ? "Tandur Stone Merchant" 
+                              : member.membershipType === "TQMWA" 
+                              ? "Tandur Query Mandal" 
+                              : "-"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge
                             variant={
@@ -599,7 +617,7 @@ const page = () => {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-24 text-center">
+                      <TableCell colSpan={7} className="h-24 text-center">
                         No members found.
                       </TableCell>
                     </TableRow>
