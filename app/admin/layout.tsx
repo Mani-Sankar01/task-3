@@ -80,6 +80,11 @@ const data = {
           url: "/admin/users",
           icon: UserRoundCogIcon,
         },
+        {
+          title: "Changes Approval",
+          url: "/admin/changes-approval",
+          icon: AlertCircle,
+        },
       ],
     },
     {
@@ -133,6 +138,11 @@ const data = {
           title: "All Invoices",
           url: "/admin/invoices",
           icon: ClipboardList,
+        },
+        {
+          title: "Pending Approvals",
+          url: "/admin/invoices/pending-approval",
+          icon: AlertCircle,
         },
         // {
         //   title: "Add Filling",

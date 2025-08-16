@@ -468,7 +468,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
+      router.back();
     }
   };
 
@@ -512,7 +512,17 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     <div className="container">
       <Card>
         <CardHeader>
-          <CardTitle>
+          <div className="flex  gap-2">
+          <Button 
+                variant="outline" 
+                onClick={handleCancel} 
+                type="button"
+                className=""
+              >
+                <ArrowLeft className=" h-4 w-4" />
+              </Button>
+              <div>
+              <CardTitle>
             {isEditMode ? "Edit Labour Details" : "New Labour"}
           </CardTitle>
           <CardDescription>
@@ -520,6 +530,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
               ? "Update the labour information below"
               : "Fill in the details to add a new labour record"}
           </CardDescription>
+              </div>
+          </div>
+          
         </CardHeader>
         <CardContent>
           <Form {...form}>

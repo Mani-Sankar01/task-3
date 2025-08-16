@@ -198,6 +198,55 @@ export default function UsersList() {
     );
   };
 
+  // Handle user status update (Activate/Inactivate)
+  const handleUserStatusUpdate = async (userId: number, newStatus: "ACTIVE" | "INACTIVE") => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/user/update_user`,
+        {
+          id: userId,
+          status: newStatus
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        // Update the user in the local state
+        const updatedUsers = users.map((user) =>
+          user.id === userId ? { ...user, status: newStatus } : user
+        );
+        setUsers(updatedUsers);
+
+        toast({
+          title: "Success",
+          description: `User ${newStatus.toLowerCase()}d successfully`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error updating user status:", error);
+      const errorMessage = error.response?.data?.message || "Failed to update user status";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteUser = (id: number) => {
     if (status !== "authenticated" || !session?.user?.token) {
       toast({
@@ -469,12 +518,16 @@ export default function UsersList() {
                             Edit
                           </DropdownMenuItem>
                           {user.status === "ACTIVE" ? (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleUserStatusUpdate(user.id, "INACTIVE")}
+                            >
                               <BanIcon className="mr-2 h-4 w-4 text-red-600" />
                               Inactive User
                             </DropdownMenuItem>
                           ) : (
-                            <DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleUserStatusUpdate(user.id, "ACTIVE")}
+                            >
                               <CheckCheckIcon className="mr-2 h-4 w-4 text-green-600" />
                               Activate User
                             </DropdownMenuItem>

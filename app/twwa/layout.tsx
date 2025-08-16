@@ -75,6 +75,11 @@ const data = {
           url: "/tsmwa/analytics",
           icon: ChartColumn,
         },
+        {
+          title: "Pending Approvals",
+          url: "/twwa/changes-approval",
+          icon: AlertCircle,
+        },
       ],
     },
     {

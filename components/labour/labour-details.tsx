@@ -104,7 +104,7 @@ export default function LabourDetails({
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
+    router.back();
   };
 
   // Add or Edit Document
@@ -352,12 +352,12 @@ export default function LabourDetails({
     <div className="container">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center">
-          <Button variant="outline" onClick={handleBack} className="mr-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          <Button variant="outline" onClick={handleBack} className=" mr-2" type="button">
+            <ArrowLeft className=" h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">Labour Details</h1>
         </div>
-        <Link href={`/admin/labour/${labour.labourId}/edit`}>
+        <Link href={`/${renderRoleBasedPath(session?.user?.role)}/labour/${labour.labourId}/edit`}>
           <Button>
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>

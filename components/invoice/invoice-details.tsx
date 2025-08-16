@@ -162,8 +162,8 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
   }, [invoiceId, status, session?.user?.token]);
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices`);
-  };
+    router.back();
+  }
 
   const handleEdit = () => {
     router.push(
@@ -224,7 +224,7 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
   const igstAmount = (subTotal * invoice.iGSTInPercent) / 100;
 
   return (
-    <div className="container mx-auto p-6">
+    <div className=" p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center">
           <Button variant="outline" onClick={handleBack} className="mr-4">

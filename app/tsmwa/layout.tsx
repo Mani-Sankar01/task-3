@@ -75,6 +75,11 @@ const data = {
           url: "/tsmwa/analytics",
           icon: ChartColumn,
         },
+        {
+          title: "Pending Approvals",
+          url: "/tsmwa/changes-approval",
+          icon: AlertCircle,
+        },
       ],
     },
     {
@@ -128,6 +133,11 @@ const data = {
           title: "All Invoices",
           url: "/tsmwa/invoices",
           icon: ClipboardList,
+        },
+        {
+          title: "Pending Approvals",
+          url: "/tsmwa/invoices/pending-approval",
+          icon: AlertCircle,
         },
         // {
         //   title: "Add Filling",

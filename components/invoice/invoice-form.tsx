@@ -50,6 +50,8 @@ import {
   type Invoice,
 } from "@/data/invoices";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { SidebarInset } from "../ui/sidebar";
+import Header from "../header";
 
 // GST percentage options
 const GST_PERCENTAGE_OPTIONS = [
@@ -474,6 +476,114 @@ export default function InvoiceForm({
     });
   };
 
+  // Function to detect changes between current form data and original data
+  const detectChanges = (currentData: InvoiceFormValues, originalData: any) => {
+    const changes: any = {};
+    
+    // Compare basic fields
+    const fieldsToCompare = [
+      'membershipId', 'invoiceDate', 'customerName', 'gstInNumber', 
+      'billingAddress', 'shippingAddress', 'eWayNumber', 'phoneNumber',
+      'cgstPercentage', 'sgstPercentage', 'igstPercentage', 'subTotal', 'totalAmount'
+    ];
+    
+    fieldsToCompare.forEach(field => {
+      const apiField = field === 'membershipId' ? 'membershipId' : 
+                      field === 'invoiceDate' ? 'invoiceDate' :
+                      field === 'customerName' ? 'customerName' :
+                      field === 'gstInNumber' ? 'gstInNumber' :
+                      field === 'billingAddress' ? 'billingAddress' :
+                      field === 'shippingAddress' ? 'shippingAddress' :
+                      field === 'eWayNumber' ? 'eWayNumber' :
+                      field === 'phoneNumber' ? 'phoneNumber' :
+                      field === 'cgstPercentage' ? 'cGSTInPercent' :
+                      field === 'sgstPercentage' ? 'sGSTInPercent' :
+                      field === 'igstPercentage' ? 'iGSTInPercent' :
+                      field === 'subTotal' ? 'subTotal' :
+                      field === 'totalAmount' ? 'total' : field;
+      
+      const currentValue = currentData[field as keyof InvoiceFormValues];
+      const originalValue = originalData[apiField];
+      
+      // Handle different data types
+      if (field === 'invoiceDate') {
+        const currentDate = currentValue as string;
+        const originalDate = originalValue ? originalValue.split('T')[0] : '';
+        if (currentDate !== originalDate) {
+          changes[field] = currentValue;
+        }
+      } else if (typeof currentValue === 'number' && typeof originalValue === 'string') {
+        if (currentValue !== parseFloat(originalValue)) {
+          changes[field] = currentValue;
+        }
+      } else if (currentValue !== originalValue) {
+        changes[field] = currentValue;
+      }
+    });
+    
+    // Compare items
+    const originalItems = originalData.invoiceItems || [];
+    const currentItems = currentData.items;
+    
+    // Find new items (no id)
+    const newItems = currentItems.filter(item => !item.id);
+    
+    // Find updated items (has id and changed)
+    const updatedItems = currentItems.filter(item => {
+      if (!item.id) return false;
+      const originalItem = originalItems.find((oi: any) => oi.id.toString() === item.id);
+      if (!originalItem) return false;
+      
+      return (
+        item.hsnCode !== originalItem.hsnCode ||
+        item.particulars !== originalItem.particular ||
+        item.noOfStones !== originalItem.stoneCount ||
+        item.sizes !== originalItem.size?.toString() ||
+        item.totalSqFeet !== parseFloat(originalItem.totalSqFeet) ||
+        item.ratePerSqFt !== parseFloat(originalItem.ratePerSqFeet) ||
+        item.amount !== parseFloat(originalItem.amount)
+      );
+    });
+    
+    // Find deleted items (in original but not in current)
+    const deletedItems = originalItems.filter((originalItem: any) => {
+      return !currentItems.some(currentItem => 
+        currentItem.id && currentItem.id === originalItem.id.toString()
+      );
+    });
+    
+    if (newItems.length > 0) {
+      changes.newInvoiceItem = newItems.map(item => ({
+        hsnCode: item.hsnCode,
+        particular: item.particulars,
+        stoneCount: item.noOfStones,
+        size: item.sizes,
+        totalSqFeet: item.totalSqFeet,
+        ratePerSqFeet: item.ratePerSqFt,
+        amount: item.amount,
+      }));
+    }
+    
+    if (updatedItems.length > 0) {
+      changes.updateInvoiceItem = updatedItems.map(item => ({
+        id: parseInt(item.id!),
+        hsnCode: item.hsnCode,
+        particular: item.particulars,
+        stoneCount: item.noOfStones,
+        size: item.sizes,
+        totalSqFeet: item.totalSqFeet,
+        ratePerSqFeet: item.ratePerSqFt,
+        amount: item.amount,
+      }));
+    }
+    
+    if (deletedItems.length > 0) {
+      changes.deleteInvoiceItem = deletedItems.map((item: any) => item.id);
+    }
+    
+    return changes;
+  };
+
   // Handle form submission
   const onSubmit = async (data: InvoiceFormValues, download = false) => {
     console.log("onSubmit called", data);
@@ -487,49 +597,41 @@ export default function InvoiceForm({
           return;
         }
 
-        // Prepare update payload
+        // Detect changes and create minimal update payload
+        const changes = detectChanges(data, apiInvoice);
+        
+        // Only proceed if there are actual changes
+        if (Object.keys(changes).length === 0) {
+          alert("No changes detected. Invoice remains unchanged.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Log what specific fields were changed
+        const changedFields = Object.keys(changes).filter(key => 
+          key !== 'newInvoiceItem' && key !== 'updateInvoiceItem' && key !== 'deleteInvoiceItem'
+        );
+        if (changedFields.length > 0) {
+          console.log("Changed fields:", changedFields);
+        }
+        if (changes.newInvoiceItem) {
+          console.log("New items added:", changes.newInvoiceItem.length);
+        }
+        if (changes.updateInvoiceItem) {
+          console.log("Items updated:", changes.updateInvoiceItem.length);
+        }
+        if (changes.deleteInvoiceItem) {
+          console.log("Items deleted:", changes.deleteInvoiceItem.length);
+        }
+        
+        // Prepare update payload with only changed fields
         const updatePayload = {
           invoiceId: invoiceId,
-          membershipId: data.memberId,
-          invoiceDate: data.invoiceDate,
-          customerName: data.customerName,
-          gstInNumber: data.gstInNumber,
-          billingAddress: data.billingAddress,
-          shippingAddress: data.shippingAddress,
-          eWayNumber: data.eWayNumber,
-          phoneNumber: data.phoneNumber,
-          cGSTInPercent: data.cgstPercentage,
-          sGSTInPercent: data.sgstPercentage,
-          iGSTInPercent: data.igstPercentage,
-          subTotal: data.subTotal,
-          total: data.totalAmount,
-          newInvoiceItem: data.items
-            .filter((item) => !item.id) // Only new items (no id)
-            .map((item) => ({
-              hsnCode: item.hsnCode,
-              particular: item.particulars,
-              stoneCount: item.noOfStones,
-              size: item.sizes, // Send as string, not parseFloat
-              totalSqFeet: item.totalSqFeet,
-              ratePerSqFeet: item.ratePerSqFt,
-              amount: item.amount,
-            })),
-          updateInvoiceItem: data.items
-            .filter((item) => item.id) // Only existing items (has id)
-            .map((item) => ({
-              id: parseInt(item.id!),
-              hsnCode: item.hsnCode,
-              particular: item.particulars,
-              stoneCount: item.noOfStones,
-              size: item.sizes, // Send as string, not parseFloat
-              totalSqFeet: item.totalSqFeet,
-              ratePerSqFeet: item.ratePerSqFt,
-              amount: item.amount,
-            })),
-          deleteInvoiceItem: [], // You can add logic to track deleted items if needed
+          ...changes
         };
 
-        console.log("Update payload:", JSON.stringify(updatePayload));
+        console.log("Optimized update payload (only changed fields):", JSON.stringify(updatePayload));
+        console.log("Changes detected:", Object.keys(changes));
 
         try {
           const response = await axios.post(
@@ -675,13 +777,7 @@ export default function InvoiceForm({
         "Are you sure you want to cancel? All unsaved changes will be lost."
       )
     ) {
-      if (isEditMode && invoiceId) {
-        router.push(
-          `/${renderRoleBasedPath(session?.user?.role)}/invoices/${invoiceId}`
-        );
-      } else {
-        router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices`);
-      }
+      router.back();
     }
   };
 
@@ -699,26 +795,34 @@ export default function InvoiceForm({
   }
 
   return (
-    <div className="container mx-auto">
-      <div className="mb-6 flex items-center">
-        <Button variant="outline" onClick={handleCancel} className="mr-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
-        </Button>
-        <h1 className="text-2xl font-bold">
-          {isEditMode ? `Edit Invoice #${invoiceId}` : "Create New Invoice"}
-        </h1>
-      </div>
+    
+     <SidebarInset>
+     <Header breadcrumbs={[{ label: isEditMode ? `Edit Invoice #${invoiceId}` : "Create New Invoice" }]} />
+     <div className="flex flex-1 flex-col p-4">
+     <div className="">
+      
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Card className="mx-auto">
             <CardHeader>
-              <CardTitle className="text-2xl">TAX INVOICE</CardTitle>
+              <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                onClick={handleCancel} 
+                type="button"
+                className=""
+              >
+                <ArrowLeft className=" h-4 w-4" />
+              </Button>
+             <div> <CardTitle className="text-2xl">TAX INVOICE</CardTitle>
               <CardDescription>
                 {isEditMode
                   ? "Edit invoice details"
                   : "Create a new invoice by filling out the form below"}
-              </CardDescription>
+              </CardDescription></div>
+              </div>
+              
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Invoice Date */}
@@ -1344,6 +1448,8 @@ export default function InvoiceForm({
           </Card>
         </form>
       </Form>
-    </div>
+    </div> 
+     </div>
+   </SidebarInset>
   );
 }

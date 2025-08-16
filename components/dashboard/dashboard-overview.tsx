@@ -26,6 +26,12 @@ import {
   XCircle,
   RefreshCw,
   Loader2,
+  Eye,
+  Check,
+  X,
+  Filter,
+  User,
+  Receipt,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +47,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { format, isToday, addDays } from "date-fns";
 import {
@@ -104,6 +120,44 @@ interface DashboardData {
   }>;
 }
 
+// Pending approval interfaces
+interface PendingMemberChange {
+  membershipId: string;
+  approvalStatus: "APPROVED" | "PENDING" | "DECLINED";
+  membershipStatus: "ACTIVE" | "INACTIVE" | "CANCELLED";
+  applicantName: string;
+  firmName: string;
+  phoneNumber1: string;
+  phoneNumber2: string;
+  createdAt: string;
+  updatedAt: string;
+  // Add other member fields as needed
+}
+
+interface PendingInvoiceChange {
+  id: string;
+  invoiceId: string;
+  membershipId: string;
+  invoiceDate: string;
+  customerName: string;
+  gstInNumber: string;
+  billingAddress: string;
+  shippingAddress: string;
+  eWayNumber: string;
+  phoneNumber: string;
+  cGSTInPercent: number;
+  sGSTInPercent: number;
+  iGSTInPercent: number;
+  subTotal: string;
+  total: string;
+  approvalStatus: "APPROVED" | "PENDING" | "DECLINED";
+  status: string;
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: number;
+  modifiedBy: number | null;
+}
+
 export default function DashboardOverview() {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
@@ -112,6 +166,26 @@ export default function DashboardOverview() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pending approvals state
+  const [pendingMembers, setPendingMembers] = useState<PendingMemberChange[]>([]);
+  const [pendingInvoices, setPendingInvoices] = useState<PendingInvoiceChange[]>([]);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+
+  // Dialog states
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
+  const [showInvoicesDialog, setShowInvoicesDialog] = useState(false);
+  const [showVehicleDuesDialog, setShowVehicleDuesDialog] = useState(false);
+  const [showMembershipFeesDialog, setShowMembershipFeesDialog] = useState(false);
+  const [showLicensesDialog, setShowLicensesDialog] = useState(false);
+
+  // Approval states
+  const [selectedMember, setSelectedMember] = useState<PendingMemberChange | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<PendingInvoiceChange | null>(null);
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [declineError, setDeclineError] = useState("");
 
   // Health check state
   const [healthData, setHealthData] = useState<HealthCheckResponse | null>(
@@ -154,10 +228,81 @@ export default function DashboardOverview() {
     }
   };
 
+  // Fetch pending approvals
+  const fetchPendingApprovals = async () => {
+    if (sessionStatus !== "authenticated" || !session?.user?.token) {
+      return;
+    }
+
+    setIsLoadingPending(true);
+    try {
+      // Fetch all members and filter for pending approvals
+      const membersResponse = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/member/get_members`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+      console.log("Members response:", membersResponse.data);
+
+      // Handle different response structures for members
+      let allMembers = [];
+      if (membersResponse.data && Array.isArray(membersResponse.data)) {
+        allMembers = membersResponse.data;
+      } else if (membersResponse.data && Array.isArray(membersResponse.data.data)) {
+        allMembers = membersResponse.data.data;
+      } else if (membersResponse.data && Array.isArray(membersResponse.data.members)) {
+        allMembers = membersResponse.data.members;
+      }
+
+      // Filter members with pending approval status
+      const pendingMembersList = allMembers.filter(
+        (member: any) => member.approvalStatus === "PENDING"
+      );
+      setPendingMembers(pendingMembersList);
+
+      // Fetch all invoices and filter for pending approvals
+      const invoicesResponse = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/get_tax_invoice`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      // Handle different response structures for invoices
+      let allInvoices = [];
+      if (invoicesResponse.data && Array.isArray(invoicesResponse.data)) {
+        allInvoices = invoicesResponse.data;
+      } else if (invoicesResponse.data && Array.isArray(invoicesResponse.data.taxInvoices)) {
+        allInvoices = invoicesResponse.data.taxInvoices;
+      } else if (invoicesResponse.data && Array.isArray(invoicesResponse.data.data)) {
+        allInvoices = invoicesResponse.data.data;
+      }
+
+      // Filter invoices with pending approval status
+      const pendingInvoicesList = allInvoices.filter(
+        (invoice: any) => invoice.status === "PENDING"
+      );
+      setPendingInvoices(pendingInvoicesList);
+
+      console.log("Pending members:", pendingMembersList.length);
+      console.log("Pending invoices:", pendingInvoicesList.length);
+    } catch (error) {
+      console.error("Error fetching pending approvals:", error);
+    } finally {
+      setIsLoadingPending(false);
+    }
+  };
+
   // Load dashboard data on component mount and session change
   useEffect(() => {
     if (sessionStatus === "authenticated") {
       fetchDashboardData();
+      fetchPendingApprovals();
     }
   }, [sessionStatus, session?.user?.token]);
 
@@ -200,6 +345,196 @@ export default function DashboardOverview() {
         <span className="text-red-600 font-medium">Issue Detected</span>
       </div>
     );
+  };
+
+  // Approval/Decline functions
+  const handleMemberApproved = async (memberId: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/approve_decline_member`,
+        {
+          membershipId: memberId,
+          action: "APPROVED"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast({
+          title: "Success",
+          description: "Member approved successfully",
+        });
+        fetchPendingApprovals(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error("Error approving member:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to approve member",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMemberDeclined = async (memberId: string, declineReason: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/approve_decline_member`,
+        {
+          membershipId: memberId,
+          action: "DECLINED",
+          declineReason
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast({
+          title: "Success",
+          description: "Member declined successfully",
+        });
+        fetchPendingApprovals(); // Refresh the list
+        return true;
+      }
+    } catch (error: any) {
+      console.error("Error declining member:", error);
+      setDeclineError(error.response?.data?.message || "Failed to decline member");
+      return false;
+    }
+    return false;
+  };
+
+  const handleInvoiceApproved = async (invoiceId: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_update_request`,
+        {
+          id: invoiceId,
+          action: "APPROVED"
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast({
+          title: "Success",
+          description: "Invoice approved successfully",
+        });
+        fetchPendingApprovals(); // Refresh the list
+      }
+    } catch (error: any) {
+      console.error("Error approving invoice:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to approve invoice",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInvoiceDeclined = async (invoiceId: string, declineNote: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    try {
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_update_request`,
+        {
+          id: invoiceId,
+          action: "DECLINED",
+          note: declineNote
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        toast({
+          title: "Success",
+          description: "Invoice declined successfully",
+        });
+        fetchPendingApprovals(); // Refresh the list
+        return true;
+      }
+    } catch (error: any) {
+      console.error("Error declining invoice:", error);
+      setDeclineError(error.response?.data?.message || "Failed to decline invoice");
+      return false;
+    }
+    return false;
+  };
+
+  const handleDeclineSubmit = async () => {
+    setIsProcessing(true);
+    setDeclineError("");
+
+    let success = false;
+    if (selectedMember) {
+      success = await handleMemberDeclined(selectedMember.membershipId, declineReason);
+    } else if (selectedInvoice) {
+      success = await handleInvoiceDeclined(selectedInvoice.id, declineReason);
+    }
+
+    if (success) {
+      setShowDeclineDialog(false);
+      setDeclineReason("");
+      setSelectedMember(null);
+      setSelectedInvoice(null);
+    }
+
+    setIsProcessing(false);
   };
 
   // Function to refresh health data
@@ -271,11 +606,11 @@ export default function DashboardOverview() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back, Admin</p>
+          <p className="text-muted-foreground">Welcome back, {session?.user?.name?.split(" ")[0]}</p>
         </div>
         <div className="flex gap-2 mt-4 md:mt-0">
           <Button onClick={() => navigateToSection("/admin/analytics")}>
@@ -422,7 +757,7 @@ export default function DashboardOverview() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigateToSection("/admin/membership-fees")}
+                  onClick={() => setShowMembershipFeesDialog(true)}
                 >
                   View All Fees
                 </Button>
@@ -478,13 +813,165 @@ export default function DashboardOverview() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigateToSection("/admin/licenses")}
+                  onClick={() => setShowLicensesDialog(true)}
                 >
                   View All Licenses
                 </Button>
               </CardFooter>
             </Card>
 
+            {/* Pending Approvals Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-500" />
+                  Pending Member Approvals
+                </CardTitle>
+                <CardDescription>
+                  {pendingMembers.length} members waiting for approval
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {isLoadingPending ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="ml-2">Loading...</span>
+                    </div>
+                  ) : pendingMembers.length > 0 ? (
+                    pendingMembers.slice(0, 5).map((member, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center border-b pb-3 last:border-0"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {member.applicantName || member.membershipId}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {member.firmName} •{" "}
+                            {format(new Date(member.createdAt), "MMM dd, yyyy")}
+                          </span>
+                        </div>
+                        {session?.user?.role === "ADMIN" && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleMemberApproved(member.membershipId)}
+                              disabled={isProcessing}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedMember(member);
+                                setShowDeclineDialog(true);
+                              }}
+                              disabled={isProcessing}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">
+                      No pending member approvals
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+              {pendingMembers.length > 5 && (
+                <CardFooter>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowMembersDialog(true)}
+                  >
+                    View All ({pendingMembers.length})
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="h-5 w-5 text-blue-500" />
+                  Pending Invoice Approvals
+                </CardTitle>
+                <CardDescription>
+                  {pendingInvoices.length} invoices waiting for approval
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {isLoadingPending ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="ml-2">Loading...</span>
+                    </div>
+                  ) : pendingInvoices.length > 0 ? (
+                    pendingInvoices.slice(0, 5).map((invoice, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between items-center border-b pb-3 last:border-0"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            Invoice #{invoice.invoiceId}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            Customer: {invoice.customerName || "Unknown"} •{" "}
+                            {format(new Date(invoice.modifiedAt), "MMM dd, yyyy")}
+                          </span>
+                        </div>
+                        {session?.user?.role === "ADMIN" && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleInvoiceApproved(invoice.id)}
+                              disabled={isProcessing}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setSelectedInvoice(invoice);
+                                setShowDeclineDialog(true);
+                              }}
+                              disabled={isProcessing}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-muted-foreground py-4">
+                      No pending invoice approvals
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+              {pendingInvoices.length > 5 && (
+                <CardFooter>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setShowInvoicesDialog(true)}
+                  >
+                    View All ({pendingInvoices.length})
+                  </Button>
+                </CardFooter>
+              )}
+            </Card>
 
           </div>
         </TabsContent>
@@ -616,9 +1103,9 @@ export default function DashboardOverview() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigateToSection("/admin/vehicles")}
+                  onClick={() => setShowVehicleDuesDialog(true)}
                 >
-                  View All Vehicles
+                  View All Vehicle Dues
                 </Button>
               </CardFooter>
             </Card>
@@ -963,6 +1450,285 @@ export default function DashboardOverview() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* View All Members Dialog */}
+      <Dialog open={showMembersDialog} onOpenChange={setShowMembersDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Pending Member Approvals</DialogTitle>
+            <DialogDescription>
+              {pendingMembers.length} members waiting for approval
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {pendingMembers.map((member, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-3 last:border-0"
+              >
+                                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {member.applicantName || member.membershipId}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {member.firmName} •{" "}
+                                    {format(new Date(member.createdAt), "MMM dd, yyyy")}
+                                  </span>
+                                </div>
+                                            {session?.user?.role === "ADMIN" && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleMemberApproved(member.membershipId)}
+                                  disabled={isProcessing}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setSelectedMember(member);
+                                    setShowDeclineDialog(true);
+                                    setShowMembersDialog(false);
+                                  }}
+                                  disabled={isProcessing}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View All Invoices Dialog */}
+      <Dialog open={showInvoicesDialog} onOpenChange={setShowInvoicesDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Pending Invoice Approvals</DialogTitle>
+            <DialogDescription>
+              {pendingInvoices.length} invoices waiting for approval
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {pendingInvoices.map((invoice, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-3 last:border-0"
+              >
+                                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    Invoice #{invoice.invoiceId}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
+                                    Customer: {invoice.customerName || "Unknown"} •{" "}
+                                    {format(new Date(invoice.modifiedAt), "MMM dd, yyyy")}
+                                  </span>
+                                </div>
+                                            {session?.user?.role === "ADMIN" && (
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleInvoiceApproved(invoice.id)}
+                                  disabled={isProcessing}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setSelectedInvoice(invoice);
+                                    setShowDeclineDialog(true);
+                                    setShowInvoicesDialog(false);
+                                  }}
+                                  disabled={isProcessing}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View All Vehicle Dues Dialog */}
+      <Dialog open={showVehicleDuesDialog} onOpenChange={setShowVehicleDuesDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Vehicle Payment Dues</DialogTitle>
+            <DialogDescription>
+              {dashboardData?.vehicles.vehiclePaymentsDue.length || 0} vehicle payments due
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {dashboardData?.vehicles.vehiclePaymentsDue.map((payment, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-3 last:border-0"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {payment.tripId}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {payment.vehicleId} • Due:{" "}
+                    {payment.tripDate && !isNaN(new Date(payment.tripDate).getTime()) 
+                      ? format(new Date(payment.tripDate), "MMM dd, yyyy")
+                      : "Invalid Date"
+                    }
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-destructive">
+                    ₹{payment.balanceAmount.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View All Membership Fees Dialog */}
+      <Dialog open={showMembershipFeesDialog} onOpenChange={setShowMembershipFeesDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Membership Fees Due</DialogTitle>
+            <DialogDescription>
+              {dashboardData?.membershipFeesDue.length || 0} membership fees due
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {dashboardData?.membershipFeesDue.map((fee, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-3 last:border-0"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {fee.members?.firmName || fee.members?.applicantName || "Unknown Member"}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    Due: {fee.toDate && !isNaN(new Date(fee.toDate).getTime()) 
+                      ? format(new Date(fee.toDate), "MMM dd, yyyy")
+                      : fee.fromDate && !isNaN(new Date(fee.fromDate).getTime())
+                      ? format(new Date(fee.fromDate), "MMM dd, yyyy")
+                      : "Date not available"
+                    }
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-bold text-destructive">
+                    ₹{(fee.dueAmount || fee.totalAmount || 0).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View All Licenses Dialog */}
+      <Dialog open={showLicensesDialog} onOpenChange={setShowLicensesDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>All Expiring Licenses</DialogTitle>
+            <DialogDescription>
+              {dashboardData?.expiringLisences.length || 0} licenses expiring soon
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {dashboardData?.expiringLisences.map((license, index) => (
+              <div
+                key={index}
+                className="flex justify-between items-center border-b pb-3 last:border-0"
+              >
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {license.documentName}
+                  </span>
+                  <span className="text-sm text-muted-foreground">
+                    {license.members.applicantName} • Expires:{" "}
+                    {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) 
+                      ? format(new Date(license.expiredAt), "MMM dd, yyyy")
+                      : "Invalid Date"
+                    }
+                  </span>
+                </div>
+                <Badge
+                  variant={
+                    license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                    new Date(license.expiredAt) < addDays(new Date(), 7)
+                      ? "destructive"
+                      : "secondary"
+                  }
+                >
+                  {license.expiredAt && !isNaN(new Date(license.expiredAt).getTime()) &&
+                   new Date(license.expiredAt) < addDays(new Date(), 7)
+                    ? "Urgent"
+                    : "Soon"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Decline Dialog */}
+      <Dialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Decline Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for declining this request.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="Enter decline reason..."
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              rows={3}
+            />
+            {declineError && (
+              <p className="text-sm text-destructive">{declineError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeclineDialog(false);
+                setDeclineReason("");
+                setSelectedMember(null);
+                setSelectedInvoice(null);
+                setDeclineError("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeclineSubmit}
+              disabled={isProcessing || !declineReason.trim()}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                "Decline"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

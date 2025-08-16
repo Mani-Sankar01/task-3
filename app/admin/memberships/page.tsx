@@ -66,12 +66,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 // Define the Member type based on API response
 interface Member {
   membershipId: string;
   approvalStatus: "APPROVED" | "PENDING" | "DECLINED";
-  membershipStatus: "ACTIVE" | "INACTIVE";
+  membershipStatus: "ACTIVE" | "INACTIVE" | "CANCELLED";
   nextDueDate: string | null;
   isPaymentDue: "TRUE" | "FALSE";
   electricalUscNumber: string;
@@ -118,6 +119,11 @@ const page = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [approvalFilter, setApprovalFilter] = useState<string>("all");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declineError, setDeclineError] = useState("");
 
   const { data: session, status } = useSession();
   const { toast } = useToast();
@@ -134,42 +140,48 @@ const page = () => {
   }, [status, session?.user?.role]);
 
   // Fetch members from API
-  useEffect(() => {
-    const fetchMembers = async () => {
-      if (status !== "authenticated" || !session?.user?.token) return;
-
-      try {
+  const fetchMembers = async (showLoading = true) => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+    console.log(session?.user?.token);
+    try {
+      if (showLoading) {
         setIsLoading(true);
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const response = await axios.get(`${apiUrl}/api/member/get_members`, {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        });
+      }
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const response = await axios.get(`${apiUrl}/api/member/get_members`, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      });
 
-        console.log("Members API response:", response.data);
+      console.log("Members API response:", response.data);
 
-        // Handle the response structure
-        let membersData: Member[] = [];
-        if (response.data && Array.isArray(response.data)) {
-          membersData = response.data;
-        } else if (response.data && Array.isArray(response.data.data)) {
-          membersData = response.data.data;
-        } else if (response.data && Array.isArray(response.data.members)) {
-          membersData = response.data.members;
-        }
+      // Handle the response structure
+      let membersData: Member[] = [];
+      if (response.data && Array.isArray(response.data)) {
+        membersData = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        membersData = response.data.data;
+      } else if (response.data && Array.isArray(response.data.members)) {
+        membersData = response.data.members;
+      }
 
-        console.log("Processed members data:", membersData);
-        setMembers(membersData);
-        setError(null);
-      } catch (err) {
-        console.error("Failed to fetch members:", err);
-        setError("Failed to load members. Please try again later.");
-      } finally {
+      console.log("Processed members data:", membersData);
+      console.log("Setting members state with:", membersData.length, "members");
+      setMembers(membersData);
+      setError(null);
+      console.log("Members state updated successfully");
+    } catch (err) {
+      console.error("Failed to fetch members:", err);
+      setError("Failed to load members. Please try again later.");
+    } finally {
+      if (showLoading) {
         setIsLoading(false);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchMembers();
   }, [status, session?.user?.token]);
 
@@ -253,6 +265,237 @@ const page = () => {
     router.push(`/admin/memberships/add?id=${memberId}&edit=true`);
   };
 
+  // Update member status (Active/Inactive/Cancelled)
+  const handleUpdateMemberStatus = async (memberId: string, newStatus: "ACTIVE" | "INACTIVE" | "CANCELLED") => {
+    if (!session?.user?.token) {
+      console.log("Token" +session?.user?.token);
+      toast({
+        title: "Authentication Error",
+        description: "Authentication required to update member status.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      
+      const response = await axios.post(
+        `${apiUrl}/api/member/update_member`,
+        {
+          membershipId: memberId,
+          membershipStatus: newStatus
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+              if (response.status === 200) {
+          // Refresh the data to get the latest information
+          await fetchMembers(false); // Don't show loading state for refresh
+
+          toast({
+            title: "Status Updated",
+            description: `Member status updated to ${newStatus.toLowerCase()} successfully.`,
+          });
+        }
+    } catch (error: any) {
+      console.error("Error updating member status:", error);
+      const errorMessage = error.response?.data?.message || "Failed to update member status. Please try again.";
+      
+      toast({
+        title: "Update Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle member approval
+  const handleMemberApproved = async (memberId: string) => {
+    if (!session?.user?.token) {
+      console.log("Token: " + session?.user?.token);
+      toast({
+        title: "Authentication Error",
+        description: "Authentication required to approve member.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      
+      const payload = {
+        membershipId: memberId,
+        action: "APPROVED"
+      };
+
+      console.log("Making APPROVED request for member:", memberId, payload);
+
+      const response = await axios.post(
+        `${apiUrl}/api/member/approve_decline_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("response:", response);
+      console.log("APPROVED response status:", response.status);
+
+      console.log("APPROVED response:", response.data);
+      console.log("APPROVED response status:", response.status);
+
+      if (response.status === 200) {
+        console.log("Approve API call successful, showing toast...");
+        
+        // Show toast first
+        toast({
+          title: "Action Completed",
+          description: "Member approved successfully.",
+        });
+
+        // Then refresh the data to get the latest information
+        console.log("Refreshing members data after approve...");
+        await fetchMembers(false); // Don't show loading state for refresh
+        console.log("Members data refreshed successfully after approve");
+        
+        return true;
+      } else {
+        console.log("Approve API call failed - status not 200:", response.status);
+        toast({
+          title: "Action Failed",
+          description: "Failed to approve member. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+    } catch (error: any) {
+      console.error("Error approving member:", error);
+      const errorMessage = error.response?.data?.message || "Failed to approve member. Please try again.";
+      
+      toast({
+        title: "Action Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle member decline
+  const handleMemberDeclined = async (memberId: string, declineReason: string) => {
+    if (!session?.user?.token) {
+      console.log("Token: " + session?.user?.token);
+      toast({
+        title: "Authentication Error",
+        description: "Authentication required to decline member.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      
+      const payload = {
+        membershipId: memberId,
+        action: "DECLINED",
+        declineReason: declineReason
+      };
+
+      console.log("Making DECLINED request for member:", memberId, payload);
+
+      const response = await axios.post(
+        `${apiUrl}/api/member/approve_decline_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      console.log("response:", response);
+
+      console.log("DECLINED response:", response.data);
+      console.log("DECLINED response status:", response.status);
+
+      if (response.status === 200) {
+        console.log("Decline API call successful, showing toast...");
+        
+        // Show toast first
+        toast({
+          title: "Action Completed",
+          description: "Member declined successfully.",
+        });
+
+        // Then refresh the data to get the latest information
+        console.log("Refreshing members data after decline...");
+        await fetchMembers(false); // Don't show loading state for refresh
+        console.log("Members data refreshed successfully after decline");
+        
+        return true;
+      } else {
+        console.log("Decline API call failed - status not 200:", response.status);
+        setDeclineError("Failed to decline member. Please try again.");
+        return false;
+      }
+    } catch (error: any) {
+      console.error("Error declining member:", error);
+      const errorMessage = error.response?.data?.message || "Failed to decline member. Please try again.";
+      
+      setDeclineError(errorMessage);
+      return false;
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle decline submission
+  const handleDeclineSubmit = async () => {
+    console.log("handleDeclineSubmit called");
+    console.log("selectedMember:", selectedMember);
+    console.log("declineReason:", declineReason);
+    
+    if (!selectedMember || !declineReason.trim()) {
+      console.log("Validation failed - missing member or reason");
+      return;
+    }
+    
+    // Clear any previous errors
+    setDeclineError("");
+    
+    // Use the new handleMemberDeclined function
+    const success = await handleMemberDeclined(selectedMember.membershipId, declineReason.trim());
+    
+    if (success) {
+      // Close the dialog and reset state after successful decline
+      setShowDeclineDialog(false);
+      setDeclineReason("");
+      setDeclineError("");
+      setSelectedMember(null);
+      console.log("Decline process completed successfully");
+    } else {
+      console.log("Decline process failed, dialog remains open");
+    }
+  };
+
   // Delete a member
   const handleDeleteMember = async (
     memberId: string,
@@ -287,32 +530,8 @@ const page = () => {
         }
       );
 
-      // Refresh the list
-      const refreshResponse = await axios.get(
-        `${apiUrl}/api/member/get_members`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        }
-      );
-
-      let updatedMembersData: Member[] = [];
-      if (refreshResponse.data && Array.isArray(refreshResponse.data)) {
-        updatedMembersData = refreshResponse.data;
-      } else if (
-        refreshResponse.data &&
-        Array.isArray(refreshResponse.data.data)
-      ) {
-        updatedMembersData = refreshResponse.data.data;
-      } else if (
-        refreshResponse.data &&
-        Array.isArray(refreshResponse.data.members)
-      ) {
-        updatedMembersData = refreshResponse.data.members;
-      }
-
-      setMembers(updatedMembersData);
+      // Refresh the data to get the latest information
+      await fetchMembers(false); // Don't show loading state for refresh
 
       // If we're on a page that would now be empty, go back one page
       if (
@@ -616,25 +835,94 @@ const page = () => {
                                 <>
                                   {member.membershipStatus === "ACTIVE" && (
                                     <>
-                                      <DropdownMenuItem className="cursor-pointer">
+                                      <DropdownMenuItem 
+                                        className="cursor-pointer"
+                                        onClick={() => handleUpdateMemberStatus(member.membershipId, "INACTIVE")}
+                                        disabled={isProcessing}
+                                      >
                                         <X className="h-4 w-4 text-red-600" />
-                                        Make Inactivate
+                                        Make Inactive
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem className="cursor-pointer">
+                                      <DropdownMenuItem 
+                                        className="cursor-pointer"
+                                        onClick={() => handleUpdateMemberStatus(member.membershipId, "CANCELLED")}
+                                        disabled={isProcessing}
+                                      >
                                         <X className="h-4 w-4 text-red-600" />
                                         Cancel Membership
                                       </DropdownMenuItem>
                                     </>
                                   )}
 
-                                  {member.approvalStatus === "APPROVED" ? (
-                                    <DropdownMenuItem className="cursor-pointer">
+                                  {member.membershipStatus === "INACTIVE" && (
+                                    <DropdownMenuItem 
+                                      className="cursor-pointer"
+                                      onClick={() => handleUpdateMemberStatus(member.membershipId, "ACTIVE")}
+                                      disabled={isProcessing}
+                                    >
+                                      <CheckCheck className="h-4 w-4 text-green-600" />
+                                      Make Active
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {member.membershipStatus === "CANCELLED" && (
+                                    <DropdownMenuItem 
+                                      className="cursor-pointer"
+                                      onClick={() => handleUpdateMemberStatus(member.membershipId, "ACTIVE")}
+                                      disabled={isProcessing}
+                                    >
+                                      <CheckCheck className="h-4 w-4 text-green-600" />
+                                      Activate
+                                    </DropdownMenuItem>
+                                  )}
+
+                                  {member.approvalStatus === "PENDING" && (
+                                    <>
+                                      <DropdownMenuItem 
+                                        className="cursor-pointer"
+                                        onClick={() => handleMemberApproved(member.membershipId)}
+                                        disabled={isProcessing}
+                                      >
+                                        <CheckCheck className="h-4 w-4 text-green-600" />
+                                        Approve
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem 
+                                        className="cursor-pointer"
+                                        onClick={() => {
+                                          setSelectedMember(member);
+                                          setShowDeclineDialog(true);
+                                          setDeclineError("");
+                                        }}
+                                        disabled={isProcessing}
+                                      >
+                                        <BanIcon className="h-4 w-4 text-red-600" />
+                                        Decline
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+
+                                  {member.approvalStatus === "APPROVED" && (
+                                    <DropdownMenuItem 
+                                      className="cursor-pointer"
+                                      onClick={() => {
+                                        setSelectedMember(member);
+                                        setShowDeclineDialog(true);
+                                        setDeclineError("");
+                                      }}
+                                      disabled={isProcessing}
+                                    >
                                       <BanIcon className="h-4 w-4 text-red-600" />
                                       Decline
                                     </DropdownMenuItem>
-                                  ) : (
-                                    <DropdownMenuItem className="cursor-pointer">
-                                      <CheckCheck className="h-4 w-4 text-red-600" />
+                                  )}
+
+                                  {member.approvalStatus === "DECLINED" && (
+                                    <DropdownMenuItem 
+                                      className="cursor-pointer"
+                                      onClick={() => handleMemberApproved(member.membershipId)}
+                                      disabled={isProcessing}
+                                    >
+                                      <CheckCheck className="h-4 w-4 text-green-600" />
                                       Approve
                                     </DropdownMenuItem>
                                   )}
@@ -737,6 +1025,56 @@ const page = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Decline Dialog */}
+        <Dialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <BanIcon className="h-5 w-5 text-red-500" />
+                Decline Member
+              </DialogTitle>
+              <DialogDescription>
+                Please provide a reason for declining {selectedMember?.applicantName} ({selectedMember?.membershipId})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <Textarea
+                placeholder="Enter reason for declining..."
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                rows={4}
+              />
+              {declineError && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {declineError}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowDeclineDialog(false);
+                  setDeclineReason("");
+                  setDeclineError("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeclineSubmit}
+                disabled={isProcessing || !declineReason.trim()}
+              >
+                <BanIcon className="h-4 w-4 mr-2" />
+                Decline Member
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </SidebarInset>
   );

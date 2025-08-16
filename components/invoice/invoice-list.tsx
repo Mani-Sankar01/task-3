@@ -410,7 +410,7 @@ export default function InvoiceList() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="p-6">
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
           <div>

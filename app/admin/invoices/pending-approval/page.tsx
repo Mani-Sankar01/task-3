@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Check,
   X,
+  FileText,
   Filter
 } from "lucide-react";
 
@@ -34,30 +35,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface PendingChange {
-  id: string;
-  membershipId: string;
+interface InvoiceChangeRequest {
+  id: number;
+  invoiceId: string;
   approvalStatus: string;
-  approvedOrDeclinedBy: string | null;
-  updatedData: any;
+  approvedOrDeclinedBy: number | null;
+  note: string | null;
+  updatedData: {
+    total?: number;
+    subTotal?: number;
+    invoiceId: string;
+    eWayNumber?: string;
+    gstInNumber?: string;
+    invoiceDate?: string;
+    phoneNumber?: string;
+    customerName?: string;
+    membershipId?: string;
+    cGSTInPercent?: number;
+    iGSTInPercent?: number;
+    sGSTInPercent?: number;
+    billingAddress?: string;
+    shippingAddress?: string;
+  };
   modifiedBy: number;
   modifiedAt: string;
-  declineReason: string | null;
-  approvedByAdmin: string | null;
-  modifiedByEditor: {
-    id: number;
-    fullName: string;
-    gender: string;
-    email: string;
-    phone: string;
-    role: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-  };
+  userId: number | null;
 }
 
-interface ChangeDetails {
+interface InvoiceChangeDetails {
   type: "added" | "updated" | "deleted";
   field: string;
   oldValue?: any;
@@ -65,28 +70,28 @@ interface ChangeDetails {
   description: string;
 }
 
-const ApprovalPendingPage = () => {
+const InvoiceApprovalPendingPage = () => {
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
+  const [invoiceRequests, setInvoiceRequests] = useState<InvoiceChangeRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedChange, setSelectedChange] = useState<PendingChange | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<InvoiceChangeRequest | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
-  const [declineReason, setDeclineReason] = useState("");
+  const [declineNote, setDeclineNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [declineError, setDeclineError] = useState("");
-  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState("ALL");
 
-  // Fetch pending changes
+  // Fetch invoice change requests
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
 
-    const fetchPendingChanges = async () => {
+    const fetchInvoiceRequests = async () => {
       try {
         setIsLoading(true);
         const response = await axios.get(
-          `${process.env.BACKEND_API_URL}/api/member/get_member_changes/ALL`,
+          `${process.env.BACKEND_API_URL}/api/tax_invoice/get_update_request/${approvalStatusFilter}`,
           {
             headers: {
               Authorization: `Bearer ${session.user.token}`,
@@ -94,14 +99,13 @@ const ApprovalPendingPage = () => {
           }
         );
 
-        console.log(response.data);
-
-        setPendingChanges(response.data);
+        console.log("Invoice requests response:", response.data);
+        setInvoiceRequests(response.data.invoiceChangeRequests || []);
       } catch (error) {
-        console.error("Error fetching pending changes:", error);
+        console.error("Error fetching invoice requests:", error);
         toast({
           title: "Error",
-          description: "Failed to load pending changes",
+          description: "Failed to load invoice change requests",
           variant: "destructive",
         });
       } finally {
@@ -109,182 +113,150 @@ const ApprovalPendingPage = () => {
       }
     };
 
-    fetchPendingChanges();
-  }, [status, session?.user?.token, toast]);
+    fetchInvoiceRequests();
+  }, [status, session?.user?.token, toast, approvalStatusFilter]);
 
   // Process changes and extract meaningful changes
-  const extractChanges = (updatedData: any): ChangeDetails[] => {
-    const changes: ChangeDetails[] = [];
+  const extractChanges = (updatedData: any): InvoiceChangeDetails[] => {
+    const changes: InvoiceChangeDetails[] = [];
 
-    // Helper function to check if object has meaningful data
-    const hasData = (obj: any): boolean => {
-      if (!obj || typeof obj !== 'object') return false;
-      if (Array.isArray(obj)) return obj.length > 0;
-      return Object.keys(obj).some(key => {
-        const value = obj[key];
-        if (Array.isArray(value)) return value.length > 0;
-        if (typeof value === 'object' && value !== null) return hasData(value);
-        return value !== null && value !== undefined && value !== '';
-      });
-    };
-
-    // Check proposer changes
-    if (updatedData.proposer && hasData(updatedData.proposer)) {
+    // Check total amount changes
+    if (updatedData.total !== undefined) {
       changes.push({
         type: "updated",
-        field: "Proposer",
-        newValue: updatedData.proposer.proposerID,
-        description: `Proposer changed to: ${updatedData.proposer.proposerID}`
+        field: "Total Amount",
+        newValue: updatedData.total,
+        description: `Total amount updated to: ₹${updatedData.total}`
       });
     }
 
-    // Check executive proposer changes
-    if (updatedData.executiveProposer && hasData(updatedData.executiveProposer)) {
+    // Check subtotal changes
+    if (updatedData.subTotal !== undefined) {
       changes.push({
         type: "updated",
-        field: "Executive Proposer",
-        newValue: updatedData.executiveProposer.proposerID,
-        description: `Executive Proposer changed to: ${updatedData.executiveProposer.proposerID}`
+        field: "Sub Total",
+        newValue: updatedData.subTotal,
+        description: `Sub total updated to: ₹${updatedData.subTotal}`
       });
     }
 
-    // Check branch details changes
-    if (updatedData.branchDetails && hasData(updatedData.branchDetails)) {
-      const branchData = updatedData.branchDetails;
-      
-      if (branchData.newBranchSchema && branchData.newBranchSchema.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Branches",
-          newValue: branchData.newBranchSchema,
-          description: `${branchData.newBranchSchema.length} new branch(es) added`
-        });
-      }
-
-      if (branchData.updateBranchSchema && branchData.updateBranchSchema.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Branches",
-          newValue: branchData.updateBranchSchema,
-          description: `${branchData.updateBranchSchema.length} branch(es) updated`
-        });
-      }
-
-      if (branchData.deleteBranchSchema && branchData.deleteBranchSchema.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Branches",
-          newValue: branchData.deleteBranchSchema,
-          description: `${branchData.deleteBranchSchema.length} branch(es) deleted`
-        });
-      }
+    // Check GST changes
+    if (updatedData.cGSTInPercent !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "CGST Percentage",
+        newValue: updatedData.cGSTInPercent,
+        description: `CGST percentage updated to: ${updatedData.cGSTInPercent}%`
+      });
     }
 
-    // Check partner details changes
-    if (updatedData.partnerDetails && hasData(updatedData.partnerDetails)) {
-      const partnerData = updatedData.partnerDetails;
-      
-      if (partnerData.newPartnerDetails && partnerData.newPartnerDetails.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Partners",
-          newValue: partnerData.newPartnerDetails,
-          description: `${partnerData.newPartnerDetails.length} new partner(s) added`
-        });
-      }
-
-      if (partnerData.updatePartnerDetails && partnerData.updatePartnerDetails.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Partners",
-          newValue: partnerData.updatePartnerDetails,
-          description: `${partnerData.updatePartnerDetails.length} partner(s) updated`
-        });
-      }
-
-      if (partnerData.deletePartnerDetails && partnerData.deletePartnerDetails.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Partners",
-          newValue: partnerData.deletePartnerDetails,
-          description: `${partnerData.deletePartnerDetails.length} partner(s) deleted`
-        });
-      }
+    if (updatedData.sGSTInPercent !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "SGST Percentage",
+        newValue: updatedData.sGSTInPercent,
+        description: `SGST percentage updated to: ${updatedData.sGSTInPercent}%`
+      });
     }
 
-    // Check machinery information changes
-    if (updatedData.machineryInformations && hasData(updatedData.machineryInformations)) {
-      const machineryData = updatedData.machineryInformations;
-      
-      if (machineryData.newMachineryInformations && machineryData.newMachineryInformations.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Machinery",
-          newValue: machineryData.newMachineryInformations,
-          description: `${machineryData.newMachineryInformations.length} new machinery item(s) added`
-        });
-      }
-
-      if (machineryData.updateMachineryInformations && machineryData.updateMachineryInformations.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Machinery",
-          newValue: machineryData.updateMachineryInformations,
-          description: `${machineryData.updateMachineryInformations.length} machinery item(s) updated`
-        });
-      }
-
-      if (machineryData.deleteMachineryInformations && machineryData.deleteMachineryInformations.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Machinery",
-          newValue: machineryData.deleteMachineryInformations,
-          description: `${machineryData.deleteMachineryInformations.length} machinery item(s) deleted`
-        });
-      }
+    if (updatedData.iGSTInPercent !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "IGST Percentage",
+        newValue: updatedData.iGSTInPercent,
+        description: `IGST percentage updated to: ${updatedData.iGSTInPercent}%`
+      });
     }
 
-    // Check similar membership inquiry changes
-    if (updatedData.similarMembershipInquiry && hasData(updatedData.similarMembershipInquiry)) {
-      const inquiryData = updatedData.similarMembershipInquiry;
-      const changesList = [];
-      
-      if (inquiryData.org_details) changesList.push(`Organization details: ${inquiryData.org_details}`);
-      if (inquiryData.previous_application_details) changesList.push(`Previous application: ${inquiryData.previous_application_details}`);
-      if (inquiryData.is_member_of_similar_org) changesList.push(`Member of similar org: ${inquiryData.is_member_of_similar_org}`);
-      if (inquiryData.has_applied_earlier) changesList.push(`Applied earlier: ${inquiryData.has_applied_earlier}`);
-      if (inquiryData.is_valid_member) changesList.push(`Valid member: ${inquiryData.is_valid_member}`);
-      if (inquiryData.is_executive_member) changesList.push(`Executive member: ${inquiryData.is_executive_member}`);
+    // Check customer information changes
+    if (updatedData.customerName !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "Customer Name",
+        newValue: updatedData.customerName,
+        description: `Customer name updated to: ${updatedData.customerName}`
+      });
+    }
 
-      if (changesList.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Membership Inquiry",
-          newValue: inquiryData,
-          description: changesList.join(", ")
-        });
-      }
+    if (updatedData.phoneNumber !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "Phone Number",
+        newValue: updatedData.phoneNumber,
+        description: `Phone number updated to: ${updatedData.phoneNumber}`
+      });
+    }
+
+    if (updatedData.gstInNumber !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "GSTIN Number",
+        newValue: updatedData.gstInNumber,
+        description: `GSTIN number updated to: ${updatedData.gstInNumber}`
+      });
+    }
+
+    if (updatedData.eWayNumber !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "E-Way Number",
+        newValue: updatedData.eWayNumber,
+        description: `E-Way number updated to: ${updatedData.eWayNumber}`
+      });
+    }
+
+    // Check address changes
+    if (updatedData.billingAddress !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "Billing Address",
+        newValue: updatedData.billingAddress,
+        description: `Billing address updated to: ${updatedData.billingAddress}`
+      });
+    }
+
+    if (updatedData.shippingAddress !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "Shipping Address",
+        newValue: updatedData.shippingAddress,
+        description: `Shipping address updated to: ${updatedData.shippingAddress}`
+      });
+    }
+
+    // Check invoice date changes
+    if (updatedData.invoiceDate !== undefined) {
+      changes.push({
+        type: "updated",
+        field: "Invoice Date",
+        newValue: updatedData.invoiceDate,
+        description: `Invoice date updated to: ${format(new Date(updatedData.invoiceDate), "MMM dd, yyyy")}`
+      });
     }
 
     return changes;
   };
 
   // Handle approval
-  const handleApprove = async (changeId: string) => {
+  const handleApprove = async (id: number) => {
     if (!session?.user?.token) return;
 
+    const request = invoiceRequests.find(req => req.id === id);
+    if (!request) return;
+
     console.log({
-          pendingChangeId: changeId,
-          action: "APPROVED"
-        });
+      id: id,
+      action: "APPROVED"
+    });
 
     setIsProcessing(true);
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/member/approve_decline_member_changes`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
         {
-          pendingChangeId: changeId,
-          action: "APPROVED"
+          id: id,
+          action: "APPROVED",
+          note: "Approved by admin"
         },
         {
           headers: {
@@ -296,26 +268,26 @@ const ApprovalPendingPage = () => {
       if (response.status === 200) {
         toast({
           title: "Success",
-          description: "Changes approved successfully",
+          description: "Invoice changes approved successfully",
         });
         
         // Update the approval status instead of removing
-        setPendingChanges(prev => prev.map(change => 
-          change.id === changeId 
-            ? { ...change, approvalStatus: "APPROVED" }
-            : change
+        setInvoiceRequests(prev => prev.map(request => 
+          request.id === id 
+            ? { ...request, approvalStatus: "APPROVED" }
+            : request
         ));
         
-        if (selectedChange?.id === changeId) {
+        if (selectedRequest?.id === id) {
           setShowDetailsDialog(false);
-          setSelectedChange(null);
+          setSelectedRequest(null);
         }
       }
     } catch (error) {
-      console.error("Error approving changes:", error);
+      console.error("Error approving invoice changes:", error);
       toast({
         title: "Error",
-        description: "Failed to approve changes",
+        description: "Failed to approve invoice changes",
         variant: "destructive",
       });
     } finally {
@@ -324,27 +296,30 @@ const ApprovalPendingPage = () => {
   };
 
   // Handle decline
-  const handleDecline = async (changeId: string) => {
+  const handleDecline = async (id: number) => {
     if (!session?.user?.token) return;
 
-    // Show decline dialog if no reason provided
-    if (!declineReason.trim()) {
-      setSelectedChange(pendingChanges.find(change => change.id === changeId) || null);
+    // Show decline dialog if no note provided
+    if (!declineNote.trim()) {
+      setSelectedRequest(invoiceRequests.find(request => request.id === id) || null);
       setShowDeclineDialog(true);
       setDeclineError(""); // Clear any previous errors
       return;
     }
+
+    const request = invoiceRequests.find(req => req.id === id);
+    if (!request) return;
 
     setIsProcessing(true);
     setDeclineError(""); // Clear any previous errors
     
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/member/approve_decline_member_changes`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
         {
-          pendingChangeId: changeId,
+          id: id,
           action: "DECLINED",
-          declineReason: declineReason.trim()
+          note: declineNote.trim()
         },
         {
           headers: {
@@ -356,30 +331,30 @@ const ApprovalPendingPage = () => {
       if (response.status === 200) {
         toast({
           title: "Success",
-          description: "Changes declined successfully",
+          description: "Invoice changes declined successfully",
         });
         
         // Update the approval status instead of removing
-        setPendingChanges(prev => prev.map(change => 
-          change.id === changeId 
-            ? { ...change, approvalStatus: "DECLINED" }
-            : change
+        setInvoiceRequests(prev => prev.map(request => 
+          request.id === id 
+            ? { ...request, approvalStatus: "DECLINED" }
+            : request
         ));
         
         setShowDeclineDialog(false);
-        setDeclineReason("");
+        setDeclineNote("");
         setDeclineError("");
         
-        if (selectedChange?.id === changeId) {
+        if (selectedRequest?.id === id) {
           setShowDetailsDialog(false);
-          setSelectedChange(null);
+          setSelectedRequest(null);
         }
       }
     } catch (error: any) {
-      console.error("Error declining changes:", error);
+      console.error("Error declining invoice changes:", error);
       
       // Show error in dialog instead of toast
-      const errorMessage = error.response?.data?.message || error.message || "Failed to decline changes";
+      const errorMessage = error.response?.data?.message || error.message || "Failed to decline invoice changes";
       setDeclineError(errorMessage);
     } finally {
       setIsProcessing(false);
@@ -388,12 +363,12 @@ const ApprovalPendingPage = () => {
 
   // Handle decline submission from dialog
   const handleDeclineSubmit = async () => {
-    if (!selectedChange || !declineReason.trim()) return;
-    await handleDecline(selectedChange.id);
+    if (!selectedRequest || !declineNote.trim()) return;
+    await handleDecline(selectedRequest.id);
   };
 
   // Get change type badge
-  const getChangeTypeBadge = (changes: ChangeDetails[]) => {
+  const getChangeTypeBadge = (changes: InvoiceChangeDetails[]) => {
     const types = changes.map(c => c.type);
     if (types.includes("added")) return <Badge variant="default" className="bg-green-100 text-green-800">Added</Badge>;
     if (types.includes("deleted")) return <Badge variant="destructive">Deleted</Badge>;
@@ -401,21 +376,15 @@ const ApprovalPendingPage = () => {
     return <Badge variant="outline">Modified</Badge>;
   };
 
-  // Filter pending changes based on approval status
-  const filteredPendingChanges = pendingChanges.filter((change) => {
-    if (approvalStatusFilter === "all") return true;
-    return change.approvalStatus === approvalStatusFilter;
-  });
-
   if (isLoading) {
     return (
       <SidebarInset>
-        <Header breadcrumbs={[{ label: "Approval Pending" }]} />
+        <Header breadcrumbs={[{ label: "Invoice Approval Pending" }]} />
         <div className="flex flex-col gap-4 p-4">
           <div className="flex justify-center items-center min-h-[400px]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-muted-foreground">Loading pending changes...</p>
+              <p className="mt-4 text-muted-foreground">Loading invoice change requests...</p>
             </div>
           </div>
         </div>
@@ -425,10 +394,10 @@ const ApprovalPendingPage = () => {
 
   return (
     <SidebarInset>
-      <Header breadcrumbs={[{ label: "Approval Pending" }]} />
+      <Header breadcrumbs={[{ label: "Invoice Approval Pending" }]} />
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Approval For Changes</h1>
+          <h1 className="text-2xl font-bold">Invoice Approval For Changes</h1>
           <div className="flex items-center gap-4">
             <Select
               value={approvalStatusFilter}
@@ -438,68 +407,68 @@ const ApprovalPendingPage = () => {
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="APPROVED">Approved</SelectItem>
                 <SelectItem value="DECLINED">Declined</SelectItem>
               </SelectContent>
             </Select>
             <Badge variant="outline" className="text-sm">
-              {filteredPendingChanges.length} of {pendingChanges.length} changes
+              {invoiceRequests.length} requests
             </Badge>
           </div>
         </div>
 
-        {filteredPendingChanges.length === 0 ? (
+        {invoiceRequests.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {pendingChanges.length === 0 ? "No Pending Changes" : "No Changes Found"}
-              </h3>
+              <h3 className="text-lg font-semibold mb-2">No Invoice Change Requests</h3>
               <p className="text-muted-foreground text-center">
-                {pendingChanges.length === 0 
-                  ? "All member changes have been processed. Check back later for new pending changes."
-                  : `No changes found with "${approvalStatusFilter}" status. Try adjusting the filter.`
-                }
+                All invoice change requests have been processed. Check back later for new pending requests.
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {filteredPendingChanges.map((change) => {
-              const changes = extractChanges(change.updatedData);
+            {invoiceRequests.map((request) => {
+              const changes = extractChanges(request.updatedData);
               
               return (
-                <Card key={change.id} className="hover:shadow-md transition-shadow">
+                <Card key={request.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2">
-                          <Clock className="h-5 w-5 text-orange-500" />
-                          <span className="font-semibold">{change.membershipId}</span>
+                          <FileText className="h-5 w-5 text-blue-500" />
+                          <span className="font-semibold">{request.invoiceId}</span>
                         </div>
                         {getChangeTypeBadge(changes)}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        {format(new Date(change.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
-                        <Badge variant={change.approvalStatus === "PENDING" ? "destructive" : change.approvalStatus === "APPROVED" ? "default" : "destructive"}>
-                          {change.approvalStatus}
+                        {format(new Date(request.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
+                        <Badge variant={request.approvalStatus === "PENDING" ? "destructive" : request.approvalStatus === "APPROVED" ? "default" : "destructive"}>
+                          {request.approvalStatus}
                         </Badge>
                       </div>
-                      
                     </div>
 
                     <div className="mb-4">
                       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                         <User className="h-4 w-4" />
-                        Modified by: {change.modifiedByEditor.fullName}
+                        Modified by: User ID {request.modifiedBy}
                       </div>
                       
                       <div className="text-sm">
                         <span className="font-medium">Changes:</span> {changes.length} modification(s)
                       </div>
+
+                      {request.note && (
+                        <div className="text-sm mt-2">
+                          <span className="font-medium">Note:</span> {request.note}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -507,7 +476,7 @@ const ApprovalPendingPage = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          setSelectedChange(change);
+                          setSelectedRequest(request);
                           setShowDetailsDialog(true);
                         }}
                       >
@@ -518,7 +487,7 @@ const ApprovalPendingPage = () => {
                       <Button
                         variant="default"
                         size="sm"
-                        onClick={() => handleApprove(change.id)}
+                        onClick={() => handleApprove(request.id)}
                         disabled={isProcessing}
                         className="bg-primary hover:bg-primary/90"
                       >
@@ -530,7 +499,7 @@ const ApprovalPendingPage = () => {
                         variant="destructive"
                         size="sm"
                         onClick={() => {
-                          setSelectedChange(change);
+                          setSelectedRequest(request);
                           setShowDeclineDialog(true);
                         }}
                         disabled={isProcessing}
@@ -552,17 +521,17 @@ const ApprovalPendingPage = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Change Details - {selectedChange?.membershipId}
+                Invoice Change Details - {selectedRequest?.invoiceId}
               </DialogTitle>
               <DialogDescription>
-                Review the changes made by {selectedChange?.modifiedByEditor.fullName} on{" "}
-                {selectedChange && format(new Date(selectedChange.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
+                Review the changes made on{" "}
+                {selectedRequest && format(new Date(selectedRequest.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
               </DialogDescription>
             </DialogHeader>
 
-            {selectedChange && (
+            {selectedRequest && (
               <div className="space-y-4">
-                {extractChanges(selectedChange.updatedData).map((change, index) => (
+                {extractChanges(selectedRequest.updatedData).map((change, index) => (
                   <Card key={index}>
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2">
@@ -597,13 +566,13 @@ const ApprovalPendingPage = () => {
               >
                 Close
               </Button>
-              {selectedChange && (
+              {selectedRequest && (
                 <>
                   <Button
                     variant="default"
-                    onClick={() => handleApprove(selectedChange.id)}
+                    onClick={() => handleApprove(selectedRequest.id)}
                     disabled={isProcessing}
-                    className="bg-primary hover:bg-primary/90"
+                    className="bg-green-600 hover:bg-green-700"
                   >
                     <Check className="h-4 w-4 mr-2" />
                     Approve
@@ -631,18 +600,18 @@ const ApprovalPendingPage = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <XCircle className="h-5 w-5 text-red-500" />
-                Decline Changes
+                Decline Invoice Changes
               </DialogTitle>
               <DialogDescription>
-                Please provide a reason for declining the changes for {selectedChange?.membershipId}
+                Please provide a note for declining the changes for {selectedRequest?.invoiceId}
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4">
               <Textarea
-                placeholder="Enter reason for declining..."
-                value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Enter note for declining..."
+                value={declineNote}
+                onChange={(e) => setDeclineNote(e.target.value)}
                 rows={4}
               />
               {declineError && (
@@ -657,7 +626,7 @@ const ApprovalPendingPage = () => {
                 variant="outline"
                 onClick={() => {
                   setShowDeclineDialog(false);
-                  setDeclineReason("");
+                  setDeclineNote("");
                   setDeclineError("");
                 }}
               >
@@ -666,7 +635,7 @@ const ApprovalPendingPage = () => {
               <Button
                 variant="destructive"
                 onClick={handleDeclineSubmit}
-                disabled={isProcessing || !declineReason.trim()}
+                disabled={isProcessing || !declineNote.trim()}
               >
                 <X className="h-4 w-4 mr-2" />
                 Decline Changes
@@ -679,4 +648,4 @@ const ApprovalPendingPage = () => {
   );
 };
 
-export default ApprovalPendingPage;
+export default InvoiceApprovalPendingPage;

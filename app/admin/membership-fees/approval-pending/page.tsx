@@ -14,7 +14,8 @@ import {
   AlertCircle,
   Check,
   X,
-  DollarSign
+  DollarSign,
+  Filter
 } from "lucide-react";
 
 import Header from "@/components/header";
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PendingBillRequest {
   id: number;
@@ -68,6 +70,7 @@ const BillApprovalPendingPage = () => {
   const [declineNote, setDeclineNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [declineError, setDeclineError] = useState("");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
 
   // Fetch pending bill requests
   useEffect(() => {
@@ -86,6 +89,7 @@ const BillApprovalPendingPage = () => {
         );
 
         setPendingRequests(response.data.pendingRequest || []);
+        console.log(response.data.pendingRequest);
       } catch (error) {
         console.error("Error fetching pending bill requests:", error);
         toast({
@@ -172,20 +176,24 @@ const BillApprovalPendingPage = () => {
         }
       );
 
-      if (response.status === 200) {
-        toast({
-          title: "Success",
-          description: "Bill changes approved successfully",
-        });
-        
-        // Remove the approved request from the list
-        setPendingRequests(prev => prev.filter(request => request.id !== id));
-        
-        if (selectedRequest?.id === id) {
-          setShowDetailsDialog(false);
-          setSelectedRequest(null);
-        }
-      }
+             if (response.status === 200) {
+         toast({
+           title: "Success",
+           description: "Bill changes approved successfully",
+         });
+         
+         // Update the approval status instead of removing
+         setPendingRequests(prev => prev.map(request => 
+           request.id === id 
+             ? { ...request, approvalStatus: "APPROVED" }
+             : request
+         ));
+         
+         if (selectedRequest?.id === id) {
+           setShowDetailsDialog(false);
+           setSelectedRequest(null);
+         }
+       }
     } catch (error) {
       console.error("Error approving bill changes:", error);
       toast({
@@ -231,24 +239,28 @@ const BillApprovalPendingPage = () => {
         }
       );
 
-      if (response.status === 200) {
-        toast({
-          title: "Success",
-          description: "Bill changes declined successfully",
-        });
-        
-        // Remove the declined request from the list
-        setPendingRequests(prev => prev.filter(request => request.id !== id));
-        
-        setShowDeclineDialog(false);
-        setDeclineNote("");
-        setDeclineError("");
-        
-        if (selectedRequest?.id === id) {
-          setShowDetailsDialog(false);
-          setSelectedRequest(null);
-        }
-      }
+             if (response.status === 200) {
+         toast({
+           title: "Success",
+           description: "Bill changes declined successfully",
+         });
+         
+         // Update the approval status instead of removing
+         setPendingRequests(prev => prev.map(request => 
+           request.id === id 
+             ? { ...request, approvalStatus: "DECLINED" }
+             : request
+         ));
+         
+         setShowDeclineDialog(false);
+         setDeclineNote("");
+         setDeclineError("");
+         
+         if (selectedRequest?.id === id) {
+           setShowDetailsDialog(false);
+           setSelectedRequest(null);
+         }
+       }
     } catch (error: any) {
       console.error("Error declining bill changes:", error);
       
@@ -275,6 +287,12 @@ const BillApprovalPendingPage = () => {
     return <Badge variant="outline">Modified</Badge>;
   };
 
+  // Filter pending requests based on approval status
+  const filteredPendingRequests = pendingRequests.filter((request) => {
+    if (approvalStatusFilter === "all") return true;
+    return request.approvalStatus === approvalStatusFilter;
+  });
+
   if (isLoading) {
     return (
       <SidebarInset>
@@ -296,25 +314,46 @@ const BillApprovalPendingPage = () => {
       <Header breadcrumbs={[{ label: "Bill Approval Pending" }]} />
       <div className="flex flex-col gap-4 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Bill Approval Pending</h1>
-          <Badge variant="outline" className="text-sm">
-            {pendingRequests.length} pending requests
-          </Badge>
+          <h1 className="text-2xl font-bold">Membership Fee Approval For Changes</h1>
+          <div className="flex items-center gap-4">
+            <Select
+              value={approvalStatusFilter}
+              onValueChange={setApprovalStatusFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="DECLINED">Declined</SelectItem>
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="text-sm">
+              {filteredPendingRequests.length} of {pendingRequests.length} requests
+            </Badge>
+          </div>
         </div>
 
-        {pendingRequests.length === 0 ? (
+        {filteredPendingRequests.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Pending Bill Requests</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {pendingRequests.length === 0 ? "No Pending Bill Requests" : "No Requests Found"}
+              </h3>
               <p className="text-muted-foreground text-center">
-                All bill change requests have been processed. Check back later for new pending requests.
+                {pendingRequests.length === 0 
+                  ? "All bill change requests have been processed. Check back later for new pending requests."
+                  : `No requests found with "${approvalStatusFilter}" status. Try adjusting the filter.`
+                }
               </p>
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4">
-            {pendingRequests.map((request) => {
+            {filteredPendingRequests.map((request) => {
               const changes = extractChanges(request.updatedData);
               
               return (
@@ -331,6 +370,9 @@ const BillApprovalPendingPage = () => {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         {format(new Date(request.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
+                        <Badge variant={request.approvalStatus === "PENDING" ? "destructive" : request.approvalStatus === "APPROVED" ? "default" : "destructive"}>
+                          {request.approvalStatus}
+                        </Badge>
                       </div>
                     </div>
 
