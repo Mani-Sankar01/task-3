@@ -13,6 +13,8 @@ import {
   Clock,
   Calendar,
   Download,
+  Plus,
+  Trash2,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,6 +44,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { FileUpload } from "@/components/ui/file-upload";
+import { downloadFile } from "@/lib/client-file-upload";
+import {
   getLeaseQueryById,
   type LeaseQuery,
   // getMemberNameByMembershipId, // Removed
@@ -62,6 +77,20 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   const [query, setQuery] = useState<LeaseQuery | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
+  
+  // Document management state
+  const [showDocDialog, setShowDocDialog] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<any>(null);
+  const [docName, setDocName] = useState("");
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docError, setDocError] = useState<string | null>(null);
+  const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
+  
+  // Confirmation dialog state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<any>(null);
+  
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchLeaseQueryDetails() {
@@ -100,6 +129,250 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
 
   const handleBack = () => {
     router.push(`/${renderRoleBasedPath(session?.user?.role)}/lease-queries`);
+  };
+
+  // Document management functions
+  const handleAddDocument = () => {
+    setEditingDoc(null);
+    setDocName("");
+    setDocFile(null);
+    setDocError(null);
+    setShowDocDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setShowDocDialog(false);
+    setEditingDoc(null);
+    setDocName("");
+    setDocFile(null);
+    setDocError(null);
+  };
+
+  const handleEditDocument = (doc: any) => {
+    setEditingDoc(doc);
+    setDocName(doc.documentName || "");
+    setDocFile(null);
+    setDocError(null);
+    setShowDocDialog(true);
+  };
+
+  const handleDownloadDocument = async (filePath: string) => {
+    try {
+      // Extract filename from path
+      const filename = filePath.split('/').pop() || 'document';
+      console.log('Downloading file:', filename, 'from path:', filePath);
+      
+      const blob = await downloadFile(filename);
+      if (blob) {
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        toast({
+          title: "Download Successful",
+          description: `File ${filename} downloaded successfully.`,
+        });
+      } else {
+        toast({
+          title: "Download Failed",
+          description: "Could not download the file. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "An error occurred while downloading the file.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteDocument = (doc: any) => {
+    setDocToDelete(doc);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteDocument = async () => {
+    if (!docToDelete) return;
+    
+    try {
+      if (status !== "authenticated" || !session?.user?.token) {
+        toast({
+          title: "Error",
+          description: "Authentication required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/lease_query/update_lease_query`,
+        {
+          leaseQueryId: queryId,
+          deleteAttachment: [{ id: docToDelete.id }]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      console.log('Delete response:', response.data);
+
+      // Check for success - API returns message on success, not success field
+      if (response.data.message && response.data.message.includes('successfully')) {
+        // Refresh the query data
+        const updatedResponse = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/lease_query/get_lease_query/${queryId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        console.log('Refresh response after delete:', updatedResponse.data);
+        setQuery(updatedResponse.data.data || null);
+        
+        // Show success toast
+        toast({
+          title: "Document Deleted",
+          description: `Document "${docToDelete?.documentName}" was successfully deleted.`,
+        });
+      } else {
+        throw new Error(response.data.message || 'Delete operation failed');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete document",
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeleteConfirm(false);
+      setDocToDelete(null);
+    }
+  };
+
+  const handleSaveDocument = async () => {
+    if (!docName.trim()) {
+      setDocError('Document name is required');
+      return;
+    }
+
+    if (!docFile && !editingDoc) {
+      setDocError('Please select a file');
+      return;
+    }
+
+    setIsSubmittingDoc(true);
+    setDocError(null);
+
+    try {
+      if (status !== "authenticated" || !session?.user?.token) {
+        setDocError("Authentication required");
+        toast({
+          title: "Error",
+          description: "Authentication required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      let documentPath = "";
+      if (docFile) {
+        // Upload new file
+        const formData = new FormData();
+        formData.append('file', docFile);
+        
+        const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online'}/upload`, {
+          method: 'POST',
+          headers: {
+            'x-api-token': process.env.NEXT_PUBLIC_FILE_UPLOAD_API_TOKEN || 'your-secret-api-token-2024',
+          },
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('File upload failed');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        documentPath = uploadResult.file?.filePath || uploadResult.filePath;
+      }
+
+      const payload = {
+        leaseQueryId: queryId,
+        ...(editingDoc ? {
+          updateAttachments: [{
+            id: editingDoc.id,
+            documentName: docName,
+            ...(documentPath && { documentPath })
+          }]
+        } : {
+          newAttachments: [{
+            documentName: docName,
+            documentPath: documentPath || editingDoc?.documentPath
+          }]
+        })
+      };
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/lease_query/update_lease_query`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Check for success - API returns message on success, not success field
+      if (response.data.message && response.data.message.includes('successfully')) {
+        // Refresh the query data
+        const updatedResponse = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/lease_query/get_lease_query/${queryId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        setQuery(updatedResponse.data.data || null);
+        
+        // Show success toast
+        toast({
+          title: editingDoc ? "Document Updated" : "Document Added",
+          description: `The document was successfully ${editingDoc ? "updated" : "added"}.`,
+        });
+        
+        // Close dialog
+        handleCloseDialog();
+      } else {
+        throw new Error(response.data.message || 'Save operation failed');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      setDocError('Failed to save document');
+      toast({
+        title: "Error",
+        description: "Failed to save document. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingDoc(false);
+    }
   };
 
   if (loading) {
@@ -512,10 +785,18 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
         <TabsContent value="documents">
           <Card>
             <CardHeader>
-              <CardTitle>Lease Documents</CardTitle>
-              <CardDescription>
-                All documents related to this lease agreement
-              </CardDescription>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle>Lease Documents</CardTitle>
+                  <CardDescription>
+                    All documents related to this lease agreement
+                  </CardDescription>
+                </div>
+                <Button onClick={handleAddDocument} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Document
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {Array.isArray(query.leaseQueryAttachments) &&
@@ -537,14 +818,32 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                           </TableCell>
                           <TableCell>{doc.documentPath || "N/A"}</TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-2"
-                              // onClick={() => handleDownload(doc.documentPath)}
-                            >
-                              <Download className="h-4 w-4 mr-2" /> Download
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleDownloadDocument(doc.documentPath)}
+                              >
+                                <Download className="h-4 w-4 mr-2" /> Download
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleEditDocument(doc)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" /> Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 px-2 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteDocument(doc)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -563,6 +862,97 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Document Management Dialog */}
+      <Dialog open={showDocDialog} onOpenChange={handleCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingDoc ? "Edit Document" : "Add Document"}</DialogTitle>
+            <DialogDescription>
+              {editingDoc ? "Update the document details" : "Upload a new document for this lease query"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="docName">Document Name</Label>
+              <Input
+                id="docName"
+                value={docName}
+                onChange={(e) => setDocName(e.target.value)}
+                placeholder="Enter document name"
+              />
+            </div>
+            <div>
+              <Label>File</Label>
+              <FileUpload
+                onFileSelect={setDocFile}
+                onUploadComplete={() => {}}
+                onUploadError={setDocError}
+                subfolder="documents"
+                accept=".pdf,.jpg,.jpeg,.png"
+                existingFilePath={editingDoc?.documentPath}
+                onDownload={(filePath) => handleDownloadDocument(filePath)}
+                onRemoveFile={() => {
+                  console.log('onRemoveFile callback called in lease query details');
+                  setDocFile(null);
+                  // If editing an existing document, clear the existing path
+                  if (editingDoc) {
+                    console.log('Clearing existing document path');
+                    setEditingDoc({ ...editingDoc, documentPath: null });
+                  }
+                }}
+              />
+            </div>
+            {docError && (
+              <div className="text-sm text-destructive">{docError}</div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={handleCloseDialog}
+              disabled={isSubmittingDoc}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveDocument}
+              disabled={isSubmittingDoc}
+            >
+              {isSubmittingDoc ? "Saving..." : editingDoc ? "Update" : "Add"} Document
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the document "{docToDelete?.documentName}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDocToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteDocument}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -60,12 +60,16 @@ const GST_PERCENTAGE_OPTIONS = [
   { value: 0.25, label: "0.25%" },
   { value: 1, label: "1%" },
   { value: 1.5, label: "1.5%" },
+  { value: 2, label: "2%" },
+  { value: 2.5, label: "2.5%" },
   { value: 3, label: "3%" },
   { value: 5, label: "5%" },
   { value: 6, label: "6%" },
   { value: 7.5, label: "7.5%" },
+  { value: 9, label: "9%" },
   { value: 12, label: "12%" },
   { value: 18, label: "18%" },
+  { value: 20, label: "20%" },
   { value: 28, label: "28%" },
 ];
 
@@ -95,7 +99,7 @@ const invoiceFormSchema = z.object({
           hsnCode: z.string().min(1, "HSN code is required"),
           particulars: z.string().min(1, "Particulars are required"),
           noOfStones: z.coerce.number().optional(),
-          sizes: z.string().optional(),
+          unit: z.enum(["Piece", "Square Fit", "Square meter", "Tones", "Matric tone"]).optional(),
           totalSqFeet: z.coerce.number().min(0.1, "Total sq. feet is required"),
           ratePerSqFt: z.coerce.number().min(0.1, "Rate per sq. ft. is required"),
           amount: z.coerce.number().min(0),
@@ -211,7 +215,7 @@ export default function InvoiceForm({
               hsnCode: "",
               particulars: "",
               noOfStones: undefined,
-              sizes: "",
+              unit: undefined,
               totalSqFeet: 0,
               ratePerSqFt: 0,
               amount: 0,
@@ -308,7 +312,7 @@ export default function InvoiceForm({
                 hsnCode: item.hsnCode,
                 particulars: item.particular,
                 noOfStones: item.stoneCount || undefined,
-                sizes: item.size?.toString() || "",
+                unit: item.size as "Piece" | "Square Fit" | "Square meter" | "Tones" | "Matric tone" | undefined,
                 totalSqFeet: parseFloat(item.totalSqFeet),
                 ratePerSqFt: parseFloat(item.ratePerSqFeet),
                 amount: parseFloat(item.amount),
@@ -317,7 +321,7 @@ export default function InvoiceForm({
                   hsnCode: "",
                   particulars: "",
                   noOfStones: undefined,
-                  sizes: "",
+                  unit: undefined,
                   totalSqFeet: 0,
                   ratePerSqFt: 0,
                   amount: 0,
@@ -469,7 +473,7 @@ export default function InvoiceForm({
       hsnCode: "",
       particulars: "",
       noOfStones: undefined,
-      sizes: "",
+      unit: undefined,
       totalSqFeet: 0,
       ratePerSqFt: 0,
       amount: 0,
@@ -482,13 +486,13 @@ export default function InvoiceForm({
     
     // Compare basic fields
     const fieldsToCompare = [
-      'membershipId', 'invoiceDate', 'customerName', 'gstInNumber', 
+      'memberId', 'invoiceDate', 'customerName', 'gstInNumber', 
       'billingAddress', 'shippingAddress', 'eWayNumber', 'phoneNumber',
       'cgstPercentage', 'sgstPercentage', 'igstPercentage', 'subTotal', 'totalAmount'
     ];
     
     fieldsToCompare.forEach(field => {
-      const apiField = field === 'membershipId' ? 'membershipId' : 
+      const apiField = field === 'memberId' ? 'membershipId' : 
                       field === 'invoiceDate' ? 'invoiceDate' :
                       field === 'customerName' ? 'customerName' :
                       field === 'gstInNumber' ? 'gstInNumber' :
@@ -510,14 +514,14 @@ export default function InvoiceForm({
         const currentDate = currentValue as string;
         const originalDate = originalValue ? originalValue.split('T')[0] : '';
         if (currentDate !== originalDate) {
-          changes[field] = currentValue;
+          changes[apiField] = currentValue;
         }
       } else if (typeof currentValue === 'number' && typeof originalValue === 'string') {
         if (currentValue !== parseFloat(originalValue)) {
-          changes[field] = currentValue;
+          changes[apiField] = currentValue;
         }
       } else if (currentValue !== originalValue) {
-        changes[field] = currentValue;
+        changes[apiField] = currentValue;
       }
     });
     
@@ -538,7 +542,7 @@ export default function InvoiceForm({
         item.hsnCode !== originalItem.hsnCode ||
         item.particulars !== originalItem.particular ||
         item.noOfStones !== originalItem.stoneCount ||
-        item.sizes !== originalItem.size?.toString() ||
+        item.unit !== originalItem.size ||
         item.totalSqFeet !== parseFloat(originalItem.totalSqFeet) ||
         item.ratePerSqFt !== parseFloat(originalItem.ratePerSqFeet) ||
         item.amount !== parseFloat(originalItem.amount)
@@ -553,11 +557,11 @@ export default function InvoiceForm({
     });
     
     if (newItems.length > 0) {
-      changes.newInvoiceItem = newItems.map(item => ({
+      changes.newInvoiceItems = newItems.map(item => ({
         hsnCode: item.hsnCode,
         particular: item.particulars,
         stoneCount: item.noOfStones,
-        size: item.sizes,
+        size: item.unit,
         totalSqFeet: item.totalSqFeet,
         ratePerSqFeet: item.ratePerSqFt,
         amount: item.amount,
@@ -565,12 +569,12 @@ export default function InvoiceForm({
     }
     
     if (updatedItems.length > 0) {
-      changes.updateInvoiceItem = updatedItems.map(item => ({
+      changes.updateInvoiceItems = updatedItems.map(item => ({
         id: parseInt(item.id!),
         hsnCode: item.hsnCode,
         particular: item.particulars,
         stoneCount: item.noOfStones,
-        size: item.sizes,
+        size: item.unit,
         totalSqFeet: item.totalSqFeet,
         ratePerSqFeet: item.ratePerSqFt,
         amount: item.amount,
@@ -578,10 +582,15 @@ export default function InvoiceForm({
     }
     
     if (deletedItems.length > 0) {
-      changes.deleteInvoiceItem = deletedItems.map((item: any) => item.id);
+      changes.deleteInvoiceItems = deletedItems.map((item: any) => item.id);
     }
     
     return changes;
+  };
+
+  // Wrapper function for form submission
+  const handleFormSubmit = async (data: InvoiceFormValues) => {
+    return onSubmit(data);
   };
 
   // Handle form submission
@@ -609,19 +618,19 @@ export default function InvoiceForm({
         
         // Log what specific fields were changed
         const changedFields = Object.keys(changes).filter(key => 
-          key !== 'newInvoiceItem' && key !== 'updateInvoiceItem' && key !== 'deleteInvoiceItem'
+          key !== 'newInvoiceItems' && key !== 'updateInvoiceItems' && key !== 'deleteInvoiceItems'
         );
         if (changedFields.length > 0) {
           console.log("Changed fields:", changedFields);
         }
-        if (changes.newInvoiceItem) {
-          console.log("New items added:", changes.newInvoiceItem.length);
+        if (changes.newInvoiceItems) {
+          console.log("New items added:", changes.newInvoiceItems.length);
         }
-        if (changes.updateInvoiceItem) {
-          console.log("Items updated:", changes.updateInvoiceItem.length);
+        if (changes.updateInvoiceItems) {
+          console.log("Items updated:", changes.updateInvoiceItems.length);
         }
-        if (changes.deleteInvoiceItem) {
-          console.log("Items deleted:", changes.deleteInvoiceItem.length);
+        if (changes.deleteInvoiceItems) {
+          console.log("Items deleted:", changes.deleteInvoiceItems.length);
         }
         
         // Prepare update payload with only changed fields
@@ -634,6 +643,7 @@ export default function InvoiceForm({
         console.log("Changes detected:", Object.keys(changes));
 
         try {
+          console.log("updating invoice", updatePayload);
           const response = await axios.post(
             `${process.env.BACKEND_API_URL}/api/tax_invoice/update_tax_invoice`,
             updatePayload,
@@ -686,7 +696,7 @@ export default function InvoiceForm({
             hsnCode: item.hsnCode,
             particular: item.particulars,
             stoneCount: item.noOfStones,
-            size: item.sizes, // Send as string, not parseFloat
+            size: item.unit, // Send as string, not parseFloat
             totalSqFeet: item.totalSqFeet,
             ratePerSqFeet: item.ratePerSqFt,
             amount: item.amount,
@@ -745,7 +755,7 @@ export default function InvoiceForm({
           hsnCode: item.hsnCode,
           particular: item.particulars,
           stoneCount: item.noOfStones || 0,
-          size: item.sizes || "",
+          size: item.unit || "",
           totalSqFeet: item.totalSqFeet,
           ratePerSqFeet: item.ratePerSqFt,
           amount: item.amount,
@@ -803,7 +813,7 @@ export default function InvoiceForm({
       
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
           <Card className="mx-auto">
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -1168,13 +1178,28 @@ export default function InvoiceForm({
 
                           <FormField
                             control={form.control}
-                            name={`items.${index}.sizes`}
+                            name={`items.${index}.unit`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Sizes (Optional)</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="Enter sizes (optional)" {...field} />
-                                </FormControl>
+                                <FormLabel>Select Unit</FormLabel>
+                                <Select onValueChange={(value) => {
+                                  field.onChange(value);
+                                  // Recalculate amount when unit changes
+                                  calculateItemAmount(index);
+                                }} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select unit" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="Piece">Piece</SelectItem>
+                                    <SelectItem value="Square Fit">Square Fit</SelectItem>
+                                    <SelectItem value="Square meter">Square meter</SelectItem>
+                                    <SelectItem value="Tones">Tones</SelectItem>
+                                    <SelectItem value="Matric tone">Matric tone</SelectItem>
+                                  </SelectContent>
+                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1183,45 +1208,57 @@ export default function InvoiceForm({
                           <FormField
                             control={form.control}
                             name={`items.${index}.totalSqFeet`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Total Sq. Feet</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="Enter total sq. feet"
-                                    {...field}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      calculateItemAmount(index);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                            render={({ field }) => {
+                              const selectedUnit = form.watch(`items.${index}.unit`);
+                              const unitLabel = selectedUnit ? selectedUnit : "Selected Unit";
+                              const placeholder = selectedUnit ? `Enter total ${selectedUnit.toLowerCase()}` : "Enter total units";
+                              
+                              return (
+                                <FormItem>
+                                  <FormLabel>Total {unitLabel}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder={placeholder}
+                                      {...field}
+                                      onChange={(e) => {
+                                        field.onChange(e);
+                                        calculateItemAmount(index);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
                           />
 
                           <FormField
                             control={form.control}
                             name={`items.${index}.ratePerSqFt`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Rate per Sq. Ft.</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="Enter rate"
-                                    {...field}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                      calculateItemAmount(index);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                            render={({ field }) => {
+                              const selectedUnit = form.watch(`items.${index}.unit`);
+                              const unitLabel = selectedUnit ? selectedUnit : "Unit";
+                              const placeholder = selectedUnit ? `Enter rate per ${selectedUnit.toLowerCase()}` : "Enter rate per unit";
+                              
+                              return (
+                                <FormItem>
+                                  <FormLabel>Rate per {unitLabel}</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder={placeholder}
+                                      {...field}
+                                      onChange={(e) => {
+                                        field.onChange(e);
+                                        calculateItemAmount(index);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
                           />
 
                           <FormField

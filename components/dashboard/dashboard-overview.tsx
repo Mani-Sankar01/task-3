@@ -444,10 +444,11 @@ export default function DashboardOverview() {
 
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_update_request`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
         {
           id: invoiceId,
-          action: "APPROVED"
+          action: "APPROVED",
+          note: "Approved by admin"
         },
         {
           headers: {
@@ -486,7 +487,7 @@ export default function DashboardOverview() {
 
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_update_request`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
         {
           id: invoiceId,
           action: "DECLINED",

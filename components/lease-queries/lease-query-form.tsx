@@ -42,11 +42,15 @@ import { AlertCircle, FileText, Plus, Trash2, Upload } from "lucide-react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { FileUpload } from "@/components/ui/file-upload";
+import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 
 // Form schema
 const leaseQueryAttachmentSchema = z.object({
   documentName: z.string().min(1, { message: "Document name is required" }),
   documentPath: z.string().optional(),
+  file: z.any().optional(), // For file upload
+  existingPath: z.string().optional(), // For existing files
 });
 
 const leaseQuerySchema = z.object({
@@ -86,9 +90,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     }>
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<
-    Record<number, File | null>
-  >({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [existingAttachments, setExistingAttachments] = useState<
@@ -274,7 +275,11 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
             ? new Date(leaseQueryData.dateOfRenewal).toISOString().split("T")[0]
             : "",
           status: leaseQueryData.status || "PENDING",
-          leaseQueryAttachments: [],
+          leaseQueryAttachments: existingAttachments.map((attachment) => ({
+            documentName: attachment.documentName,
+            documentPath: attachment.documentPath,
+            existingPath: attachment.documentPath,
+          })),
         });
 
         console.log(
@@ -356,17 +361,12 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           expiryOfLease: data.expiryOfLease,
           dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
-          newAttachments: data.leaseQueryAttachments.map(
-            (attachment, index) => {
-              const file = uploadedFiles[index];
-              return {
-                documentName: attachment.documentName,
-                documentPath: file
-                  ? `/uploads/documents/${file.name}`
-                  : attachment.documentPath || "",
-              };
-            }
-          ),
+          newAttachments: data.leaseQueryAttachments
+            .filter((attachment) => attachment.file || attachment.documentPath)
+            .map((attachment) => ({
+              documentName: attachment.documentName,
+              documentPath: attachment.documentPath || "",
+            })),
           updateAttachments: existingAttachments.map((attachment) => ({
             id: attachment.id,
             documentName: attachment.documentName,
@@ -398,17 +398,12 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           expiryOfLease: data.expiryOfLease,
           dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
-          leaseQueryAttachments: data.leaseQueryAttachments.map(
-            (attachment, index) => {
-              const file = uploadedFiles[index];
-              return {
-                documentName: attachment.documentName,
-                documentPath: file
-                  ? `/uploads/documents/${file.name}`
-                  : attachment.documentPath || "",
-              };
-            }
-          ),
+          leaseQueryAttachments: data.leaseQueryAttachments
+            .filter((attachment) => attachment.file || attachment.documentPath)
+            .map((attachment) => ({
+              documentName: attachment.documentName,
+              documentPath: attachment.documentPath || "",
+            })),
         };
 
         console.log("Add API Payload:", JSON.stringify(addPayload));
@@ -455,21 +450,14 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   };
 
   const addAttachment = () => {
-    attachmentFields.append({ documentName: "", documentPath: "" });
+    attachmentFields.append({ 
+      documentName: "", 
+      documentPath: "",
+      file: null,
+      existingPath: ""
+    });
   };
 
-  const handleFileChange = (
-    index: number,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0] || null;
-    setUploadedFiles((prev) => ({ ...prev, [index]: file }));
-
-    // Update the hidden documentPath field
-    if (file) {
-      form.setValue(`leaseQueryAttachments.${index}.documentPath`, file.name);
-    }
-  };
 
   const deleteExistingAttachment = (attachmentId: number) => {
     setDeletedAttachments((prev) => [...prev, { id: attachmentId }]);
@@ -489,6 +477,28 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     if (deletedAtt) {
       // This would need to be handled based on your data structure
       // For now, we'll just remove it from deleted list
+    }
+  };
+
+  // Handle document download
+  const handleDownloadDocument = async (filePath: string) => {
+    try {
+      const blob = await downloadFile(filePath);
+      if (blob) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filePath.split('/').pop() || 'document';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to download file');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download file');
     }
   };
 
@@ -808,48 +818,30 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                             {/* Document File Upload */}
                             <FormField
                               control={form.control}
-                              name={`leaseQueryAttachments.${index}.documentPath`}
+                              name={`leaseQueryAttachments.${index}.file`}
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Upload Document</FormLabel>
-                                  <div className="flex items-center gap-2">
-                                    {/* Hidden input for form state */}
-                                    <input type="hidden" {...field} />
-
-                                    {/* File input for user interaction */}
-                                    <FormControl>
-                                      <div className="flex flex-col space-y-2">
-                                        <div className="flex items-center gap-2">
-                                          <Input
-                                            type="file"
-                                            id={`document-${index}`}
-                                            className="hidden"
-                                            onChange={(e) =>
-                                              handleFileChange(index, e)
-                                            }
-                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                          />
-                                          <label
-                                            htmlFor={`document-${index}`}
-                                            className="flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer hover:bg-muted transition-colors"
-                                          >
-                                            <Upload className="h-4 w-4" />
-                                            <span>Choose File</span>
-                                          </label>
-                                          {(uploadedFiles[index] ||
-                                            field.value) && (
-                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                              <FileText className="h-4 w-4" />
-                                              <span>
-                                                {uploadedFiles[index]?.name ||
-                                                  field.value}
-                                              </span>
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </FormControl>
-                                  </div>
+                                  <FormControl>
+                                    <FileUpload
+                                      onFileSelect={(file) => field.onChange(file)}
+                                      onUploadComplete={(filePath) => {
+                                        // Update the documentPath when upload completes
+                                        form.setValue(`leaseQueryAttachments.${index}.documentPath`, filePath);
+                                      }}
+                                      onUploadError={(error) => {
+                                        console.error("Upload error:", error);
+                                      }}
+                                      subfolder="documents"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      existingFilePath={form.watch(`leaseQueryAttachments.${index}.existingPath`)}
+                                      onDownload={(filePath) => handleDownloadDocument(filePath)}
+                                      onRemoveFile={() => {
+                                        field.onChange(null);
+                                        form.setValue(`leaseQueryAttachments.${index}.documentPath`, "");
+                                      }}
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}

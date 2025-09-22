@@ -89,12 +89,18 @@ export function FileUpload({
   };
 
   const removeFile = () => {
+    console.log('removeFile called');
     setSelectedFile(null);
     setUploadedFilePath(null);
     setError(null);
     setUploadProgress(0);
     onFileSelect(null);
-    if (typeof onRemoveFile === 'function') onRemoveFile();
+    if (typeof onRemoveFile === 'function') {
+      console.log('Calling onRemoveFile callback');
+      onRemoveFile();
+    } else {
+      console.log('onRemoveFile callback not provided');
+    }
   };
 
   const handleDownload = async () => {

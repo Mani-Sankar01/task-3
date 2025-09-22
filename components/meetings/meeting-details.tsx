@@ -1,7 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, MapPin, Users, Edit, ArrowLeft } from "lucide-react";
+import { useSession } from "next-auth/react";
+import axios from "axios";
+import { Calendar, Clock, MapPin, Users, Edit, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,184 +14,350 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Meeting } from "@/data/meetings";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 import Link from "next/link";
 
-interface MeetingDetailsProps {
-  meeting: Meeting;
+// Types for the API response
+interface Meeting {
+  id: number;
+  meetId: string;
+  title: string;
+  agenda: string;
+  notes?: string;
+  startTime: string;
+  location: string;
+  memberAttendees: Array<{
+    id: number;
+    meetId: string;
+    all: boolean;
+    allExecutives: boolean;
+    zones: Array<{
+      id: number;
+      zone: string;
+      memberAttendeesId: number;
+    }>;
+    mandals: Array<{
+      id: number;
+      mandal: string;
+      memberAttendeesId: number;
+    }>;
+    customMembers: string[];
+  }>;
+  vehicleAttendees: Array<{
+    id: number;
+    meetId: string;
+    owner: boolean;
+    driver: boolean;
+    all: boolean;
+    customVehicle: Array<{
+      vehicleId: string;
+      owner: boolean;
+      driver: boolean;
+    }>;
+  }>;
+  labourAttendees: Array<{
+    id: number;
+    meetId: string;
+    all: boolean;
+    membershipID: string[];
+    custom: string[];
+  }>;
+  status: string;
+  followUpMeetings?: Array<{
+    dateTime: string;
+  }>;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: number;
+  modifiedBy?: number | null;
 }
 
-export default function MeetingDetails({ meeting }: MeetingDetailsProps) {
-  const router = useRouter();
+interface MeetingDetailsProps {
+  meetingId: string;
+}
 
-  const handleEdit = () => {
-    router.push(`/admin/meetings/add/${meeting.id}`);
+export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const { toast } = useToast();
+  
+  const [meeting, setMeeting] = useState<Meeting | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch meeting details from API
+  const fetchMeetingDetails = async () => {
+    if (status === "loading" || !session?.user?.token) {
+      return;
+    }
+
+    if (status !== "authenticated" || !session?.user?.token) {
+      setError("Authentication required");
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await axios.get(`${process.env.BACKEND_API_URL}/api/meeting/get_meet_id/${meetingId}`, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      });
+
+      console.log("Response:", response.data);
+      
+      // Extract the first meeting from the array
+      const meetingData = Array.isArray(response.data) ? response.data[0] : response.data.data?.[0] || response.data;
+      
+      // Ensure the meeting object has the required arrays even if API doesn't return them
+      const processedMeetingData = {
+        ...meetingData,
+        memberAttendees: meetingData.memberAttendees || [],
+        vehicleAttendees: meetingData.vehicleAttendees || [],
+        labourAttendees: meetingData.labourAttendees || [],
+      };
+      
+      setMeeting(processedMeetingData);
+      console.log("Meeting data:", processedMeetingData);
+    } catch (error) {
+      console.error("Error fetching meeting details:", error);
+      setError("Failed to load meeting details");
+      toast({
+        title: "Error",
+        description: "Failed to fetch meeting details. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Load meeting details on component mount and session change
+  useEffect(() => {
+    fetchMeetingDetails();
+  }, [meetingId, status, session?.user?.token]);
 
   const handleBack = () => {
-    router.push("/admin/meetings");
+    router.back();
   };
+
+  const handleEdit = () => {
+    router.push(`/admin/meetings/${meetingId}/edit`);
+  };
+
+  const getAttendeeTypeLabel = (meeting: Meeting) => {
+    const types = [];
+    
+    // Check member attendees
+    if (meeting.memberAttendees && meeting.memberAttendees.length > 0) {
+      const memberAttendee = meeting.memberAttendees[0];
+      if (memberAttendee.all) {
+        types.push("All Members");
+      } else if (memberAttendee.allExecutives) {
+        types.push("All Executives");
+      } else {
+        const memberDetails = [];
+        if (memberAttendee.zones?.length) {
+          const zoneNames = memberAttendee.zones.map(z => z.zone).join(", ");
+          memberDetails.push(`Zones: ${zoneNames}`);
+        }
+        if (memberAttendee.mandals?.length) {
+          const mandalNames = memberAttendee.mandals.map(m => m.mandal).join(", ");
+          memberDetails.push(`Mandals: ${mandalNames}`);
+        }
+        if (memberAttendee.customMembers?.length) {
+          memberDetails.push(`${memberAttendee.customMembers.length} Custom Member(s)`);
+        }
+        types.push(`Selected Members (${memberDetails.join(", ")})`);
+      }
+    }
+    
+    // Check vehicle attendees
+    if (meeting.vehicleAttendees && meeting.vehicleAttendees.length > 0) {
+      const vehicleAttendee = meeting.vehicleAttendees[0];
+      if (vehicleAttendee.owner && vehicleAttendee.driver) {
+        types.push("All Vehicle Owners & Drivers");
+      } else if (vehicleAttendee.owner) {
+        types.push("All Vehicle Owners");
+      } else if (vehicleAttendee.driver) {
+        types.push("All Vehicle Drivers");
+      } else {
+        const vehicleDetails = [];
+        if (vehicleAttendee.owner) vehicleDetails.push("Owners");
+        if (vehicleAttendee.driver) vehicleDetails.push("Drivers");
+        if (vehicleAttendee.customVehicle?.length) {
+          vehicleDetails.push(`${vehicleAttendee.customVehicle.length} Custom Vehicle(s)`);
+        }
+        types.push(`Selected Vehicles (${vehicleDetails.join(", ")})`);
+      }
+    }
+    
+    // Check labour attendees
+    if (meeting.labourAttendees && meeting.labourAttendees.length > 0) {
+      const labourAttendee = meeting.labourAttendees[0];
+      if (labourAttendee.all) {
+        types.push("All Labour");
+      } else {
+        const labourDetails = [];
+        if (labourAttendee.membershipID?.length) {
+          labourDetails.push(`${labourAttendee.membershipID.length} Membership(s)`);
+        }
+        if (labourAttendee.custom?.length) {
+          labourDetails.push(`${labourAttendee.custom.length} Custom Labour(s)`);
+        }
+        types.push(`Selected Labour (${labourDetails.join(", ")})`);
+      }
+    }
+    
+    return types.join(", ") || "No attendees";
+  };
+
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading meeting details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !meeting) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <p className="text-destructive mb-4">{error || "Meeting not found"}</p>
+            <Button onClick={handleBack} variant="outline">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Go Back
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center">
-          <Link href={`/admin/meetings/`}>
-            <Button variant="outline" className="mr-4">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Button>
-          </Link>
-          <h1 className="text-2xl font-bold">Meeting Details</h1>
-        </div>{" "}
-        <Link href={`/admin/meetings/${meeting.id}/edit`}>
-          <Button>
-            <Edit className="mr-2 h-4 w-4" /> Edit Meeting
+      <div className="mb-6">
+        <Button onClick={handleBack} variant="outline" className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Meetings
+        </Button>
+        
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">{meeting.title}</h1>
+            <p className="text-muted-foreground mt-2">{meeting.agenda}</p>
+          </div>
+          <Button onClick={handleEdit}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Meeting
           </Button>
-        </Link>
+        </div>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Meeting Information */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <CardTitle>Meeting Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
               <div>
-                <CardTitle className="text-2xl">{meeting.title}</CardTitle>
-                <CardDescription>{meeting.agenda}</CardDescription>
+                <p className="font-medium">Date & Time</p>
+                <p className="text-sm text-muted-foreground">
+                  {meeting.startTime && !isNaN(new Date(meeting.startTime).getTime()) 
+                    ? format(new Date(meeting.startTime), "EEEE, MMMM dd, yyyy 'at' HH:mm")
+                    : "Invalid Date"
+                  }
+                </p>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <p className="font-medium">Location</p>
+                <p className="text-sm text-muted-foreground">{meeting.location}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
               <Badge
                 variant={
-                  meeting.status === "completed"
+                  meeting.status === "COMPLETED"
                     ? "default"
-                    : meeting.status === "scheduled"
+                    : meeting.status === "SCHEDULED"
                     ? "secondary"
                     : "destructive"
                 }
               >
-                {meeting.status.charAt(0).toUpperCase() +
-                  meeting.status.slice(1)}
+                {meeting.status ? 
+                  meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1).toLowerCase() 
+                  : "Unknown"
+                }
               </Badge>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Date: {new Date(meeting.date).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span>Time: {meeting.time}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>Location: {meeting.meetingPoint}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Attendees:{" "}
-                    {meeting.actualAttendees ?? meeting.expectedAttendees}{" "}
-                    expected
-                  </span>
-                </div>
-              </div>
-              {meeting.notes && (
-                <div>
-                  <h3 className="font-medium mb-2">Notes</h3>
-                  <p className="text-muted-foreground">{meeting.notes}</p>
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
 
+        {/* Attendees */}
         <Card>
           <CardHeader>
-            <CardTitle>Attendees</CardTitle>
-            <CardDescription>
-              Meeting participants and their details
-            </CardDescription>
+            <CardTitle className="flex items-center">
+              <Users className="mr-2 h-5 w-5" />
+              Attendees
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {meeting.attendees.map((attendee, index) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <h3 className="font-medium mb-2">
-                    {attendee.type.charAt(0).toUpperCase() +
-                      attendee.type.slice(1)}
-                    s
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Scope: {attendee.scope === "all" ? "All" : "Selected"}{" "}
-                    {attendee.type.charAt(0).toUpperCase() +
-                      attendee.type.slice(1)}
-                    s
-                  </p>
-                  {attendee.selectedIds && (
-                    <p className="text-sm text-muted-foreground">
-                      Selected IDs: {attendee.selectedIds.join(", ")}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {getAttendeeTypeLabel(meeting)}
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Meeting Timeline</CardTitle>
-            <CardDescription>Important dates and updates</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium">Created</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(meeting.createdAt).toLocaleString()}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">Last Updated</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(meeting.updatedAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {meeting.followUps && meeting.followUps.length > 0 && (
-          <Card className="mt-6">
+        {/* Notes */}
+        {meeting.notes && (
+          <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Follow-up Meetings</CardTitle>
-              <CardDescription>Scheduled follow-up meetings</CardDescription>
+              <CardTitle>Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {meeting.followUps.map((followUp, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between border rounded-lg p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">
-                          {followUp.date && !isNaN(new Date(followUp.date).getTime()) 
-                            ? new Date(followUp.date).toLocaleDateString()
-                            : "Invalid Date"
-                          }
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {followUp.time}
-                        </p>
-                      </div>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {meeting.notes}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Follow-up Meetings */}
+        {meeting.followUpMeetings && meeting.followUpMeetings.length > 0 && (
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Follow-up Meetings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {meeting.followUpMeetings.map((followUp: { dateTime: string }, index: number) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 border rounded-lg">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Follow-up {index + 1}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {followUp.dateTime && !isNaN(new Date(followUp.dateTime).getTime()) 
+                          ? format(new Date(followUp.dateTime), "EEEE, MMMM dd, yyyy 'at' HH:mm")
+                          : "Invalid Date"
+                        }
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -196,6 +365,37 @@ export default function MeetingDetails({ meeting }: MeetingDetailsProps) {
             </CardContent>
           </Card>
         )}
+
+        {/* Meeting Details */}
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Meeting Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Meeting ID</p>
+                <p className="font-mono">{meeting.meetId}</p>
+              </div>
+              {meeting.createdAt && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Created</p>
+                  <p className="text-sm">
+                    {format(new Date(meeting.createdAt), "MMM dd, yyyy 'at' HH:mm")}
+                  </p>
+                </div>
+              )}
+              {meeting.updatedAt && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
+                  <p className="text-sm">
+                    {format(new Date(meeting.updatedAt), "MMM dd, yyyy 'at' HH:mm")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
