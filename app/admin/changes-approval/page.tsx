@@ -26,6 +26,7 @@ import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -169,6 +170,8 @@ const ChangesApprovalPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [declineError, setDeclineError] = useState("");
   const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [selectedDate, setSelectedDate] = useState("");
   const [activeTab, setActiveTab] = useState("members");
 
   // Fetch all changes
@@ -244,8 +247,69 @@ const ChangesApprovalPage = () => {
 
   // Filter functions
   const filterChanges = (changes: any[]) => {
-    if (approvalStatusFilter === "all") return changes;
-    return changes.filter(change => change.approvalStatus === approvalStatusFilter);
+    let filtered = changes;
+    
+    // Filter by approval status
+    if (approvalStatusFilter !== "all") {
+      filtered = filtered.filter(change => change.approvalStatus === approvalStatusFilter);
+    }
+    
+    // Filter by date
+    if (dateFilter !== "all") {
+      const today = new Date();
+      let startDate, endDate;
+      
+      switch (dateFilter) {
+        case "today":
+          startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+          break;
+        case "yesterday":
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          startDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+          endDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate() + 1);
+          break;
+        case "thisWeek":
+          const startOfWeek = new Date(today);
+          startOfWeek.setDate(today.getDate() - today.getDay());
+          startDate = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate());
+          endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+          break;
+        case "lastWeek":
+          const lastWeekStart = new Date(today);
+          lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+          const lastWeekEnd = new Date(today);
+          lastWeekEnd.setDate(today.getDate() - today.getDay());
+          startDate = new Date(lastWeekStart.getFullYear(), lastWeekStart.getMonth(), lastWeekStart.getDate());
+          endDate = new Date(lastWeekEnd.getFullYear(), lastWeekEnd.getMonth(), lastWeekEnd.getDate());
+          break;
+        case "thisMonth":
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          endDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          break;
+        case "lastMonth":
+          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          endDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          break;
+        case "custom":
+          if (selectedDate) {
+            const filterDate = new Date(selectedDate);
+            startDate = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate());
+            endDate = new Date(filterDate.getFullYear(), filterDate.getMonth(), filterDate.getDate() + 1);
+          }
+          break;
+      }
+      
+      if (startDate && endDate) {
+        filtered = filtered.filter(change => {
+          const changeDate = new Date(change.modifiedAt);
+          return changeDate >= startDate && changeDate < endDate;
+        });
+      }
+    }
+    
+    return filtered;
   };
 
   const filteredMemberChanges = filterChanges(memberChanges);
@@ -266,6 +330,25 @@ const ChangesApprovalPage = () => {
         return value !== null && value !== undefined && value !== '';
       });
     };
+
+    // Check basic field changes
+    const basicFields = [
+      'relativeName', 'applicantName', 'firmName', 'proprietorName', 
+      'phoneNumber1', 'phoneNumber2', 'surveyNumber', 'village', 'zone', 
+      'mandal', 'district', 'state', 'pinCode', 'sanctionedHP',
+      'estimatedMaleWorker', 'estimatedFemaleWorker', 'fullAddress'
+    ];
+
+    basicFields.forEach(field => {
+      if (updatedData[field] !== undefined && updatedData[field] !== null && updatedData[field] !== '') {
+        changes.push({
+          type: "updated",
+          field: field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          newValue: updatedData[field],
+          description: `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} changed to: ${updatedData[field]}`
+        });
+      }
+    });
 
     if (updatedData.proposer && hasData(updatedData.proposer)) {
       changes.push({
@@ -860,6 +943,41 @@ const ChangesApprovalPage = () => {
                 <SelectItem value="DECLINED">Declined</SelectItem>
               </SelectContent>
             </Select>
+            
+            <Select
+              value={dateFilter}
+              onValueChange={(value) => {
+                setDateFilter(value);
+                if (value === "all") {
+                  setSelectedDate("");
+                }
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="thisWeek">This Week</SelectItem>
+                <SelectItem value="lastWeek">Last Week</SelectItem>
+                <SelectItem value="thisMonth">This Month</SelectItem>
+                <SelectItem value="lastMonth">Last Month</SelectItem>
+                <SelectItem value="custom">Custom Date</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {dateFilter === "custom" && (
+              <Input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-[180px]"
+                placeholder="Select date"
+              />
+            )}
+            
           </div>
         </div>
 

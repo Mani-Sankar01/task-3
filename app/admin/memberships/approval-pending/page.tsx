@@ -128,6 +128,25 @@ const ApprovalPendingPage = () => {
       });
     };
 
+    // Check basic field changes
+    const basicFields = [
+      'relativeName', 'applicantName', 'firmName', 'proprietorName', 
+      'phoneNumber1', 'phoneNumber2', 'surveyNumber', 'village', 'zone', 
+      'mandal', 'district', 'state', 'pinCode', 'sanctionedHP',
+      'estimatedMaleWorker', 'estimatedFemaleWorker', 'fullAddress'
+    ];
+
+    basicFields.forEach(field => {
+      if (updatedData[field] !== undefined && updatedData[field] !== null && updatedData[field] !== '') {
+        changes.push({
+          type: "updated",
+          field: field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          newValue: updatedData[field],
+          description: `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} changed to: ${updatedData[field]}`
+        });
+      }
+    });
+
     // Check proposer changes
     if (updatedData.proposer && hasData(updatedData.proposer)) {
       changes.push({

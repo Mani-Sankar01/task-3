@@ -377,10 +377,17 @@ export default function Step1PersonalBusiness({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="zone1">Zone 1</SelectItem>
-                    <SelectItem value="zone2">Zone 2</SelectItem>
-                    <SelectItem value="zone3">Zone 3</SelectItem>
-                    <SelectItem value="zone4">Zone 4</SelectItem>
+                    <SelectItem value="Gouthapur_Road">Gouthapur Road</SelectItem>
+                    <SelectItem value="Basaveshwar_Nagar">Basaveshwar Nagar</SelectItem>
+                    <SelectItem value="Chengole">Chengole</SelectItem>
+                    <SelectItem value="Allapur">Allapur</SelectItem>
+                    <SelectItem value="Karankote_Road">Karankote Road</SelectItem>
+                    <SelectItem value="Karankote_Village">Karankote Village</SelectItem>
+                    <SelectItem value="Chengeshpur_Road">Chengeshpur Road</SelectItem>
+                    <SelectItem value="Kodangal_Road">Kodangal Road</SelectItem>
+                    <SelectItem value="Kokat_Road">Kokat Road</SelectItem>
+                    <SelectItem value="Hyderabad_Road">Hyderabad Road</SelectItem>
+                    <SelectItem value="Local">Local</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -432,9 +439,9 @@ export default function Step1PersonalBusiness({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="district1">District 1</SelectItem>
-                    <SelectItem value="district2">District 2</SelectItem>
-                    <SelectItem value="district3">District 3</SelectItem>
+                    <SelectItem value="Vikarabad">Vikarabad</SelectItem>
+                    <SelectItem value="Medak">Medak</SelectItem>
+                    <SelectItem value="Rangareddy">Rangareddy</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

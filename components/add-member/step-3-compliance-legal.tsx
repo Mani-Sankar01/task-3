@@ -22,6 +22,8 @@ interface Step3ComplianceLegalProps {
   isEditMode?: boolean;
   validationErrors?: {
     gstinNo?: string;
+    gstInUsername?: string;
+    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -29,6 +31,8 @@ interface Step3ComplianceLegalProps {
   };
   validationSuccess?: {
     gstinNo?: string;
+    gstInUsername?: string;
+    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -130,6 +134,65 @@ export default function Step3ComplianceLegal({
                 )}
               />
             </div>
+            
+            {/* GST Username and Password */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={control}
+                name="complianceDetails.gstInUsername"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GST Username</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter GST username" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          onFieldChange?.('gstInUsername', e.target.value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    {validationErrors?.gstInUsername && (
+                      <p className="text-sm text-destructive mt-1">{validationErrors.gstInUsername}</p>
+                    )}
+                    {validationSuccess?.gstInUsername && (
+                      <p className="text-sm text-green-600 mt-1">{validationSuccess.gstInUsername}</p>
+                    )}
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={control}
+                name="complianceDetails.gstInPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>GST Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password"
+                        placeholder="Enter GST password" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          onFieldChange?.('gstInPassword', e.target.value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    {validationErrors?.gstInPassword && (
+                      <p className="text-sm text-destructive mt-1">{validationErrors.gstInPassword}</p>
+                    )}
+                    {validationSuccess?.gstInPassword && (
+                      <p className="text-sm text-green-600 mt-1">{validationSuccess.gstInPassword}</p>
+                    )}
+                  </FormItem>
+                )}
+              />
+            </div>
+            
             <FormField
               control={control}
               name="complianceDetails.gstinDoc"

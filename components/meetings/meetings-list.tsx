@@ -345,7 +345,7 @@ export default function MeetingsList() {
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="">
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
           <div>

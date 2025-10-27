@@ -117,6 +117,8 @@ const formSchema = z.object({
   }),
   complianceDetails: z.object({
     gstinNo: z.string(),
+    gstInUsername: z.string().optional(),
+    gstInPassword: z.string().optional(),
     factoryLicenseNo: z.string(),
     tspcbOrderNo: z.string(),
     mdlNo: z.string(),
@@ -210,6 +212,8 @@ const AddMemberForm = () => {
     electricalUscNumber?: string;
     scNumber?: string;
     gstinNo?: string;
+    gstInUsername?: string;
+    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -220,6 +224,8 @@ const AddMemberForm = () => {
     electricalUscNumber?: string;
     scNumber?: string;
     gstinNo?: string;
+    gstInUsername?: string;
+    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -279,6 +285,8 @@ const AddMemberForm = () => {
       },
       complianceDetails: {
         gstinNo: "",
+        gstInUsername: "",
+        gstInPassword: "",
         factoryLicenseNo: "",
         tspcbOrderNo: "",
         mdlNo: "",
@@ -594,6 +602,8 @@ const AddMemberForm = () => {
       if (shouldSendCompliance) {
         requestData.complianceDetails = {
           gstInNumber: data.complianceDetails.gstinNo,
+          gstInUsername: data.complianceDetails.gstInUsername || "",
+          gstInPassword: data.complianceDetails.gstInPassword || "",
           gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
           gstExpiredAt: data.complianceDetails.gstinExpiredAt
             ? new Date(data.complianceDetails.gstinExpiredAt).toISOString()
@@ -641,6 +651,7 @@ const AddMemberForm = () => {
 
       if (session?.user.token) {
         setIsSubmitting(true);
+        console.log(session?.user.token); 
         const response = await axios.post(
           `${process.env.BACKEND_API_URL}/api/member/add_member`,
           requestData,
@@ -1256,24 +1267,24 @@ const AddMemberForm = () => {
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
               {currentStep === 1 && (
                 <Step1PersonalBusiness
-                  validationErrors={validationErrors}
-                  validationSuccess={validationSuccess}
+                  validationErrors={validationErrors as any}
+                  validationSuccess={validationSuccess as any}
                   onFieldChange={handleFieldChange}
                   isValidating={isValidating}
                 />
               )}
               {currentStep === 2 && (
                 <Step2OperationDetails
-                  validationErrors={validationErrors}
-                  validationSuccess={validationSuccess}
+                  validationErrors={validationErrors as any}
+                  validationSuccess={validationSuccess as any}
                   onFieldChange={handleFieldChange}
                   isValidating={isValidating}
                 />
               )}
               {currentStep === 3 && (
                 <Step3ComplianceLegal
-                  validationErrors={validationErrors}
-                  validationSuccess={validationSuccess}
+                  validationErrors={validationErrors as any}
+                  validationSuccess={validationSuccess as any}
                   onFieldChange={handleFieldChange}
                 />
               )}
