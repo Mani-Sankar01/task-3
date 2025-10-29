@@ -2,7 +2,8 @@
 
 import { useFormContext } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CheckCircle, Info } from "lucide-react";
+import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,19 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/file-upload";
 import { downloadFile } from "@/lib/client-file-upload";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Step3ComplianceLegalProps {
   isEditMode?: boolean;
@@ -47,6 +61,12 @@ export default function Step3ComplianceLegal({
   validationSuccess, 
   onFieldChange 
 }: Step3ComplianceLegalProps) {
+  const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+
+  const handleGstVerify = () => {
+    // For demo purposes, show success dialog
+    setShowVerifyDialog(true);
+  };
   const { control } = useFormContext();
 
   // Partner details field array
@@ -96,7 +116,19 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.gstinNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormLabel>GSTIN No</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>GSTIN No</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>GSTIN number should be unique</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
                     <Input 
                       placeholder="Enter GSTIN number" 
@@ -170,17 +202,28 @@ export default function Step3ComplianceLegal({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>GST Password</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="password"
-                        placeholder="Enter GST password" 
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          onFieldChange?.('gstInPassword', e.target.value);
-                        }}
-                      />
-                    </FormControl>
+                    <div className="flex gap-2">
+                      <FormControl>
+                        <Input 
+                          type="password"
+                          placeholder="Enter GST password" 
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            onFieldChange?.('gstInPassword', e.target.value);
+                          }}
+                        />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="default"
+                        onClick={handleGstVerify}
+                        disabled={!field.value}
+                        className="whitespace-nowrap"
+                      >
+                        Verify
+                      </Button>
+                    </div>
                     <FormMessage />
                     {validationErrors?.gstInPassword && (
                       <p className="text-sm text-destructive mt-1">{validationErrors.gstInPassword}</p>
@@ -230,7 +273,19 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.factoryLicenseNo"
               render={({ field }) => (
                   <FormItem className="flex-1">
-                  <FormLabel>Factory License No</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Factory License No</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Factory License number should be unique</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
                     <Input
                       placeholder="Enter factory license number"
@@ -305,7 +360,19 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.tspcbOrderNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormLabel>TSPCB Order No</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>TSPCB Order No</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>TSPCB Order number should be unique</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
                     <Input 
                       placeholder="Enter TSPCB order number" 
@@ -380,7 +447,19 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.mdlNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormLabel>M.D.L No</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>M.D.L No</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>M.D.L number should be unique</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
                     <Input 
                       placeholder="Enter M.D.L number" 
@@ -455,7 +534,19 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.udyamCertificateNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <FormLabel>Udyam Certificate No</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormLabel>Udyam Certificate No</FormLabel>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Udyam Certificate number should be unique</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <FormControl>
                     <Input
                       placeholder="Enter Udyam certificate number"
@@ -674,6 +765,26 @@ export default function Step3ComplianceLegal({
           ))}
         </div>
       </div>
+
+      {/* GST Verify Dialog */}
+      <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              Verification Successful
+            </DialogTitle>
+            <DialogDescription>
+              This is for demo purposes. In a real implementation, this would verify the GST credentials with the GST API.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={() => setShowVerifyDialog(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

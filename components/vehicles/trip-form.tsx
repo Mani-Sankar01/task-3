@@ -202,9 +202,7 @@ export default function TripForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(
-        `/${renderRoleBasedPath(session?.data?.user.role)}/vehicle/${vehicleId}`
-      );
+      router.back();
     }
   };
 

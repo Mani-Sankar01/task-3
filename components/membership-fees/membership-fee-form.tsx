@@ -321,9 +321,7 @@ export default function MembershipFeeForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(
-        `/${renderRoleBasedPath(session?.user?.role)}/membership-fees`
-      );
+      router.back();
     }
   };
 

@@ -840,7 +840,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         "Are you sure you want to cancel? All unsaved changes will be lost."
       )
     ) {
-      router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
+      router.back();
     }
   };
 

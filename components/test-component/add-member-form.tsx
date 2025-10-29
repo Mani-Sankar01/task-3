@@ -724,7 +724,7 @@ const AddMemberForm = () => {
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
+    router.back();
   };
 
   // Function to validate USC/SC numbers

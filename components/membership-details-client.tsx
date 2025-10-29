@@ -12,12 +12,18 @@ import {
   LayoutDashboard,
   CopyrightIcon as License,
   WashingMachineIcon as Machinery,
-  Trash2,
   Download,
   Edit2,
   User2,
   Plus,
   Activity,
+  CheckCircle,
+  XCircle,
+  Phone,
+  MoreHorizontal,
+  Trash2,
+  PencilIcon,
+  EyeIcon,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -64,9 +70,566 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import { FileUpload } from "@/components/ui/file-upload";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Member Labours Table Component for Labour Tab
+function MemberLaboursTable({ memberId }: { memberId: string }) {
+  const [labours, setLabours] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [labourToDelete, setLabourToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchLabours = async () => {
+      if (status === "authenticated" && session?.user?.token) {
+        setIsLoading(true);
+        try {
+          const response = await axios.get(
+            `${
+              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            }/api/labour/get_all_labours`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          // Filter labours by assignedTo (membership ID)
+          const memberLabours = response.data.filter((labour: any) => 
+            labour.assignedTo === memberId
+          );
+          setLabours(memberLabours);
+        } catch (err) {
+          console.error("Error fetching member labours:", err);
+          setLabours([]);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchLabours();
+  }, [memberId, status, session?.user?.token]);
+
+  const getStatusBadge = (status: string) => {
+    const statusMap: { [key: string]: { label: string; variant: "default" | "secondary" | "destructive" | "outline" } } = {
+      "ACTIVE": { label: "Active", variant: "default" },
+      "INACTIVE": { label: "Inactive", variant: "secondary" },
+      "SUSPENDED": { label: "Suspended", variant: "destructive" },
+      "TERMINATED": { label: "Terminated", variant: "destructive" },
+    };
+    const statusInfo = statusMap[status] || { label: status || "Unknown", variant: "outline" };
+    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const viewLabourDetails = (labourId: string) => {
+    const basePath = renderRoleBasedPath(session?.user?.role || "");
+    router.push(`/${basePath}/labour/${labourId}`);
+  };
+
+  const editLabour = (labourId: string) => {
+    const basePath = renderRoleBasedPath(session?.user?.role || "");
+    router.push(`/${basePath}/labour/${labourId}/edit`);
+  };
+
+  // Delete a labour
+  const handleDeleteLabour = async (labourId: string) => {
+    if (!session?.user.token) {
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeleting(labourId);
+    try {
+      const response = await axios.delete(
+        `${
+          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        }/api/labour/delete_labour/${labourId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 204) {
+        toast({
+          title: "Success",
+          description: "Labour deleted successfully.",
+          variant: "default",
+        });
+        // Refresh the labour list
+        const updatedResponse = await axios.get(
+          `${
+            process.env.BACKEND_API_URL || "https://tsmwa.online"
+          }/api/labour/get_all_labours`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        // Filter labours by assignedTo (membership ID)
+        const memberLabours = updatedResponse.data.filter((labour: any) => 
+          labour.assignedTo === memberId
+        );
+        setLabours(memberLabours);
+      }
+    } catch (err: any) {
+      console.error("Error deleting labour:", err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to delete labour.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const openDeleteDialog = (labourId: string, labourName: string) => {
+    setLabourToDelete({ id: labourId, name: labourName });
+    setShowDeleteDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setLabourToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (labourToDelete) {
+      await handleDeleteLabour(labourToDelete.id);
+      closeDeleteDialog();
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+        <p className="text-muted-foreground">Loading labours...</p>
+      </div>
+    );
+  }
+
+  if (labours.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <User2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No Labours Found</h3>
+        <p className="text-muted-foreground">
+          This member doesn't have any labour records yet.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Labours</CardTitle>
+            <User2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{labours.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Labours</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {labours.filter(labour => labour.labourStatus === "ACTIVE").length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Inactive Labours</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {labours.filter(labour => labour.labourStatus !== "ACTIVE").length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Labours Table */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Labour ID</TableHead>
+            <TableHead>Name</TableHead>
+            <TableHead>Phone</TableHead>
+            <TableHead>Aadhar Number</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {labours.map((labour) => (
+            <TableRow key={labour.labourId}>
+              <TableCell className="font-medium">{labour.labourId}</TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <Avatar className="h-8 w-8 mr-2">
+                    <AvatarImage src={labour.photoPath || ""} alt={labour.fullName} />
+                    <AvatarFallback>
+                      {labour.fullName?.charAt(0) || "L"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{labour.fullName}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <Phone className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{labour.phoneNumber || "-"}</span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-medium">{labour.aadharNumber || "-"}</span>
+              </TableCell>
+              <TableCell>{getStatusBadge(labour.labourStatus)}</TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewLabourDetails(labour.labourId);
+                      }}
+                    >
+                      <EyeIcon className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TSMWA_EDITOR" ||
+                      session?.user?.role === "TQMA_EDITOR") && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          editLabour(labour.labourId);
+                        }}
+                      >
+                        <PencilIcon className="h-4 w-4 mr-2" />
+                        Edit Labour
+                      </DropdownMenuItem>
+                    )}
+                    {session?.user?.role === "ADMIN" && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteDialog(labour.labourId, labour.fullName);
+                        }}
+                        disabled={isDeleting === labour.labourId}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                        {isDeleting === labour.labourId ? "Deleting..." : "Delete"}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Labour</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{labourToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDeleteDialog}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting !== null}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// Membership Fees Table Component for Transactions Tab
+function MembershipFeesTable({ memberId }: { memberId: string }) {
+  const [fees, setFees] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchFees = async () => {
+      if (status === "authenticated" && session?.user?.token) {
+        setIsLoading(true);
+        try {
+          const response = await axios.get(
+            `${
+              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            }/api/bill/filterBills/null/null/null`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          // Filter fees for this specific member
+          const memberFees = response.data.filter((fee: any) => fee.membershipId === memberId);
+          setFees(memberFees);
+        } catch (err) {
+          console.error("Error fetching membership fees:", err);
+          setFees([]);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchFees();
+  }, [memberId, status, session?.user?.token]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case "paid":
+        return <Badge className="bg-green-100 text-green-800">Paid</Badge>;
+      case "partial":
+        return <Badge className="bg-orange-100 text-orange-800">Partial</Badge>;
+      case "due":
+        return <Badge className="bg-yellow-100 text-yellow-800">Due</Badge>;
+      case "canceled":
+        return <Badge className="bg-red-100 text-red-800">Canceled</Badge>;
+      default:
+        return <Badge variant="secondary">{status || "Unknown"}</Badge>;
+    }
+  };
+
+  // Navigate to fee details
+  const viewFeeDetails = (feeId: string) => {
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/${feeId}`
+    );
+  };
+
+  // Navigate to edit fee
+  const editFee = (feeId: string) => {
+    router.push(
+      `/${renderRoleBasedPath(
+        session?.user?.role
+      )}/membership-fees/${feeId}/edit`
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-10">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-2 text-muted-foreground">Loading transactions...</p>
+      </div>
+    );
+  }
+
+  if (fees.length === 0) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+        <p>No membership fee transactions found for this member</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ₹{fees.reduce((sum, fee) => sum + (parseFloat(fee.totalAmount) || 0), 0).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              ₹{fees.reduce((sum, fee) => sum + (parseFloat(fee.paidAmount) || 0), 0).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              ₹{fees.reduce((sum, fee) => sum + ((parseFloat(fee.totalAmount) || 0) - (parseFloat(fee.paidAmount) || 0)), 0).toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Transactions Table */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Transaction ID</TableHead>
+            <TableHead>Period</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Paid Amount</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {fees.map((fee) => (
+            <TableRow key={fee.billingId}>
+              <TableCell className="font-medium">{fee.billingId}</TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {fee.fromDate
+                      ? new Date(fee.fromDate).toLocaleDateString('en-GB', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })
+                      : "-"}{" "}
+                    -{" "}
+                    {fee.toDate
+                      ? new Date(fee.toDate).toLocaleDateString('en-GB', { 
+                          day: 'numeric', 
+                          month: 'short', 
+                          year: 'numeric' 
+                        })
+                      : "-"}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell>
+                <span className="font-medium">
+                  ₹{fee.totalAmount
+                    ? parseFloat(fee.totalAmount).toLocaleString()
+                    : "-"}
+                </span>
+              </TableCell>
+              <TableCell>
+                <span className="font-medium">
+                  ₹{fee.paidAmount
+                    ? parseFloat(fee.paidAmount).toLocaleString()
+                    : "-"}
+                </span>
+              </TableCell>
+              <TableCell>{getStatusBadge(fee.paymentStatus)}</TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewFeeDetails(fee.billingId);
+                      }}
+                    >
+                      <EyeIcon className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TSMWA_EDITOR" ||
+                      session?.user?.role === "TQMA_EDITOR") && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          editFee(fee.billingId);
+                        }}
+                      >
+                        <PencilIcon className="h-4 w-4 mr-2" />
+                        Edit Fee
+                      </DropdownMenuItem>
+                    )}
+                    {session?.user?.role === "ADMIN" && (
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                        Delete
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }
 
 interface USCMeterHistory {
@@ -703,7 +1266,7 @@ export default function MembershipDetailsClient({
           setDocLoading(false);
           return;
         }
-        filePath = upload.filePath;
+        filePath = upload.filePath || "";
       }
 
       let payload: any = { membershipId: member.membershipId };
@@ -1532,20 +2095,30 @@ export default function MembershipDetailsClient({
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
+              <CardTitle>Membership Fee Transactions</CardTitle>
               <CardDescription>
-                A list of all transactions made by the member
+                A list of all membership fee transactions for this member
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-10 text-muted-foreground">
-                <p>No transaction records available</p>
-              </div>
+              <MembershipFeesTable memberId={member.membershipId} />
             </CardContent>
           </Card>
         </TabsContent>
 
-       
+        <TabsContent value="labour">
+          <Card>
+            <CardHeader>
+              <CardTitle>Member Labours</CardTitle>
+              <CardDescription>
+                A list of all labours associated with this member
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MemberLaboursTable memberId={member.membershipId} />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="licenses">
           <Card>

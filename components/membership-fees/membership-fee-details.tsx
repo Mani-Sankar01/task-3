@@ -19,33 +19,29 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getMemberNameById, type MembershipFee } from "@/data/membership-fees";
 import { renderRoleBasedPath } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 
 interface MembershipFeeDetailsProps {
-  fee: MembershipFee;
+  fee: any; // API response data
 }
 
 export default function MembershipFeeDetails({
   fee,
 }: MembershipFeeDetailsProps) {
   const router = useRouter();
-  const memberName = getMemberNameById(fee.memberId);
   const session = useSession();
 
   const handleEdit = () => {
     router.push(
       `/${renderRoleBasedPath(session?.data?.user.role)}/membership-fees/${
-        fee.id
+        fee.billingId
       }/edit`
     );
   };
 
   const handleBack = () => {
-    router.push(
-      `/${renderRoleBasedPath(session?.data?.user.role)}/membership-fees`
-    );
+    router.back();
   };
 
   return (
@@ -68,20 +64,22 @@ export default function MembershipFeeDetails({
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-2xl flex items-center">
-                  <FileText className="mr-2 h-5 w-5" /> {fee.id}
+                  <FileText className="mr-2 h-5 w-5" /> {fee.billingId}
                 </CardTitle>
-                <CardDescription>Member: {memberName}</CardDescription>
+                <CardDescription>Member: {fee.applicantName || fee.firmName || fee.membershipId}</CardDescription>
               </div>
               <Badge
                 variant={
-                  fee.status === "paid"
+                  fee.paymentStatus === "PAID"
                     ? "default"
-                    : fee.status === "due"
+                    : fee.paymentStatus === "DUE"
+                    ? "secondary"
+                    : fee.paymentStatus === "PARTIAL"
                     ? "secondary"
                     : "destructive"
                 }
               >
-                {fee.status.charAt(0).toUpperCase() + fee.status.slice(1)}
+                {fee.paymentStatus ? fee.paymentStatus.charAt(0).toUpperCase() + fee.paymentStatus.slice(1).toLowerCase() : "Unknown"}
               </Badge>
             </div>
           </CardHeader>
@@ -91,16 +89,16 @@ export default function MembershipFeeDetails({
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    Period: {new Date(fee.periodFrom).toLocaleDateString()} to{" "}
-                    {new Date(fee.periodTo).toLocaleDateString()}
+                    Period: {fee.fromDate ? new Date(fee.fromDate).toLocaleDateString() : "N/A"} to{" "}
+                    {fee.toDate ? new Date(fee.toDate).toLocaleDateString() : "N/A"}
                   </span>
                 </div>
-                {fee.paidDate && (
+                {fee.paymentDate && (
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>
                       Payment Date:{" "}
-                      {new Date(fee.paidDate).toLocaleDateString()}
+                      {new Date(fee.paymentDate).toLocaleDateString()}
                     </span>
                   </div>
                 )}
@@ -114,11 +112,11 @@ export default function MembershipFeeDetails({
               <div className="space-y-4">
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>Total Amount: ₹{fee.amount.toLocaleString()}</span>
+                  <span>Total Amount: ₹{fee.totalAmount ? parseFloat(fee.totalAmount).toLocaleString() : "0"}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  <span>Paid Amount: ₹{fee.paidAmount.toLocaleString()}</span>
+                  <span>Paid Amount: ₹{fee.paidAmount ? parseFloat(fee.paidAmount).toLocaleString() : "0"}</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -126,12 +124,12 @@ export default function MembershipFeeDetails({
                     Balance:{" "}
                     <span
                       className={
-                        fee.amount - fee.paidAmount > 0
+                        (parseFloat(fee.totalAmount) || 0) - (parseFloat(fee.paidAmount) || 0) > 0
                           ? "text-destructive"
                           : "text-green-600"
                       }
                     >
-                      ₹{(fee.amount - fee.paidAmount).toLocaleString()}
+                      ₹{((parseFloat(fee.totalAmount) || 0) - (parseFloat(fee.paidAmount) || 0)).toLocaleString()}
                     </span>
                   </span>
                 </div>

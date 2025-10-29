@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Info } from "lucide-react";
 import { format } from "date-fns";
 
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,12 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Step1PersonalBusinessProps {
   isEditMode?: boolean;
@@ -69,7 +75,19 @@ export default function Step1PersonalBusiness({
             name="applicationDetails.electricalUscNumber"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Electrical USC Number</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormLabel>Electrical USC Number</FormLabel>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>eUSC number should be unique</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <FormControl>
                   <Input 
                     placeholder="Enter USC number" 
@@ -104,7 +122,19 @@ export default function Step1PersonalBusiness({
             name="applicationDetails.scNumber"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>SC Number</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormLabel>SC Number</FormLabel>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>SC number should be unique</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <FormControl>
                   <Input 
                     placeholder="Enter SC number" 
@@ -298,7 +328,19 @@ export default function Step1PersonalBusiness({
             name="firmDetails.contact1"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contact 1 (Primary)</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormLabel>Contact 1 (Primary)</FormLabel>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Please add WhatsApp number so that WhatsApp alerts will be sent</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
                 <FormControl>
                   <Input placeholder="Enter primary number" {...field} />
                 </FormControl>

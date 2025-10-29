@@ -512,7 +512,7 @@ const AddMember = ({
   }
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(userRole)}/memberships`);
+    router.back();
   };
 
   return (
