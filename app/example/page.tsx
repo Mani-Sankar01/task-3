@@ -1,5 +1,4 @@
 "use client";
-import { generateInvoicePDF } from "@/lib/generateInvoicePDF";
 
 export default function DownloadPage() {
   const sampleInvoice = {
@@ -39,10 +38,20 @@ export default function DownloadPage() {
     },
   };
 
+  const handleDownload = async () => {
+    try {
+      const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
+      await generateInvoicePDF(sampleInvoice, sampleMember);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <button
-        onClick={() => generateInvoicePDF(sampleInvoice, sampleMember)}
+        onClick={handleDownload}
         className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition"
       >
         Download Invoice

@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { generateInvoicePDF } from "@/lib/generateInvoicePDF";
+// Dynamic import for PDF generation to avoid SSR issues
 import { Badge } from "../ui/badge";
 import { renderRoleBasedPath } from "@/lib/utils";
 
@@ -220,6 +220,8 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
         }
       };
 
+      // Dynamic import to avoid SSR issues
+      const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
       await generateInvoicePDF(convertedInvoice, convertedMember);
     } catch (error) {
       console.error("Error generating invoice:", error);

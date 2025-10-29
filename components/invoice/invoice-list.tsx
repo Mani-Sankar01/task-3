@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { generateInvoicePDF } from "@/lib/generateInvoicePDF";
+// Dynamic import for PDF generation to avoid SSR issues
 import {
   CalendarIcon,
   CircleCheck,
@@ -387,7 +387,8 @@ export default function InvoiceList() {
         }
       };
 
-      // Generate and download PDF
+      // Dynamic import to avoid SSR issues
+      const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
       await generateInvoicePDF(convertedInvoice, convertedMember);
     } catch (error) {
       console.error("Error generating invoice:", error);
