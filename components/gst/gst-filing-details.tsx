@@ -33,7 +33,7 @@ import {
   getMemberNameById,
   getGstFilingStatistics,
 } from "@/data/gst-filings";
-import { generateGstInvoice } from "@/lib/invoice-generator";
+// import { generateGstInvoice } from "@/lib/invoice-generator"; // Temporarily disabled
 import {
   Bar,
   BarChart,
@@ -66,7 +66,8 @@ export default function GstFilingDetails({ filing }: GstFilingDetailsProps) {
   };
 
   const handleGenerateInvoice = () => {
-    generateGstInvoice(filing, memberName);
+    // generateGstInvoice(filing, memberName); // Temporarily disabled
+    alert("GST invoice generation is temporarily disabled");
   };
 
   // Colors for the pie chart

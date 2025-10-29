@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
+import { generateInvoicePDF } from "@/lib/generateInvoicePDF";
 import { Badge } from "../ui/badge";
 import { renderRoleBasedPath } from "@/lib/utils";
 
@@ -182,12 +182,51 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
     }
 
     try {
-      generateTaxInvoicePDF(invoice, member);
+      console.log("Downloading invoice with data:", { invoice, member });
+      
+      // Convert API data to the format expected by generateInvoicePDF
+      const convertedInvoice = {
+        invoiceId: invoice.invoiceId,
+        membershipId: invoice.membershipId,
+        invoiceDate: invoice.invoiceDate,
+        customerName: invoice.customerName || '',
+        gstInNumber: invoice.gstInNumber || '',
+        billingAddress: invoice.billingAddress || '',
+        shippingAddress: invoice.shippingAddress || '',
+        eWayNumber: invoice.eWayNumber || '',
+        phoneNumber: invoice.phoneNumber || '',
+        cGSTInPercent: invoice.cGSTInPercent,
+        sGSTInPercent: invoice.sGSTInPercent,
+        iGSTInPercent: invoice.iGSTInPercent,
+        subTotal: parseFloat(invoice.subTotal),
+        total: parseFloat(invoice.total),
+        invoiceItems: invoice.invoiceItems ? invoice.invoiceItems.map(item => ({
+          hsnCode: item.hsnCode,
+          particulars: item.particular,
+          noOfStones: item.stoneCount,
+          unit: item.size,
+          totalSqFeet: parseFloat(item.totalSqFeet),
+          ratePerSqFt: parseFloat(item.ratePerSqFeet),
+          amount: parseFloat(item.amount)
+        })) : []
+      };
+
+      const convertedMember = {
+        applicantName: member.applicantName,
+        firmName: member.firmName,
+        complianceDetails: {
+          fullAddress: member.complianceDetails?.fullAddress || '',
+          gstInNumber: member.complianceDetails?.gstInNumber || ''
+        }
+      };
+
+      await generateInvoicePDF(convertedInvoice, convertedMember);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
     }
   };
+
 
   // Show loading state while session is loading or data is being fetched
   if (status === "loading" || isLoading) {

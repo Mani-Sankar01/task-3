@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Plus, Trash2, ArrowLeft, Download } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -594,7 +594,7 @@ export default function InvoiceForm({
   };
 
   // Handle form submission
-  const onSubmit = async (data: InvoiceFormValues, download = false) => {
+  const onSubmit = async (data: InvoiceFormValues) => {
     console.log("onSubmit called", data);
     setIsSubmitting(true);
     try {
@@ -664,11 +664,6 @@ export default function InvoiceForm({
 
         alert("Invoice updated successfully!");
 
-        // If download is requested, trigger download
-        if (download) {
-          handleDownloadInvoice(invoiceId);
-        }
-
         // Redirect to invoice details page
         router.push(`/admin/invoices/${invoiceId}`);
       } else {
@@ -728,57 +723,6 @@ export default function InvoiceForm({
     }
   };
 
-  // Handle download invoice
-  const handleDownloadInvoice = async (invoiceId: string) => {
-    try {
-      // Import the PDF generator
-      const { generateTaxInvoicePDF } = await import("@/lib/invoice-generator");
-      
-      // Create invoice data object from form values
-      const formData = form.getValues();
-      const invoiceData = {
-        invoiceId: invoiceId,
-        membershipId: formData.memberId,
-        invoiceDate: formData.invoiceDate,
-        customerName: formData.customerName,
-        gstInNumber: formData.gstInNumber,
-        billingAddress: formData.billingAddress,
-        shippingAddress: formData.shippingAddress,
-        eWayNumber: formData.eWayNumber,
-        phoneNumber: formData.phoneNumber,
-        cGSTInPercent: formData.cgstPercentage,
-        sGSTInPercent: formData.sgstPercentage,
-        iGSTInPercent: formData.igstPercentage,
-        subTotal: formData.subTotal,
-        total: formData.totalAmount,
-        invoiceItems: formData.items.map((item) => ({
-          hsnCode: item.hsnCode,
-          particular: item.particulars,
-          stoneCount: item.noOfStones || 0,
-          size: item.unit || "",
-          totalSqFeet: item.totalSqFeet,
-          ratePerSqFeet: item.ratePerSqFt,
-          amount: item.amount,
-        })),
-      };
-
-      // Create member data object
-      const memberData = {
-        applicantName: formData.memberName,
-        firmName: formData.firmName,
-        complianceDetails: {
-          fullAddress: formData.firmAddress,
-          gstInNumber: formData.gstNumber,
-        },
-      };
-
-      // Generate and download PDF
-      await generateTaxInvoicePDF(invoiceData, memberData);
-    } catch (error) {
-      console.error("Error generating invoice:", error);
-      alert("Failed to generate invoice. Please try again.");
-    }
-  };
 
   // Handle cancel
   const handleCancel = () => {
@@ -1463,24 +1407,9 @@ export default function InvoiceForm({
                 Cancel
               </Button>
 
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isEditMode ? "Update Invoice" : "Create Invoice"}
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => form.handleSubmit((data) => onSubmit(data, true))()}
-                  disabled={isSubmitting}
-                  variant="default"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  {isSubmitting
-                    ? "Saving..."
-                    : isEditMode
-                    ? "Update & Download"
-                    : "Save & Download"}
-                </Button>
-              </div>
+              <Button type="submit" disabled={isSubmitting}>
+                {isEditMode ? "Update Invoice" : "Create Invoice"}
+              </Button>
             </CardFooter>
           </Card>
         </form>

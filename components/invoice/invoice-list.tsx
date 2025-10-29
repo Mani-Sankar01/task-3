@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { generateTaxInvoicePDF } from "@/lib/invoice-generator";
+import { generateInvoicePDF } from "@/lib/generateInvoicePDF";
 import {
   CalendarIcon,
   CircleCheck,
@@ -26,6 +26,12 @@ interface ApiInvoice {
   invoiceId: string;
   membershipId: string;
   invoiceDate: string;
+  customerName?: string;
+  gstInNumber?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  eWayNumber?: string;
+  phoneNumber?: string;
   cGSTInPercent: number;
   sGSTInPercent: number;
   iGSTInPercent: number;
@@ -36,6 +42,20 @@ interface ApiInvoice {
   modifiedAt: string;
   createdBy: number;
   modifiedBy: number | null;
+  invoiceItems?: ApiInvoiceItem[];
+}
+
+// API Invoice Item interface
+interface ApiInvoiceItem {
+  id: number;
+  invoiceId: string;
+  hsnCode: string;
+  particular: string;
+  stoneCount: number;
+  size: string;
+  totalSqFeet: string;
+  ratePerSqFeet: string;
+  amount: string;
 }
 
 interface ApiMember {
@@ -329,8 +349,46 @@ export default function InvoiceList() {
 
       const member = memberResponse.data;
 
+      console.log("Downloading invoice with data:", { invoice, member });
+      
+      // Convert API data to the format expected by generateInvoicePDF
+      const convertedInvoice = {
+        invoiceId: invoice.invoiceId,
+        membershipId: invoice.membershipId,
+        invoiceDate: invoice.invoiceDate,
+        customerName: invoice.customerName || '',
+        gstInNumber: invoice.gstInNumber || '',
+        billingAddress: invoice.billingAddress || '',
+        shippingAddress: invoice.shippingAddress || '',
+        eWayNumber: invoice.eWayNumber || '',
+        phoneNumber: invoice.phoneNumber || '',
+        cGSTInPercent: invoice.cGSTInPercent,
+        sGSTInPercent: invoice.sGSTInPercent,
+        iGSTInPercent: invoice.iGSTInPercent,
+        subTotal: parseFloat(invoice.subTotal),
+        total: parseFloat(invoice.total),
+        invoiceItems: invoice.invoiceItems ? invoice.invoiceItems.map(item => ({
+          hsnCode: item.hsnCode,
+          particulars: item.particular,
+          noOfStones: item.stoneCount,
+          unit: item.size,
+          totalSqFeet: parseFloat(item.totalSqFeet),
+          ratePerSqFt: parseFloat(item.ratePerSqFeet),
+          amount: parseFloat(item.amount)
+        })) : []
+      };
+
+      const convertedMember = {
+        applicantName: member.applicantName,
+        firmName: member.firmName,
+        complianceDetails: {
+          fullAddress: member.complianceDetails?.fullAddress || '',
+          gstInNumber: member.complianceDetails?.gstInNumber || ''
+        }
+      };
+
       // Generate and download PDF
-      await generateTaxInvoicePDF(invoice, member);
+      await generateInvoicePDF(convertedInvoice, convertedMember);
     } catch (error) {
       console.error("Error generating invoice:", error);
       alert("Failed to generate invoice. Please try again.");
