@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { ArrowLeft, Download, Edit, Printer } from "lucide-react";
 import { format } from "date-fns";
 import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +80,7 @@ interface InvoiceDetailsProps {
 export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [invoice, setInvoice] = useState<ApiInvoice | null>(null);
   const [member, setMember] = useState<ApiMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,9 +225,34 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
       // Dynamic import to avoid SSR issues
       const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
       await generateInvoicePDF(convertedInvoice, convertedMember);
-    } catch (error) {
+      
+      // Show success toast
+      toast({
+        title: "PDF Downloaded Successfully!",
+        description: `Invoice ${convertedInvoice.invoiceId} has been downloaded.`,
+        variant: "sucess"
+      });
+    } catch (error: any) {
       console.error("Error generating invoice:", error);
-      alert("Failed to generate invoice. Please try again.");
+      
+      // Show error toast with detailed message
+      let errorMessage = "Failed to generate invoice. Please try again.";
+      
+      if (error.response?.status === 404) {
+        errorMessage = "Invoice not found. Please refresh the page and try again.";
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        errorMessage = "Authentication failed. Please log in again.";
+      } else if (error.response?.status >= 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Download Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 

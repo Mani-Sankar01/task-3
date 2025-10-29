@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 // Dynamic import for PDF generation to avoid SSR issues
 import {
   CalendarIcon,
@@ -113,6 +114,7 @@ import { renderRoleBasedPath } from "@/lib/utils";
 export default function InvoiceList() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [invoices, setInvoices] = useState<ApiInvoice[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<ApiInvoice[]>([]);
@@ -329,15 +331,64 @@ export default function InvoiceList() {
     }
 
     try {
-      // Find the invoice from the current list
-      const invoice = invoices.find((inv) => inv.id === id);
-      if (!invoice) {
-        alert("Invoice not found");
+      // Find the invoice from the current list to get the invoiceId (billing ID)
+      const invoiceFromList = invoices.find((inv) => inv.id === id);
+      if (!invoiceFromList) {
+        toast({
+          title: "Download Failed",
+          description: "Invoice not found in the list.",
+          variant: "destructive"
+        });
         return;
       }
 
-      // Fetch member details for the invoice
+      const billingId = invoiceFromList.invoiceId; // This is the billing ID like "INV2025-002"
+      console.log("Starting download for invoice ID:", id, "Billing ID:", billingId);
+      
+      // Fetch complete invoice details including items using the billing ID
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      console.log("API URL:", apiUrl);
+      console.log("Full endpoint:", `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${billingId}`);
+      
+      const response = await axios.get(
+        `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${billingId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      console.log("Invoice API response:", response.data);
+      console.log("Response status:", response.status);
+
+      // Handle the response structure with taxInvoice array
+      let invoice: ApiInvoice | null = null;
+      if (
+        response.data &&
+        response.data.taxInvoice &&
+        Array.isArray(response.data.taxInvoice)
+      ) {
+        console.log("Found taxInvoice array with length:", response.data.taxInvoice.length);
+        invoice = response.data.taxInvoice[0]; // Get the first invoice from the array
+      } else if (response.data && !response.data.taxInvoice) {
+        console.log("Using direct response data");
+        // Fallback: if response.data is the invoice directly
+        invoice = response.data;
+      } else {
+        console.log("Unexpected response structure:", response.data);
+      }
+
+      if (!invoice) {
+        console.error("No invoice data found in response");
+        alert("Invoice not found in API response");
+        return;
+      }
+
+      console.log("Invoice data found:", invoice);
+
+      // Fetch member details for the invoice
+      console.log("Fetching member for membershipId:", invoice.membershipId);
       const memberResponse = await axios.get(
         `${apiUrl}/api/member/get_member/${invoice.membershipId}`,
         {
@@ -348,6 +399,7 @@ export default function InvoiceList() {
       );
 
       const member = memberResponse.data;
+      console.log("Member API response:", member);
 
       console.log("Downloading invoice with data:", { invoice, member });
       
@@ -378,6 +430,8 @@ export default function InvoiceList() {
         })) : []
       };
 
+      console.log("Converted invoice:", convertedInvoice);
+
       const convertedMember = {
         applicantName: member.applicantName,
         firmName: member.firmName,
@@ -387,12 +441,50 @@ export default function InvoiceList() {
         }
       };
 
+      console.log("Converted member:", convertedMember);
+
       // Dynamic import to avoid SSR issues
+      console.log("Importing PDF generator...");
       const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
+      console.log("PDF generator imported successfully");
+      
+      console.log("Generating PDF...");
       await generateInvoicePDF(convertedInvoice, convertedMember);
+      console.log("PDF generated successfully");
+      
+      // Show success toast
+      toast({
+        title: "PDF Downloaded Successfully!",
+        description: `Invoice ${convertedInvoice.invoiceId} has been downloaded.`,
+        variant: "sucess"
+      });
     } catch (error) {
       console.error("Error generating invoice:", error);
-      alert("Failed to generate invoice. Please try again.");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      
+      // Show error toast with detailed message
+      let errorMessage = "Failed to generate invoice. Please try again.";
+      
+      if (error.response?.status === 404) {
+        errorMessage = "Invoice not found. Please refresh the page and try again.";
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        errorMessage = "Authentication failed. Please log in again.";
+      } else if (error.response?.status >= 500) {
+        errorMessage = "Server error. Please try again later.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Download Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
     }
   };
 
