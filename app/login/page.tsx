@@ -28,7 +28,6 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError("");
-    console.log(process.env.BACKEND_API_URL);
     try {
       // Call our API to request OTP
       const response = await fetch(
@@ -43,10 +42,9 @@ export default function LoginPage() {
       );
 
       const data = await response.json();
-      console.log(data.otp);
-      setError(data.otp || "Failed to send OTP");
+      
       if (!response.ok) {
-        setError(data.error || "Failed to send OTP");
+        setError(data.message || data.error || "Failed to send OTP");
         return;
       }
 
@@ -58,8 +56,9 @@ export default function LoginPage() {
       });
 
       setStep("otp");
-    } catch (error) {
-      setError("An error occurred. Please try again.");
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "An error occurred. Please try again.";
+      setError(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -80,13 +79,14 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Invalid OTP. Please try again.");
+        setError(result.error || "Invalid OTP. Please try again.");
       } else {
         // Redirect to dashboard or home page
         router.push("/");
       }
-    } catch (error) {
-      setError("An error occurred. Please try again.");
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || error?.message || "An error occurred. Please try again.";
+      setError(errorMessage);
       console.error(error);
     } finally {
       setIsLoading(false);

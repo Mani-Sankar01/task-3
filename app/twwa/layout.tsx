@@ -96,16 +96,7 @@ const data = {
           url: "/twwa/membership-fees",
           icon: IndianRupee,
         },
-        {
-          title: "Pending Approvals",
-          url: "/twwa/memberships/approval-pending",
-          icon: AlertCircle,
-        },
-        {
-          title: "Bill Approvals",
-          url: "/twwa/membership-fees/approval-pending",
-          icon: AlertCircle,
-        },
+        
       ],
     },
 
@@ -134,11 +125,11 @@ const data = {
           url: "/twwa/invoices",
           icon: ClipboardList,
         },
-        // {
-        //   title: "Add Filling",
-        //   url: "/gst-filling/add",
-        //   icon: PlusSquare,
-        // },
+        {
+          title: "Add Invoice",
+          url: "/twwa/invoices/create",
+          icon: PlusSquare,
+        },
       ],
     },
     {

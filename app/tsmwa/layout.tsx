@@ -95,17 +95,7 @@ const data = {
           title: "Membership Fees",
           url: "/tsmwa/membership-fees",
           icon: IndianRupee,
-        },
-        {
-          title: "Pending Approvals",
-          url: "/tsmwa/memberships/approval-pending",
-          icon: AlertCircle,
-        },
-        {
-          title: "Bill Approvals",
-          url: "/tsmwa/membership-fees/approval-pending",
-          icon: AlertCircle,
-        },
+        }
       ],
     },
 
@@ -134,16 +124,12 @@ const data = {
           url: "/tsmwa/invoices",
           icon: ClipboardList,
         },
+        
         {
-          title: "Pending Approvals",
-          url: "/tsmwa/invoices/pending-approval",
-          icon: AlertCircle,
+          title: "Add Invoice",
+          url: "/tsmwa/invoices/create",
+          icon: PlusSquare,
         },
-        // {
-        //   title: "Add Filling",
-        //   url: "/gst-filling/add",
-        //   icon: PlusSquare,
-        // },
       ],
     },
     {
