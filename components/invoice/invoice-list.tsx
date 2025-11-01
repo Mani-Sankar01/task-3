@@ -109,6 +109,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "../ui/badge";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function InvoiceList() {
@@ -129,6 +139,7 @@ export default function InvoiceList() {
   const [members, setMembers] = useState<ApiMember[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const itemsPerPage = 10;
 
   // Fetch invoices from API
@@ -190,7 +201,11 @@ export default function InvoiceList() {
           console.error("Error message:", err.message);
           console.error("Error stack:", err.stack);
         }
-        alert("Failed to load invoice data");
+        toast({
+          title: "Error",
+          description: "Failed to load invoice data",
+          variant: "destructive"
+        });
         setInvoices([]);
         setFilteredInvoices([]);
       } finally {
@@ -280,53 +295,68 @@ export default function InvoiceList() {
   };
 
   const handleDeleteInvoice = async (invoiceId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this invoice? This action cannot be undone."
-      )
-    ) {
-      if (status !== "authenticated" || !session?.user?.token) {
-        alert("Authentication required");
-        return;
-      }
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to delete invoices",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      try {
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        await axios.delete(
-          `${apiUrl}/api/tax_invoice/delete_tax_invoice/${invoiceId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
-
-        // Remove from local state after successful API call
-        setInvoices((prevInvoices) =>
-          prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
-        );
-        setFilteredInvoices((prevInvoices) =>
-          prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
-        );
-
-        alert("Invoice deleted successfully!");
-      } catch (error: any) {
-        console.error("Error deleting invoice:", error);
-        console.error("Error response:", error.response?.data);
-        console.error("Error status:", error.response?.status);
-
-        if (error.response?.status === 404) {
-          alert("Invoice not found or already deleted");
-        } else {
-          alert("Failed to delete invoice. Please try again.");
+    try {
+      setIsDeleting(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      await axios.delete(
+        `${apiUrl}/api/tax_invoice/delete_tax_invoice/${invoiceId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
         }
+      );
+
+      // Remove from local state after successful API call
+      setInvoices((prevInvoices) =>
+        prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
+      );
+      setFilteredInvoices((prevInvoices) =>
+        prevInvoices.filter((inv) => inv.invoiceId !== invoiceId)
+      );
+
+      toast({
+        title: "Invoice Deleted",
+        description: "Invoice has been deleted successfully."
+      });
+    } catch (error: any) {
+      console.error("Error deleting invoice:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      let errorMessage = "Failed to delete invoice. Please try again.";
+      if (error.response?.status === 404) {
+        errorMessage = "Invoice not found or already deleted";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
       }
+
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleDownloadInvoice = async (id: string) => {
     if (status !== "authenticated" || !session?.user?.token) {
-      alert("Authentication required");
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to download invoices",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -381,7 +411,11 @@ export default function InvoiceList() {
 
       if (!invoice) {
         console.error("No invoice data found in response");
-        alert("Invoice not found in API response");
+        toast({
+          title: "Download Failed",
+          description: "Invoice not found in API response",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -458,7 +492,7 @@ export default function InvoiceList() {
         description: `Invoice ${convertedInvoice.invoiceId} has been downloaded.`,
         variant: "sucess"
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating invoice:", error);
       console.error("Error details:", {
         message: error.message,
@@ -698,9 +732,11 @@ export default function InvoiceList() {
                     <TableRow
                       key={invoice.id}
                       className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleViewInvoice(invoice.invoiceId)}
                     >
-                      <TableCell className="font-medium">
+                      <TableCell 
+                        className="font-medium"
+                        onClick={() => handleViewInvoice(invoice.invoiceId)}
+                      >
                         {invoice.invoiceId}
                       </TableCell>
                       <TableCell>
@@ -783,15 +819,51 @@ export default function InvoiceList() {
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteInvoice(invoice.invoiceId);
-                                  }}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center gap-2">
+                                        <span className="text-destructive">
+                                          ⚠️
+                                        </span>
+                                        Delete Invoice
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Are you sure you want to delete invoice{" "}
+                                        <span className="font-semibold">
+                                          {invoice.invoiceId}
+                                        </span>
+                                        ? This action cannot be undone.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter className="gap-2">
+                                      <DialogClose asChild>
+                                        <Button variant="outline">
+                                          Cancel
+                                        </Button>
+                                      </DialogClose>
+                                      <DialogClose asChild>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            handleDeleteInvoice(invoice.invoiceId)
+                                          }
+                                          disabled={isDeleting}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
                               </>
                             )}
                           </DropdownMenuContent>

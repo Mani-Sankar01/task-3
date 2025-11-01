@@ -930,7 +930,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="">
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel

@@ -9,6 +9,7 @@ import { CalendarIcon, Plus, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -131,6 +132,7 @@ export default function InvoiceForm({
 }: InvoiceFormProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [members, setMembers] = useState<
     Array<{
       id: string;
@@ -159,6 +161,7 @@ export default function InvoiceForm({
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
   const [apiInvoice, setApiInvoice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
+  const [showIGST, setShowIGST] = useState(true);
 
   // Initialize form with default values or invoice data if editing
   const form = useForm<InvoiceFormValues>({
@@ -221,8 +224,8 @@ export default function InvoiceForm({
               amount: 0,
             },
           ],
-          cgstPercentage: 0,
-          sgstPercentage: 0,
+          cgstPercentage: 5,
+          sgstPercentage: 5,
           igstPercentage: 0,
           subTotal: 0,
           cgstAmount: 0,
@@ -288,6 +291,10 @@ export default function InvoiceForm({
 
             const member = memberResponse.data;
 
+            // Determine if IGST should be shown based on GSTIN
+            const gstInNumber = invoiceData.gstInNumber || "";
+            setShowIGST(!gstInNumber.startsWith("36"));
+
             // Update form with API data
             form.reset({
               invoiceDate: invoiceData.invoiceDate.split("T")[0],
@@ -345,7 +352,11 @@ export default function InvoiceForm({
           }
         } catch (error) {
           console.error("Error fetching invoice:", error);
-          alert("Failed to load invoice data");
+          toast({
+            title: "Error",
+            description: "Failed to load invoice data",
+            variant: "destructive"
+          });
         } finally {
           setIsLoading(false);
         }
@@ -601,7 +612,11 @@ export default function InvoiceForm({
       if (isEditMode && invoiceId) {
         // Update existing invoice using API
         if (status !== "authenticated" || !session?.user?.token) {
-          alert("Authentication required");
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to update invoices",
+            variant: "destructive"
+          });
           setIsSubmitting(false);
           return;
         }
@@ -611,7 +626,11 @@ export default function InvoiceForm({
         
         // Only proceed if there are actual changes
         if (Object.keys(changes).length === 0) {
-          alert("No changes detected. Invoice remains unchanged.");
+          toast({
+            title: "No Changes",
+            description: "No changes detected. Invoice remains unchanged.",
+            variant: "default"
+          });
           setIsSubmitting(false);
           return;
         }
@@ -662,14 +681,21 @@ export default function InvoiceForm({
           throw error;
         }
 
-        alert("Invoice updated successfully!");
+        toast({
+          title: "Success",
+          description: "Invoice updated successfully!"
+        });
 
         // Redirect to invoice details page
         router.push(`/admin/invoices/${invoiceId}`);
       } else {
         // Add new invoice using API
         if (status !== "authenticated" || !session?.user?.token) {
-          alert("Authentication required");
+          toast({
+            title: "Authentication Required",
+            description: "Please log in to create invoices",
+            variant: "destructive"
+          });
           setIsSubmitting(false);
           return;
         }
@@ -698,7 +724,7 @@ export default function InvoiceForm({
           })),
         };
         console.log(JSON.stringify(addPayload));
-        await axios.post(
+       const response = await axios.post(
           `${process.env.BACKEND_API_URL}/api/tax_invoice/add_tax_invoice`,
           addPayload,
           {
@@ -708,16 +734,27 @@ export default function InvoiceForm({
             },
           }
         );
-        alert("Invoice created successfully!");
-        // router.push("/admin/invoices");
+        toast({
+          title: "Success",
+          description: response.data.message || "Invoice created successfully!"
+        });
+        router.push(`/admin/invoices/${response.data.invoice.invoiceId}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      alert(
-        `Failed to ${
-          isEditMode ? "update" : "create"
-        } invoice. Please try again.`
-      );
+      let errorMessage = `Failed to ${isEditMode ? "update" : "create"} invoice. Please try again.`;
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -981,7 +1018,32 @@ export default function InvoiceForm({
                       <FormItem>
                         <FormLabel>GSTIN Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter GSTIN number" {...field} />
+                          <Input 
+                            placeholder="Enter GSTIN number" 
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              const gstInNumber = e.target.value;
+                              
+                              // If GSTIN starts with 36, hide IGST and use only CGST and SGST
+                              if (gstInNumber.startsWith("36")) {
+                                setShowIGST(false);
+                                // Only set CGST and SGST to 5% if they're currently 0
+                                if (form.getValues("cgstPercentage") === 0) {
+                                  form.setValue("cgstPercentage", 5);
+                                }
+                                if (form.getValues("sgstPercentage") === 0) {
+                                  form.setValue("sgstPercentage", 5);
+                                }
+                                form.setValue("igstPercentage", 0);
+                                form.setValue("igstAmount", 0);
+                                handleTaxChange();
+                              } else if (gstInNumber.length >= 2) {
+                                // For other states, show IGST
+                                setShowIGST(true);
+                              }
+                            }}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1312,39 +1374,41 @@ export default function InvoiceForm({
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="igstPercentage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>IGST %</FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(parseFloat(value));
-                            handleTaxChange();
-                          }}
-                          value={field.value?.toString() || "0"}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select IGST %" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {GST_PERCENTAGE_OPTIONS.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value.toString()}
-                              >
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {showIGST && (
+                    <FormField
+                      control={form.control}
+                      name="igstPercentage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>IGST %</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(parseFloat(value));
+                              handleTaxChange();
+                            }}
+                            value={field.value?.toString() || "0"}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select IGST %" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {GST_PERCENTAGE_OPTIONS.map((option) => (
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value.toString()}
+                                >
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               </div>
 

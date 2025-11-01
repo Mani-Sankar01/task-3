@@ -50,6 +50,7 @@ import {
 } from "@/data/vehicles";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
 import PopupMessage from "@/components/ui/popup-message";
 import { renderRoleBasedPath } from "@/lib/utils";
 
@@ -84,6 +85,7 @@ export default function AddEditTripForm({
   tripId,
 }: TripFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   //   const vehicle = getVehicleById(vehicleId);
   const [vehicle, setVehicle] = useState<Vehicle | null>(null); // or undefined
@@ -103,25 +105,15 @@ export default function AddEditTripForm({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: trip
-      ? {
-          date: new Date(trip.date),
-          totalRounds: trip.totalRounds,
-          pricePerRound: trip.pricePerRound,
-          totalAmountToPay: trip.totalAmountToPay,
-          amountPaid: trip.amountPaid,
-          paymentStatus: trip.paymentStatus,
-          notes: trip.notes || "",
-        }
-      : {
-          date: new Date(),
-          totalRounds: 1,
-          pricePerRound: 500, // Default price
-          totalAmountToPay: 500, // Default total amount
-          amountPaid: 0,
-          paymentStatus: "unpaid",
-          notes: "",
-        },
+    defaultValues: {
+      date: new Date(),
+      totalRounds: 1,
+      pricePerRound: 500, // Default price
+      totalAmountToPay: 500, // Default total amount
+      amountPaid: 0,
+      paymentStatus: "unpaid",
+      notes: "",
+    },
   });
 
   useEffect(() => {
@@ -167,8 +159,19 @@ export default function AddEditTripForm({
           });
         }
       } catch (err: any) {
-        console.error("Error fetching member data:", err);
-        alert("Failed to load member data");
+        console.error("Error fetching data:", err);
+        const errorMessage = err.response?.data?.message || "Failed to load data";
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive"
+        });
+        setPopupMessage({
+          isOpen: true,
+          type: "error",
+          title: "Load Failed",
+          message: errorMessage,
+        });
       } finally {
         setIsLoading(false); // Stop loading
       }
@@ -201,20 +204,29 @@ export default function AddEditTripForm({
           }
         );
         if (response.status === 200 || response.status === 201) {
-          setIsSubmitting(false);
+          toast({
+            title: "Success",
+            description: "Trip updated successfully!",
+          });
           setPopupMessage({
             isOpen: true,
             type: "success",
             title: "Trip Updated Successfully!",
             message:
-              "The trip has been updated successfully. You will be redirected to the vehicle details.",
+              "The trip has been updated successfully. You will be redirected back.",
           });
         } else {
+          const errorMessage = response.data?.message || "Something went wrong. Trip not updated.";
+          toast({
+            title: "Update Failed",
+            description: errorMessage,
+            variant: "destructive"
+          });
           setPopupMessage({
             isOpen: true,
             type: "error",
             title: "Update Failed",
-            message: "Something went wrong. Trip not updated.",
+            message: errorMessage,
           });
         }
       } else {
@@ -240,30 +252,45 @@ export default function AddEditTripForm({
           }
         );
         if (response.status === 200 || response.status === 201) {
-          setIsSubmitting(false);
+          toast({
+            title: "Success",
+            description: "Trip added successfully!",
+          });
           setPopupMessage({
             isOpen: true,
             type: "success",
             title: "Trip Added Successfully!",
             message:
-              "The trip has been added successfully. You will be redirected to the vehicle details.",
+              "The trip has been added successfully. You will be redirected back.",
           });
         } else {
+          const errorMessage = response.data?.message || "Something went wrong. Trip not added.";
+          toast({
+            title: "Add Failed",
+            description: errorMessage,
+            variant: "destructive"
+          });
           setPopupMessage({
             isOpen: true,
             type: "error",
             title: "Add Failed",
-            message: "Something went wrong. Trip not added.",
+            message: errorMessage,
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
+      const errorMessage = error.response?.data?.message || "Failed to save trip. Please try again.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
       setPopupMessage({
         isOpen: true,
         type: "error",
         title: "Error",
-        message: "Failed to save trip. Please try again.",
+        message: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
@@ -276,9 +303,7 @@ export default function AddEditTripForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(
-        `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
-      );
+      router.back();
     }
   };
 
@@ -288,10 +313,7 @@ export default function AddEditTripForm({
 
   const handleSuccessPopupClose = () => {
     setPopupMessage((prev) => ({ ...prev, isOpen: false }));
-    router.push(
-      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
-    );
-    router.refresh();
+    router.back();
   };
 
   if (isLoading || status === "loading") {
@@ -328,7 +350,7 @@ export default function AddEditTripForm({
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="">
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel

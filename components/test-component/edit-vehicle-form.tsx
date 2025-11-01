@@ -40,6 +40,7 @@ import {
   vehicles,
 } from "@/data/vehicles";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/hooks/use-toast";
 import PopupMessage from "@/components/ui/popup-message";
 import { renderRoleBasedPath } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ export default function EditVehicleForm({
   vehicleId,
 }: VehicleFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditMode); // only load if editing
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -130,8 +132,20 @@ export default function EditVehicleForm({
             ownerPhoneNumber: vehicleData.ownerPhoneNumber || "",
             status: vehicleData.status,
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error("Failed to load vehicle:", error);
+          const errorMessage = error.response?.data?.message || "Failed to load vehicle data";
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Load Failed",
+            message: errorMessage,
+          });
         } finally {
           setIsLoading(false);
         }
@@ -156,20 +170,29 @@ export default function EditVehicleForm({
           }
         );
         if (response.status === 200 || response.status === 201) {
-          setIsSubmitting(false);
+          toast({
+            title: "Success",
+            description: "Vehicle updated successfully!",
+          });
           setPopupMessage({
             isOpen: true,
             type: "success",
             title: "Vehicle Updated Successfully!",
             message:
-              "The vehicle has been updated successfully. You will be redirected to the vehicle list.",
+              "The vehicle has been updated successfully. You will be redirected back.",
           });
         } else {
+          const errorMessage = response.data?.message || "Something went wrong. Vehicle not updated.";
+          toast({
+            title: "Update Failed",
+            description: errorMessage,
+            variant: "destructive"
+          });
           setPopupMessage({
             isOpen: true,
             type: "error",
             title: "Update Failed",
-            message: "Something went wrong. Vehicle not updated.",
+            message: errorMessage,
           });
         }
       } else {
@@ -185,30 +208,45 @@ export default function EditVehicleForm({
           }
         );
         if (response.status === 200 || response.status === 201) {
-          setIsSubmitting(false);
+          toast({
+            title: "Success",
+            description: "Vehicle added successfully!",
+          });
           setPopupMessage({
             isOpen: true,
             type: "success",
             title: "Vehicle Added Successfully!",
             message:
-              "The vehicle has been added successfully. You will be redirected to the vehicle list.",
+              "The vehicle has been added successfully. You will be redirected back.",
           });
         } else {
+          const errorMessage = response.data?.message || "Something went wrong. Vehicle not added.";
+          toast({
+            title: "Add Failed",
+            description: errorMessage,
+            variant: "destructive"
+          });
           setPopupMessage({
             isOpen: true,
             type: "error",
             title: "Add Failed",
-            message: "Something went wrong. Vehicle not added.",
+            message: errorMessage,
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
+      const errorMessage = error.response?.data?.message || "Failed to save vehicle. Please try again.";
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
       setPopupMessage({
         isOpen: true,
         type: "error",
         title: "Error",
-        message: "Failed to save vehicle. Please try again.",
+        message: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
@@ -221,7 +259,7 @@ export default function EditVehicleForm({
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
+      router.back();
     }
   };
 
@@ -231,8 +269,7 @@ export default function EditVehicleForm({
 
   const handleSuccessPopupClose = () => {
     setPopupMessage((prev) => ({ ...prev, isOpen: false }));
-    router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
-    router.refresh();
+    router.back();
   };
 
   if (isLoading || status === "loading") {
@@ -251,7 +288,7 @@ export default function EditVehicleForm({
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="">
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
           <ArrowLeft className="mr-2 h-4 w-4" /> Cancel

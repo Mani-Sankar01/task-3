@@ -208,7 +208,7 @@ export default function VehicleDetailsWithID({ id }: any) {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className=" p-6">
       <div className="grid gap-6">
         {/* Vehicle Information Card */}
         <div className="flex items-center justify-between">

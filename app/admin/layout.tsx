@@ -15,6 +15,7 @@ import {
   CircleAlert,
   ClipboardList,
   Dices,
+  DownloadCloudIcon,
   GalleryVerticalEnd,
   IndianRupee,
   ListTodoIcon,
@@ -85,6 +86,11 @@ const data = {
           url: "/admin/changes-approval",
           icon: AlertCircle,
         },
+        {
+          title: "All Media",
+          url: "/admin/media",
+          icon: DownloadCloudIcon,
+        },
       ],
     },
     {
@@ -100,16 +106,6 @@ const data = {
           title: "Membership Fees",
           url: "/admin/membership-fees",
           icon: IndianRupee,
-        },
-        {
-          title: "Pending Approvals",
-          url: "/admin/memberships/approval-pending",
-          icon: AlertCircle,
-        },
-        {
-          title: "Bill Approvals",
-          url: "/admin/membership-fees/approval-pending",
-          icon: AlertCircle,
         }
       ],
     },
@@ -140,15 +136,10 @@ const data = {
           icon: ClipboardList,
         },
         {
-          title: "Pending Approvals",
-          url: "/admin/invoices/pending-approval",
-          icon: AlertCircle,
+          title: "Add Invoice",
+          url: "/admin/invoices/create",
+          icon: PlusSquare,
         },
-        // {
-        //   title: "Add Filling",
-        //   url: "/gst-filling/add",
-        //   icon: PlusSquare,
-        // },
       ],
     },
     {
