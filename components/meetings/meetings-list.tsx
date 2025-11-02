@@ -11,6 +11,9 @@ import {
   Plus,
   Search,
   Loader2,
+  Trash2,
+  Eye,
+  Edit,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -41,6 +44,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Types for the API response
 interface Meeting {
@@ -103,6 +116,7 @@ export default function MeetingsList() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(false);
   const itemsPerPage = 5;
 
   // Fetch meetings from API
@@ -228,41 +242,57 @@ export default function MeetingsList() {
 
   // Delete a meeting
   const handleDeleteMeeting = async (meetingId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this meeting? This action cannot be undone."
-      )
-    ) {
-      try {
-        await axios.delete(`${process.env.BACKEND_API_URL}/api/meeting/delete_meet/${meetingId}`, {
-          headers: {
-            Authorization: `Bearer ${session?.user?.token}`,
-          },
-        });
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to delete meetings",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        toast({
-          title: "Success",
-          description: "Meeting deleted successfully.",
-        });
+    try {
+      setIsDeleting(true);
+      await axios.delete(`${process.env.BACKEND_API_URL}/api/meeting/delete_meet/${meetingId}`, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      });
 
-        // Refresh the meetings list
-        await fetchMeetings();
+      toast({
+        title: "Meeting Deleted",
+        description: "Meeting has been deleted successfully."
+      });
 
-        // Adjust pagination if needed
-        if (
-          currentPage > 1 &&
-          (currentPage - 1) * itemsPerPage >= sortedMeetings.length - 1
-        ) {
-          setCurrentPage(currentPage - 1);
-        }
-      } catch (error) {
-        console.error("Error deleting meeting:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete meeting. Please try again.",
-          variant: "destructive",
-        });
+      // Refresh the meetings list
+      await fetchMeetings();
+
+      // Adjust pagination if needed
+      if (
+        currentPage > 1 &&
+        (currentPage - 1) * itemsPerPage >= sortedMeetings.length - 1
+      ) {
+        setCurrentPage(currentPage - 1);
       }
+    } catch (error: any) {
+      console.error("Error deleting meeting:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      let errorMessage = "Failed to delete meeting. Please try again.";
+      if (error.response?.status === 404) {
+        errorMessage = "Meeting not found or already deleted";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -443,10 +473,12 @@ export default function MeetingsList() {
                   paginatedMeetings.map((meeting) => (
                     <TableRow
                       key={meeting.meetId}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => viewMeetingDetails(meeting.meetId)}
+                      className="hover:bg-muted/50"
                     >
-                      <TableCell className="font-medium">
+                      <TableCell 
+                        className="font-medium cursor-pointer"
+                        onClick={() => viewMeetingDetails(meeting.meetId)}
+                      >
                         {meeting.meetId}
                       </TableCell>
                       <TableCell>
@@ -507,7 +539,7 @@ export default function MeetingsList() {
                                 viewMeetingDetails(meeting.meetId);
                               }}
                             >
-                              View Details
+                              <Eye className="mr-1 h-4 w-4" /> View Details
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={(e) => {
@@ -515,17 +547,54 @@ export default function MeetingsList() {
                                 editMeeting(meeting.meetId);
                               }}
                             >
-                              Edit Meeting
+                              <Edit className="mr-1 h-4 w-4" /> Edit Meeting
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteMeeting(meeting.meetId);
-                              }}
-                            >
-                              Cancel Meeting
-                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  <Trash2 className="mr-1 h-4 w-4" /> Cancel Meeting
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle className="flex items-center gap-2">
+                                    <span className="text-destructive">
+                                      ⚠️
+                                    </span>
+                                    Cancel Meeting
+                                  </DialogTitle>
+                                  <DialogDescription>
+                                    Are you sure you want to cancel meeting{" "}
+                                    <span className="font-semibold">
+                                      {meeting.meetId}
+                                    </span>
+                                    ? This action cannot be undone.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <DialogFooter className="gap-2">
+                                  <DialogClose asChild>
+                                    <Button variant="outline">
+                                      Cancel
+                                    </Button>
+                                  </DialogClose>
+                                  <DialogClose asChild>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleDeleteMeeting(meeting.meetId)
+                                      }
+                                      disabled={isDeleting}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </DialogClose>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpDown, MoreHorizontal, Plus, Search, Truck } from "lucide-react";
+import { ArrowUpDown, MoreHorizontal, Plus, Search, Truck, Eye, Edit, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,11 +36,13 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { renderRoleBasedPath } from "@/lib/utils";
@@ -55,6 +57,7 @@ export default function VehiclesList() {
   const itemsPerPage = 15;
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { data: session, status } = useSession();
   const { toast } = useToast();
 
@@ -177,23 +180,22 @@ export default function VehiclesList() {
     );
   };
 
-  // Handle vehicle deletion with simple confirmation
+  // Handle vehicle deletion
   const handleDeleteVehicle = async (
     vehicleId: string,
     vehicleNumber: string
   ) => {
-    if (!session?.user?.token) return;
-
-    // Use simple browser confirmation
-    const confirmed = window.confirm(
-      `Are you sure you want to delete vehicle "${vehicleNumber}"? This action cannot be undone.`
-    );
-
-    if (!confirmed) return;
-
-    console.log("Starting delete operation for vehicle:", vehicleNumber);
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to delete vehicles",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
+      setIsDeleting(true);
       const response = await axios.delete(
         `${process.env.BACKEND_API_URL}/api/vehicle/delete_vehicle/${vehicleId}`,
         {
@@ -211,8 +213,8 @@ export default function VehiclesList() {
 
         // Show success toast
         toast({
-          title: "Vehicle Deleted Successfully!",
-          description: `Vehicle ${vehicleNumber} has been deleted.`,
+          title: "Vehicle Deleted",
+          description: `Vehicle ${vehicleNumber} has been deleted successfully.`,
         });
 
         // Adjust pagination if needed
@@ -229,13 +231,25 @@ export default function VehiclesList() {
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting vehicle:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      let errorMessage = "Failed to delete vehicle. Please try again.";
+      if (error.response?.status === 404) {
+        errorMessage = "Vehicle not found or already deleted";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
       toast({
         title: "Delete Failed",
-        description: "An error occurred while deleting the vehicle.",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -343,10 +357,12 @@ export default function VehiclesList() {
                   paginatedVehicles.map((vehicle) => (
                     <TableRow
                       key={vehicle.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => viewVehicleDetails(vehicle.vehicleId)}
+                      className="hover:bg-muted/50"
                     >
-                      <TableCell className="font-medium">
+                      <TableCell 
+                        className="font-medium cursor-pointer"
+                        onClick={() => viewVehicleDetails(vehicle.vehicleId)}
+                      >
                         {vehicle.id}
                       </TableCell>
                       <TableCell>
@@ -393,23 +409,8 @@ export default function VehiclesList() {
                                 viewVehicleDetails(vehicle.vehicleId);
                               }}
                             >
-                              View Details
+                              <Eye className="mr-1 h-4 w-4" /> View Details
                             </DropdownMenuItem>
-                            {session?.user?.role === "ADMIN" && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteVehicle(
-                                    vehicle.vehicleId,
-                                    vehicle.vehicleNumber
-                                  );
-                                }}
-                              >
-                                Delete Vehicle
-                              </DropdownMenuItem>
-                            )}
-
                             {(session?.user?.role === "TSMWA_EDITOR" ||
                               session?.user?.role === "TQMA_EDITOR" ||
                               session?.user?.role === "ADMIN") && (
@@ -420,7 +421,7 @@ export default function VehiclesList() {
                                     editVehicle(vehicle.vehicleId);
                                   }}
                                 >
-                                  Edit Vehicle
+                                  <Edit className="mr-1 h-4 w-4" /> Edit Vehicle
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={(e) => {
@@ -430,8 +431,58 @@ export default function VehiclesList() {
                                     );
                                   }}
                                 >
-                                  Add Trip
+                                  <Plus className="mr-1 h-4 w-4" /> Add Trip
                                 </DropdownMenuItem>
+                              </>
+                            )}
+                            {session?.user?.role === "ADMIN" && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onSelect={(e) => e.preventDefault()}
+                                    >
+                                      <Trash2 className="mr-1 h-4 w-4" /> Delete Vehicle
+                                    </DropdownMenuItem>
+                                  </DialogTrigger>
+                                  <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center gap-2">
+                                        <span className="text-destructive">
+                                          ⚠️
+                                        </span>
+                                        Delete Vehicle
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Are you sure you want to delete vehicle{" "}
+                                        <span className="font-semibold">
+                                          {vehicle.vehicleNumber}
+                                        </span>
+                                        ? This action cannot be undone.
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <DialogFooter className="gap-2">
+                                      <DialogClose asChild>
+                                        <Button variant="outline">
+                                          Cancel
+                                        </Button>
+                                      </DialogClose>
+                                      <DialogClose asChild>
+                                        <Button
+                                          variant="destructive"
+                                          onClick={() =>
+                                            handleDeleteVehicle(vehicle.vehicleId, vehicle.vehicleNumber)
+                                          }
+                                          disabled={isDeleting}
+                                        >
+                                          Delete
+                                        </Button>
+                                      </DialogClose>
+                                    </DialogFooter>
+                                  </DialogContent>
+                                </Dialog>
                               </>
                             )}
                           </DropdownMenuContent>

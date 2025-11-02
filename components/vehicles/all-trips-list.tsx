@@ -10,6 +10,10 @@ import {
   Plus,
   Search,
   Calendar,
+  Eye,
+  Edit,
+  Trash2,
+  Truck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getVehicleById } from "@/data/vehicles";
 import { renderRoleBasedPath } from "@/lib/utils";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 // Define the trip type based on API response
 interface ApiTrip {
@@ -64,12 +79,14 @@ interface ApiTrip {
 export default function AllTripsList() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof ApiTrip | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [trips, setTrips] = useState<ApiTrip[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const itemsPerPage = 10;
 
   // Fetch trips from API
@@ -246,6 +263,76 @@ export default function AllTripsList() {
     );
   };
 
+  // Handle trip deletion
+  const handleDeleteTrip = async (tripId: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to delete trips",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const response = await axios.delete(
+        `${process.env.BACKEND_API_URL}/api/vehicle/delete_trip/${tripId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (response.status === 200 || response.status === 204) {
+        // Remove the trip from the local state
+        setTrips((prevTrips) =>
+          prevTrips.filter((trip) => trip.id !== parseInt(tripId))
+        );
+
+        // Show success toast
+        toast({
+          title: "Trip Deleted",
+          description: "Trip has been deleted successfully.",
+        });
+
+        // Adjust pagination if needed
+        if (
+          currentPage > 1 &&
+          (currentPage - 1) * itemsPerPage >= sortedTrips.length - 1
+        ) {
+          setCurrentPage(currentPage - 1);
+        }
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: "Failed to delete trip. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error deleting trip:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      let errorMessage = "Failed to delete trip. Please try again.";
+      if (error.response?.status === 404) {
+        errorMessage = "Trip not found or already deleted";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast({
+        title: "Delete Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Get vehicle details
   const getVehicleDetails = (vehicleId: string) => {
     const vehicle = getVehicleById(vehicleId);
@@ -295,7 +382,7 @@ export default function AllTripsList() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[100px]">
+                      <TableHead className="w-[150px]">
                         <Button
                           variant="ghost"
                           onClick={() => handleSort("tripId")}
@@ -416,14 +503,14 @@ export default function AllTripsList() {
                                   <DropdownMenuSeparator />
 
                                   <DropdownMenuItem>
-                                    View Details
+                                    <Eye className="mr-1 h-4 w-4" /> View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() =>
                                       viewVehicleDetails(trip.vehicleId)
                                     }
                                   >
-                                    Vehicle Details
+                                    <Truck className="mr-1 h-4 w-4" /> Vehicle Details
                                   </DropdownMenuItem>
                                   {(session?.user?.role === "TSMWA_EDITOR" ||
                                     session?.user?.role === "TQMA_EDITOR" ||
@@ -434,16 +521,59 @@ export default function AllTripsList() {
                                           editTrip(trip.vehicleId, trip.tripId)
                                         }
                                       >
-                                        Edit Trip
+                                        <Edit className="mr-1 h-4 w-4" /> Edit Trip
                                       </DropdownMenuItem>
                                     </>
                                   )}
 
                                   {session?.user?.role === "ADMIN" && (
                                     <>
-                                      <DropdownMenuItem>
-                                        Delete Trip
-                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onSelect={(e) => e.preventDefault()}
+                                          >
+                                            <Trash2 className="mr-1 h-4 w-4" /> Delete Trip
+                                          </DropdownMenuItem>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-md">
+                                          <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2">
+                                              <span className="text-destructive">
+                                                ⚠️
+                                              </span>
+                                              Delete Trip
+                                            </DialogTitle>
+                                            <DialogDescription>
+                                              Are you sure you want to delete trip{" "}
+                                              <span className="font-semibold">
+                                                {trip.tripId}
+                                              </span>
+                                              ? This action cannot be undone.
+                                            </DialogDescription>
+                                          </DialogHeader>
+                                          <DialogFooter className="gap-2">
+                                            <DialogClose asChild>
+                                              <Button variant="outline">
+                                                Cancel
+                                              </Button>
+                                            </DialogClose>
+                                            <DialogClose asChild>
+                                              <Button
+                                                variant="destructive"
+                                                onClick={() =>
+                                                  handleDeleteTrip(trip.id.toString())
+                                                }
+                                                disabled={isDeleting}
+                                              >
+                                                Delete
+                                              </Button>
+                                            </DialogClose>
+                                          </DialogFooter>
+                                        </DialogContent>
+                                      </Dialog>
                                     </>
                                   )}
                                 </DropdownMenuContent>
