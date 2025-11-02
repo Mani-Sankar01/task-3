@@ -241,6 +241,13 @@ export default function AllTripsList() {
   };
 
   // Navigate to trip details
+  const viewTripDetails = (tripId: string) => {
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/trips/${tripId}`
+    );
+  };
+
+  // Navigate to vehicle details
   const viewVehicleDetails = (vehicleId: string) => {
     router.push(
       `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
@@ -502,7 +509,11 @@ export default function AllTripsList() {
                                   <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
 
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      viewTripDetails(trip.tripId)
+                                    }
+                                  >
                                     <Eye className="mr-1 h-4 w-4" /> View Details
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
