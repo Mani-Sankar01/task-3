@@ -60,8 +60,11 @@ interface Meeting {
     id: number;
     meetId: string;
     all: boolean;
-    membershipID: string[];
-    custom: string[];
+    membershipID?: string[];
+    customLabours?: Array<{
+      id?: number;
+      labourId: string;
+    }>;
   }>;
   status: string;
   followUpMeetings?: Array<{
@@ -177,20 +180,26 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
     // Check vehicle attendees
     if (meeting.vehicleAttendees && meeting.vehicleAttendees.length > 0) {
       const vehicleAttendee = meeting.vehicleAttendees[0];
-      if (vehicleAttendee.owner && vehicleAttendee.driver) {
-        types.push("All Vehicle Owners & Drivers");
-      } else if (vehicleAttendee.owner) {
-        types.push("All Vehicle Owners");
-      } else if (vehicleAttendee.driver) {
-        types.push("All Vehicle Drivers");
+      if (vehicleAttendee.all) {
+        // All vehicles
+        if (vehicleAttendee.owner && vehicleAttendee.driver) {
+          types.push("All Vehicle Owners & Drivers");
+        } else if (vehicleAttendee.owner) {
+          types.push("All Vehicle Owners");
+        } else if (vehicleAttendee.driver) {
+          types.push("All Vehicle Drivers");
+        }
       } else {
+        // Selected vehicles
         const vehicleDetails = [];
         if (vehicleAttendee.owner) vehicleDetails.push("Owners");
         if (vehicleAttendee.driver) vehicleDetails.push("Drivers");
         if (vehicleAttendee.customVehicle?.length) {
           vehicleDetails.push(`${vehicleAttendee.customVehicle.length} Custom Vehicle(s)`);
         }
-        types.push(`Selected Vehicles (${vehicleDetails.join(", ")})`);
+        if (vehicleDetails.length > 0) {
+          types.push(`Selected Vehicles (${vehicleDetails.join(", ")})`);
+        }
       }
     }
     
@@ -204,10 +213,14 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         if (labourAttendee.membershipID?.length) {
           labourDetails.push(`${labourAttendee.membershipID.length} Membership(s)`);
         }
-        if (labourAttendee.custom?.length) {
-          labourDetails.push(`${labourAttendee.custom.length} Custom Labour(s)`);
+        if (labourAttendee.customLabours?.length) {
+          labourDetails.push(`${labourAttendee.customLabours.length} Custom Labour(s)`);
         }
-        types.push(`Selected Labour (${labourDetails.join(", ")})`);
+        if (labourDetails.length > 0) {
+          types.push(`Selected Labour (${labourDetails.join(", ")})`);
+        } else {
+          types.push("Selected Labour");
+        }
       }
     }
     
@@ -244,7 +257,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
   }
 
   return (
-    <div className="container mx-auto">
+    <div className="">
       <div className="mb-6">
         <Button onClick={handleBack} variant="outline" className="mb-4">
           <ArrowLeft className="mr-2 h-4 w-4" />

@@ -359,11 +359,11 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           custom: memberAttendee.customMembers?.map((m: any) => m.membershipId || m) || [],
         },
         vehicleAttendees: {
-          type: vehicleAttendee.all ? "allOwners" :
-                vehicleAttendee.owner && vehicleAttendee.driver ? "allOwners" :
-                vehicleAttendee.owner ? "allOwners" :
-                vehicleAttendee.driver ? "allDrivers" :
-                vehicleAttendee.customVehicle?.length ? "selectedOwners" : undefined,
+          type: vehicleAttendee.all 
+                ? (vehicleAttendee.owner && vehicleAttendee.driver ? "allOwners" : vehicleAttendee.owner ? "allOwners" : "allDrivers")
+                : vehicleAttendee.customVehicle?.length 
+                  ? (vehicleAttendee.owner ? "selectedOwners" : "selectedDrivers")
+                  : undefined,
           owner: vehicleAttendee.owner || false,
           driver: vehicleAttendee.driver || false,
           custom: vehicleAttendee.customVehicle?.map((v: any) => ({
@@ -448,13 +448,21 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         
         if (data.vehicleAttendees?.type === "allOwners") {
           vehicleAttendees.owner = true;
+          vehicleAttendees.driver = false;
+          vehicleAttendees.all = true;
         } else if (data.vehicleAttendees?.type === "allDrivers") {
+          vehicleAttendees.owner = false;
           vehicleAttendees.driver = true;
+          vehicleAttendees.all = true;
         } else if (data.vehicleAttendees?.type === "selectedOwners" && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
           vehicleAttendees.owner = true;
+          vehicleAttendees.driver = false;
+          vehicleAttendees.all = false;
           vehicleAttendees.custom = data.vehicleAttendees.custom;
         } else if (data.vehicleAttendees?.type === "selectedDrivers" && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
+          vehicleAttendees.owner = false;
           vehicleAttendees.driver = true;
+          vehicleAttendees.all = false;
           vehicleAttendees.custom = data.vehicleAttendees.custom;
         }
         
@@ -694,9 +702,14 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
         if (vehicleChanged) {
           updateData.attendees = updateData.attendees || {};
+          
+          // Determine if it's "all" based on type
+          const isAllType = data.vehicleAttendees?.type === "allOwners" || data.vehicleAttendees?.type === "allDrivers";
+          
           const vehicleUpdates: any = {
             owner: data.vehicleAttendees?.owner || false,
             driver: data.vehicleAttendees?.driver || false,
+            all: isAllType,
           };
           
           // Handle custom vehicle changes
@@ -891,7 +904,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         "Are you sure you want to cancel? All changes will be lost."
       )
     ) {
-      router.push("/admin/meetings");
+      router.back();
     }
   };
 
@@ -1362,7 +1375,30 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Vehicle Selection Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Update owner, driver, and all fields based on the type
+                              if (value === "allOwners") {
+                                form.setValue("vehicleAttendees.owner", true);
+                                form.setValue("vehicleAttendees.driver", false);
+                              } else if (value === "allDrivers") {
+                                form.setValue("vehicleAttendees.owner", false);
+                                form.setValue("vehicleAttendees.driver", true);
+                              } else if (value === "selectedOwners") {
+                                form.setValue("vehicleAttendees.owner", true);
+                                form.setValue("vehicleAttendees.driver", false);
+                              } else if (value === "selectedDrivers") {
+                                form.setValue("vehicleAttendees.owner", false);
+                                form.setValue("vehicleAttendees.driver", true);
+                              }
+                              // Clear custom selections when switching to "all"
+                              if (value === "allOwners" || value === "allDrivers") {
+                                form.setValue("vehicleAttendees.custom", []);
+                              }
+                            }} 
+                            value={field.value}
+                          >
                           <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select vehicle type" />
@@ -1479,7 +1515,18 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Labour Selection Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select 
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Update the 'all' field based on the type
+                              form.setValue("labourAttendees.all", value === "all");
+                              // Clear custom selections when switching to "all"
+                              if (value === "all") {
+                                form.setValue("labourAttendees.custom", []);
+                              }
+                            }} 
+                            value={field.value}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select labour type" />

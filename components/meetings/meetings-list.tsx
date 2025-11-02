@@ -76,8 +76,11 @@ interface Meeting {
     id: number;
     meetId: string;
     all: boolean;
-    membershipID: string[];
-    custom: string[];
+    membershipID?: string[];
+    customLabours?: Array<{
+      id?: number;
+      labourId: string;
+    }>;
   }>;
   status: string;
   followUpMeeting?: Array<{
@@ -285,14 +288,27 @@ export default function MeetingsList() {
     // Check vehicle attendees
     if (meeting.vehicleAttendees && meeting.vehicleAttendees.length > 0) {
       const vehicleAttendee = meeting.vehicleAttendees[0];
-      if (vehicleAttendee.owner && vehicleAttendee.driver) {
-        types.push("All Vehicle Owners & Drivers");
-      } else if (vehicleAttendee.owner) {
-        types.push("All Vehicle Owners");
-      } else if (vehicleAttendee.driver) {
-        types.push("All Vehicle Drivers");
-      } else if (vehicleAttendee.customVehicle && vehicleAttendee.customVehicle.length > 0) {
-        types.push("Selected Vehicles");
+      if (vehicleAttendee.all) {
+        // All vehicles
+        if (vehicleAttendee.owner && vehicleAttendee.driver) {
+          types.push("All Vehicle Owners & Drivers");
+        } else if (vehicleAttendee.owner) {
+          types.push("All Vehicle Owners");
+        } else if (vehicleAttendee.driver) {
+          types.push("All Vehicle Drivers");
+        }
+      } else {
+        // Selected vehicles
+        if (vehicleAttendee.customVehicle && vehicleAttendee.customVehicle.length > 0) {
+          const vehicleLabels = [];
+          if (vehicleAttendee.owner) vehicleLabels.push("Owners");
+          if (vehicleAttendee.driver) vehicleLabels.push("Drivers");
+          if (vehicleLabels.length > 0) {
+            types.push(`Selected Vehicle ${vehicleLabels.join(" & ")}`);
+          } else {
+            types.push("Selected Vehicles");
+          }
+        }
       }
     }
     
@@ -303,7 +319,7 @@ export default function MeetingsList() {
         types.push("All Labour");
       } else if (labourAttendee.membershipID && labourAttendee.membershipID.length > 0) {
         types.push("Selected Labour");
-      } else if (labourAttendee.custom && labourAttendee.custom.length > 0) {
+      } else if (labourAttendee.customLabours && labourAttendee.customLabours.length > 0) {
         types.push("Selected Labour");
       }
     }
@@ -376,7 +392,7 @@ export default function MeetingsList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">
+                  <TableHead className="w-[140px]">
                     <Button
                       variant="ghost"
                       onClick={() => handleSort("meetId")}
@@ -386,7 +402,7 @@ export default function MeetingsList() {
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="min-w-[200px]">
                     <Button
                       variant="ghost"
                       onClick={() => handleSort("title")}
