@@ -224,8 +224,8 @@ export default function InvoiceForm({
               amount: 0,
             },
           ],
-          cgstPercentage: 5,
-          sgstPercentage: 5,
+          cgstPercentage: 2.5,
+          sgstPercentage: 2.5,
           igstPercentage: 0,
           subTotal: 0,
           cgstAmount: 0,
@@ -1028,19 +1028,28 @@ export default function InvoiceForm({
                               // If GSTIN starts with 36, hide IGST and use only CGST and SGST
                               if (gstInNumber.startsWith("36")) {
                                 setShowIGST(false);
-                                // Only set CGST and SGST to 5% if they're currently 0
+                                // Set CGST and SGST to 2.5% if they're currently 0
                                 if (form.getValues("cgstPercentage") === 0) {
-                                  form.setValue("cgstPercentage", 5);
+                                  form.setValue("cgstPercentage", 2.5);
                                 }
                                 if (form.getValues("sgstPercentage") === 0) {
-                                  form.setValue("sgstPercentage", 5);
+                                  form.setValue("sgstPercentage", 2.5);
                                 }
                                 form.setValue("igstPercentage", 0);
                                 form.setValue("igstAmount", 0);
                                 handleTaxChange();
                               } else if (gstInNumber.length >= 2) {
-                                // For other states, show IGST
+                                // For other states, show IGST and set to 5%
                                 setShowIGST(true);
+                                // Set CGST and SGST to 0 and IGST to 5%
+                                form.setValue("cgstPercentage", 0);
+                                form.setValue("sgstPercentage", 0);
+                                form.setValue("cgstAmount", 0);
+                                form.setValue("sgstAmount", 0);
+                                if (form.getValues("igstPercentage") === 0) {
+                                  form.setValue("igstPercentage", 5);
+                                }
+                                handleTaxChange();
                               }
                             }}
                           />
