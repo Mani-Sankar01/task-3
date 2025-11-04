@@ -244,12 +244,12 @@ const page = () => {
 
   // Navigate to member details
   const viewMemberDetails = (memberId: string) => {
-    router.push(`/admin/memberships/${memberId}`);
+    router.push(`/tsmwa/memberships/${memberId}`);
   };
 
   // Navigate to edit member
   const editMember = (memberId: string) => {
-    router.push(`/admin/memberships/add?id=${memberId}&edit=true`);
+    router.push(`/tsmwa/memberships/add?id=${memberId}&edit=true`);
   };
 
   // Delete a member

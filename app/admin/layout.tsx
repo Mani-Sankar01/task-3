@@ -86,11 +86,11 @@ const data = {
           url: "/admin/changes-approval",
           icon: AlertCircle,
         },
-        {
-          title: "All Media",
-          url: "/admin/media",
-          icon: DownloadCloudIcon,
-        },
+        // {
+        //   title: "All Media",
+        //   url: "/admin/media",
+        //   icon: DownloadCloudIcon,
+        // },
       ],
     },
     {

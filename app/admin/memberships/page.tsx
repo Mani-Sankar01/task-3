@@ -809,7 +809,7 @@ const page = () => {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem>
                                 <Link
-                                  href={`/tsmwa/memberships/${member.membershipId}`}
+                                  href={`/admin/memberships/${member.membershipId}`}
                                   className="flex items-center gap-2 cursor-pointer"
                                 >
                                   <EyeIcon className=" h-4 w-4" />
