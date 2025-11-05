@@ -694,7 +694,10 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-destructive">
-                  ₹{dashboardData.membershipFeesDue.reduce((sum, fee) => sum + (fee.amount || 0), 0).toLocaleString()}
+                  ₹{dashboardData.membershipFeesDue.reduce((sum, fee) => {
+                    const dueAmt = parseFloat(fee.dueAmount || "0");
+                    return sum + dueAmt;
+                  }, 0).toLocaleString()}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {dashboardData.membershipFeesDue.length} pending payments
@@ -1020,7 +1023,12 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  ₹0
+                  ₹{dashboardData && dashboardData.membershipFeesDue && dashboardData.membershipFeesDue.length > 0
+                    ? dashboardData.membershipFeesDue.reduce((sum, fee) => {
+                        const dueAmt = parseFloat(fee.dueAmount || "0");
+                        return sum + dueAmt;
+                      }, 0).toLocaleString()
+                    : "0"}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {dashboardData.membershipFeesDue.length} pending payments
