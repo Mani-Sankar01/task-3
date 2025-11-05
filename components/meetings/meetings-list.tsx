@@ -117,7 +117,7 @@ export default function MeetingsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
-  const itemsPerPage = 5;
+  const itemsPerPage = 20;
 
   // Fetch meetings from API
   const fetchMeetings = async () => {

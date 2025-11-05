@@ -255,6 +255,7 @@ export default function MembershipFeeForm({
           new Date(data.periodTo).toISOString() !== originalFee.toDate
         )
           payload.toDate = new Date(data.periodTo).toISOString();
+          console.log(payload);
         await axios.post(
           `${
             process.env.BACKEND_API_URL || "https://tsmwa.online"

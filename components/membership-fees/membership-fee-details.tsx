@@ -45,7 +45,7 @@ export default function MembershipFeeDetails({
   };
 
   return (
-    <div className="container">
+    <div className="">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center">
           <Button variant="outline" onClick={handleBack} className="mr-4">

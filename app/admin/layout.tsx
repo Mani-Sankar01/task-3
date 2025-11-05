@@ -153,7 +153,7 @@ const data = {
         },
         {
           title: "Add Meeting",
-          url: "/meetings/add",
+          url: "/admin/meetings/add",
           icon: PlusSquare,
         },
       ],

@@ -359,7 +359,7 @@ export default function MembershipFeesList() {
   };
 
   return (
-    <div className="container">
+    <div className="">
       {isLoading ? (
         <div className="flex flex-col items-center justify-center min-h-[200px]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />

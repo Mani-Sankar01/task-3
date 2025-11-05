@@ -68,6 +68,7 @@ import {
   type HealthCheckResponse,
 } from "@/services/health-check";
 import { Skeleton } from "../ui/skeleton";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 interface DashboardData {
   members: {
@@ -1135,34 +1136,44 @@ export default function DashboardOverview() {
                         className="flex justify-between items-center border-b pb-3 last:border-0"
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{fee.memberName}</span>
+                          <span className="font-medium">
+                            {fee.members?.firmName || fee.members?.applicantName || fee.memberName || "Unknown Member"}
+                          </span>
                           <span className="text-sm text-muted-foreground">
-                            Period: {fee.periodFrom && !isNaN(new Date(fee.periodFrom).getTime()) 
-                              ? format(new Date(fee.periodFrom), "MMM dd")
-                              : "Invalid Date"
+                            Period: {fee.fromDate && !isNaN(new Date(fee.fromDate).getTime()) 
+                              ? format(new Date(fee.fromDate), "MMM dd, yyyy")
+                              : fee.toDate && !isNaN(new Date(fee.toDate).getTime())
+                              ? format(new Date(fee.toDate), "MMM dd, yyyy")
+                              : "Date not available"
                             }{" "}
-                            - {fee.periodTo && !isNaN(new Date(fee.periodTo).getTime()) 
-                              ? format(new Date(fee.periodTo), "MMM dd")
-                              : "Invalid Date"
+                            - {fee.toDate && !isNaN(new Date(fee.toDate).getTime()) 
+                              ? format(new Date(fee.toDate), "MMM dd, yyyy")
+                              : fee.fromDate && !isNaN(new Date(fee.fromDate).getTime())
+                              ? format(new Date(fee.fromDate), "MMM dd, yyyy")
+                              : "Date not available"
                             }
                           </span>
                         </div>
                         <div className="text-right">
                           <span className="font-bold">
-                            ₹{(fee.amount || 0).toLocaleString()}
+                            ₹{parseFloat(fee.dueAmount || "0").toLocaleString()}
                           </span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="ml-2"
-                            onClick={() =>
-                              navigateToSection(
-                                `/admin/membership-fees/edit/${fee.id}`
-                              )
-                            }
-                          >
-                            Collect
-                          </Button>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TSMWA_EDITOR" ||
+                            session?.user?.role === "TQMA_EDITOR") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-2"
+                              onClick={() =>
+                                router.push(
+                                  `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/${fee.billingId}/edit`
+                                )
+                              }
+                            >
+                              Collect
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))
@@ -1173,17 +1184,23 @@ export default function DashboardOverview() {
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
-                <Button
-                  variant="default"
-                  className="w-full"
-                  onClick={() =>
-                    navigateToSection("/admin/membership-fees/add")
-                  }
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add New Fee
-                </Button>
-              </CardFooter>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TSMWA_EDITOR" ||
+                session?.user?.role === "TQMA_EDITOR") && (
+                <CardFooter>
+                  <Button
+                    variant="default"
+                    className="w-full"
+                    onClick={() =>
+                      router.push(
+                        `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/add`
+                      )
+                    }
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Add New Fee
+                  </Button>
+                </CardFooter>
+              )}
             </Card>
           </div>
         </TabsContent>
