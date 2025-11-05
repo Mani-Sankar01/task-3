@@ -14,6 +14,7 @@ import {
   Edit,
   Trash2,
   Truck,
+  Mail,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -187,9 +188,9 @@ export default function AllTripsList() {
         valueA = a.numberOfTrips;
         valueB = b.numberOfTrips;
         break;
-      case "amountPerTrip":
-        valueA = a.amountPerTrip;
-        valueB = b.amountPerTrip;
+      case "balanceAmount":
+        valueA = a.balanceAmount;
+        valueB = b.balanceAmount;
         break;
       case "totalAmount":
         valueA = a.totalAmount;
@@ -421,13 +422,13 @@ export default function AllTripsList() {
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
-                      <TableHead>
+                                            <TableHead>
                         <Button
                           variant="ghost"
-                          onClick={() => handleSort("amountPerTrip")}
-                          className="flex items-center p-0 h-auto font-medium"
+                          onClick={() => handleSort("balanceAmount")}
+                          className="flex items-center p-0 h-auto font-medium"  
                         >
-                          Amount/Trip
+                          Due Amount
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
@@ -478,7 +479,7 @@ export default function AllTripsList() {
                               {vehicle?.driverName || "Unknown"}
                             </TableCell>
                             <TableCell>{trip.numberOfTrips}</TableCell>
-                            <TableCell>₹{trip.amountPerTrip}</TableCell>
+                            <TableCell>₹{trip.balanceAmount}</TableCell>
                             <TableCell>₹{trip.totalAmount}</TableCell>
                             <TableCell>
                               <Badge
@@ -526,18 +527,28 @@ export default function AllTripsList() {
                                   {(session?.user?.role === "TSMWA_EDITOR" ||
                                     session?.user?.role === "TQMA_EDITOR" ||
                                     session?.user?.role === "ADMIN") && (
-                                    <>
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          editTrip(trip.vehicleId, trip.tripId)
-                                        }
-                                      >
-                                        <Edit className="mr-1 h-4 w-4" /> Edit Trip
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-
-                                  {session?.user?.role === "ADMIN" && (
+                                                                  <>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    editTrip(trip.vehicleId, trip.tripId)
+                                  }
+                                >
+                                  <Edit className="mr-1 h-4 w-4" /> Edit Trip
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            {trip.paymentStatus && trip.paymentStatus.toUpperCase() !== "PAID" && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: Add send reminder functionality when API is available
+                                }}
+                              >
+                                <Mail className="mr-1 h-4 w-4" />
+                                Send Reminder
+                              </DropdownMenuItem>
+                            )}
+                            {session?.user?.role === "ADMIN" && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <Dialog>

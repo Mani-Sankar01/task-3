@@ -11,6 +11,7 @@ import {
   CalendarIcon,
   CircleCheck,
   CircleX,
+  Clock,
   Download,
   Edit,
   Eye,
@@ -140,6 +141,7 @@ export default function InvoiceList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const itemsPerPage = 10;
 
   // Fetch invoices from API
@@ -294,7 +296,7 @@ export default function InvoiceList() {
     );
   };
 
-  const handleDeleteInvoice = async (invoiceId: string) => {
+    const handleDeleteInvoice = async (invoiceId: string) => {
     if (status !== "authenticated" || !session?.user?.token) {
       toast({
         title: "Authentication Required",
@@ -306,7 +308,7 @@ export default function InvoiceList() {
 
     try {
       setIsDeleting(true);
-      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";     
       await axios.delete(
         `${apiUrl}/api/tax_invoice/delete_tax_invoice/${invoiceId}`,
         {
@@ -347,6 +349,72 @@ export default function InvoiceList() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleStatusUpdate = async (invoiceId: string, newStatus: string) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to update invoice status",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      
+      const payload = {
+        invoiceId: invoiceId,
+        status: newStatus
+      };
+
+      await axios.post(
+        `${apiUrl}/api/tax_invoice/update_tax_invoice`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Update local state after successful API call
+      setInvoices((prevInvoices) =>
+        prevInvoices.map((inv) =>
+          inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+        )
+      );
+      setFilteredInvoices((prevInvoices) =>
+        prevInvoices.map((inv) =>
+          inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+        )
+      );
+
+      toast({
+        title: "Status Updated",
+        description: `Invoice status updated to ${newStatus} successfully.`
+      });
+    } catch (error: any) {
+      console.error("Error updating invoice status:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+
+      let errorMessage = "Failed to update invoice status. Please try again.";
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
+      toast({
+        title: "Update Failed",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -804,18 +872,66 @@ export default function InvoiceList() {
                             >
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
-                            {session?.user?.role === "ADMIN" && (
+                                                        {session?.user?.role === "ADMIN" && (
                               <>
                                 {invoice.status === "PENDING" && (
-                                  <DropdownMenuItem>
-                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                    Approve
-                                  </DropdownMenuItem>
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusUpdate(invoice.invoiceId, "APPROVED");
+                                      }}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusUpdate(invoice.invoiceId, "DECLINED");
+                                      }}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                      Decline
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
                                 {invoice.status === "APPROVED" && (
-                                  <DropdownMenuItem>
-                                    <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                    Decline
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusUpdate(invoice.invoiceId, "PENDING");
+                                      }}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      <Clock className="mr-2 h-4 w-4 text-yellow-500" />
+                                      Pending
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusUpdate(invoice.invoiceId, "DECLINED");
+                                      }}
+                                      disabled={isUpdatingStatus}
+                                    >
+                                      <CircleX className="mr-2 h-4 w-4 text-red-500" />
+                                      Declined
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {invoice.status === "DECLINED" && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusUpdate(invoice.invoiceId, "APPROVED");
+                                    }}
+                                    disabled={isUpdatingStatus}
+                                  >
+                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                    Approve
                                   </DropdownMenuItem>
                                 )}
                                 <DropdownMenuSeparator />

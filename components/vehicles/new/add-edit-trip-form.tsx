@@ -313,7 +313,10 @@ export default function AddEditTripForm({
 
   const handleSuccessPopupClose = () => {
     setPopupMessage((prev) => ({ ...prev, isOpen: false }));
-    router.back();
+    router.push(
+      `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${vehicleId}`
+    );
+    router.refresh();
   };
 
   if (isLoading || status === "loading") {

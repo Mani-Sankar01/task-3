@@ -13,6 +13,7 @@ import {
   Trash2,
   PencilIcon,
   EyeIcon,
+  Mail,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -667,9 +668,9 @@ export default function MembershipFeesList() {
                                 <EyeIcon className=" h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              {(session?.user?.role === "ADMIN" ||
-                                session?.user?.role === "TSMWA_EDITOR" ||
-                                session?.user?.role === "TQMA_EDITOR") && (
+                                                            {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TSMWA_EDITOR" ||       
+                                session?.user?.role === "TQMA_EDITOR") && (     
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -680,13 +681,24 @@ export default function MembershipFeesList() {
                                   Edit Fee
                                 </DropdownMenuItem>
                               )}
+                              {fee.paymentStatus && fee.paymentStatus.toUpperCase() !== "PAID" && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    // TODO: Add send reminder functionality when API is available
+                                  }}
+                                >
+                                  <Mail className="h-4 w-4 " />
+                                  Send Reminder
+                                </DropdownMenuItem>
+                              )}
                               {session?.user.role === "ADMIN" && (
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
+                                  <Trash2 className="h-4 w-4 text-red-600" />   
                                   Delete
                                 </DropdownMenuItem>
                               )}

@@ -18,7 +18,8 @@ import {
   DollarSign,
   Filter,
   Users,
-  Receipt
+  Receipt,
+  Search
 } from "lucide-react";
 
 import Header from "@/components/header";
@@ -169,6 +170,7 @@ const ChangesApprovalPage = () => {
   const [declineNote, setDeclineNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [declineError, setDeclineError] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
   const [approvalStatusFilter, setApprovalStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
@@ -230,6 +232,10 @@ const ChangesApprovalPage = () => {
           invoiceChanges: invoiceData.length
         });
 
+        console.log(memberData);
+        console.log(membershipFeesData);
+        console.log(invoiceData);
+
       } catch (error) {
         console.error("Error fetching changes:", error);
         toast({
@@ -248,6 +254,38 @@ const ChangesApprovalPage = () => {
   // Filter functions
   const filterChanges = (changes: any[]) => {
     let filtered = changes;
+    
+    // Filter by search term (membershipId, billingId, invoiceId, names, etc.)
+    if (searchFilter.trim() !== "") {
+      const searchTerm = searchFilter.toLowerCase().trim();
+      filtered = filtered.filter(change => {
+        // Search in membershipId
+        if (change.membershipId?.toLowerCase().includes(searchTerm)) return true;
+        // Search in billingId
+        if (change.billingId?.toLowerCase().includes(searchTerm)) return true;
+        // Search in invoiceId
+        if (change.invoiceId?.toLowerCase().includes(searchTerm)) return true;
+        // Search in editor/admin names
+        if (change.modifiedByEditor?.fullName?.toLowerCase().includes(searchTerm)) return true;
+        if (change.approvedByAdmin?.fullName?.toLowerCase().includes(searchTerm)) return true;
+        // Search in any string fields in updatedData
+        if (change.updatedData && typeof change.updatedData === 'object') {
+          const searchInObject = (obj: any): boolean => {
+            for (const key in obj) {
+              if (typeof obj[key] === 'string' && obj[key].toLowerCase().includes(searchTerm)) {
+                return true;
+              }
+              if (typeof obj[key] === 'object' && obj[key] !== null && searchInObject(obj[key])) {
+                return true;
+              }
+            }
+            return false;
+          };
+          if (searchInObject(change.updatedData)) return true;
+        }
+        return false;
+      });
+    }
     
     // Filter by approval status
     if (approvalStatusFilter !== "all") {
@@ -316,147 +354,145 @@ const ChangesApprovalPage = () => {
   const filteredMembershipFeesChanges = filterChanges(membershipFeesChanges);
   const filteredInvoiceChanges = filterChanges(invoiceChanges);
 
-  // Member change processing functions
-  const extractMemberChanges = (updatedData: any): ChangeDetails[] => {
-    const changes: ChangeDetails[] = [];
+    // Generic recursive function to extract all changes from updatedData
+  const extractAllChanges = (updatedData: any, prefix: string = ""): any[] => {
+    const changes: any[] = [];
 
-    const hasData = (obj: any): boolean => {
-      if (!obj || typeof obj !== 'object') return false;
-      if (Array.isArray(obj)) return obj.length > 0;
-      return Object.keys(obj).some(key => {
-        const value = obj[key];
-        if (Array.isArray(value)) return value.length > 0;
-        if (typeof value === 'object' && value !== null) return hasData(value);
-        return value !== null && value !== undefined && value !== '';
-      });
+    if (!updatedData || typeof updatedData !== 'object') {
+      return changes;
+    }
+
+    // Helper function to check if a value is meaningful (not empty/null/undefined)
+    const hasMeaningfulValue = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'object') {
+        // Check if object has any meaningful properties
+        return Object.keys(value).some(key => hasMeaningfulValue(value[key]));
+      }
+      return true;
     };
 
-    // Check basic field changes
-    const basicFields = [
-      'relativeName', 'applicantName', 'firmName', 'proprietorName', 
-      'phoneNumber1', 'phoneNumber2', 'surveyNumber', 'village', 'zone', 
-      'mandal', 'district', 'state', 'pinCode', 'sanctionedHP',
-      'estimatedMaleWorker', 'estimatedFemaleWorker', 'fullAddress'
-    ];
+    // Helper function to format field names (camelCase to Title Case)
+    const formatFieldName = (field: string): string => {
+      return field
+        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .trim();
+    };
 
-    basicFields.forEach(field => {
-      if (updatedData[field] !== undefined && updatedData[field] !== null && updatedData[field] !== '') {
+    // Helper function to format nested field names
+    const getFullFieldName = (key: string, parentPrefix: string): string => {
+      const formattedKey = formatFieldName(key);
+      return parentPrefix ? `${parentPrefix} - ${formattedKey}` : formattedKey;
+    };
+
+    // Process each key in updatedData
+    for (const key of Object.keys(updatedData)) {
+      const value = updatedData[key];
+      const fullFieldName = getFullFieldName(key, prefix);
+
+      // Skip metadata fields that shouldn't be shown as changes
+      if (['id', 'membershipId', 'billingId', 'invoiceId', 'createdAt', 'updatedAt', 'modifiedAt', 'modifiedBy'].includes(key)) {
+        continue;
+      }
+
+      // Handle arrays
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          // Determine the type based on key name
+          let changeType: "added" | "updated" | "deleted" = "updated";
+          if (key.toLowerCase().includes('new') || key.toLowerCase().includes('add')) {
+            changeType = "added";
+          } else if (key.toLowerCase().includes('delete') || key.toLowerCase().includes('remove')) {
+            changeType = "deleted";
+          }
+
+          changes.push({
+            type: changeType,
+            field: fullFieldName,
+            newValue: value,
+            description: `${value.length} item(s) - ${formatFieldName(key)}`
+          });
+        }
+      }
+            // Handle nested objects
+      else if (typeof value === 'object' && value !== null) {
+        // Check if it's a special nested structure (like branchDetails, partnerDetails)
+        if (hasMeaningfulValue(value)) {
+          // For objects with a single meaningful property (like {proposerID: "..."}), show it more cleanly
+          const keys = Object.keys(value);
+          const meaningfulKeys = keys.filter(k => hasMeaningfulValue(value[k]));
+          
+          if (meaningfulKeys.length === 1 && typeof value[meaningfulKeys[0]] !== 'object') {
+            // Single primitive property - show it directly
+            const singleKey = meaningfulKeys[0];
+            const singleValue = value[singleKey];
+            let displayValue = singleValue;
+            let description = `${fullFieldName} changed to: ${singleValue}`;
+            
+            // Format dates
+            if (typeof singleValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(singleValue)) {
+              try {
+                const date = new Date(singleValue);
+                if (!isNaN(date.getTime())) {
+                  displayValue = format(date, "MMM dd, yyyy");
+                  description = `${fullFieldName} changed to: ${displayValue}`;
+                }
+              } catch (e) {
+                // Not a valid date
+              }
+            }
+            
+            changes.push({
+              type: "updated",
+              field: fullFieldName,
+              newValue: displayValue,
+              description: description
+            });
+          } else {
+            // Multiple properties or complex structure - recursively process
+            const nestedChanges = extractAllChanges(value, fullFieldName);
+            changes.push(...nestedChanges);
+          }
+        }
+      }
+      // Handle primitive values (string, number, boolean, date)
+      else if (hasMeaningfulValue(value)) {
+        let displayValue = value;
+        let description = `${fullFieldName} changed to: ${value}`;
+
+        // Format dates if detected
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              displayValue = format(date, "MMM dd, yyyy");
+              description = `${fullFieldName} changed to: ${displayValue}`;
+            }
+          } catch (e) {
+            // Not a valid date, keep original
+          }
+        }
+
+        // Format currency for amount fields
+        if ((key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('price')) && typeof value === 'number') {
+          displayValue = `₹${value}`;
+          description = `${fullFieldName} changed to: ${displayValue}`;
+        }
+        
+        // Format percentage for percent fields
+        if (key.toLowerCase().includes('percent') && typeof value === 'number') {
+          displayValue = `${value}%`;
+          description = `${fullFieldName} changed to: ${displayValue}`;
+        }
+
         changes.push({
           type: "updated",
-          field: field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
-          newValue: updatedData[field],
-          description: `${field.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} changed to: ${updatedData[field]}`
-        });
-      }
-    });
-
-    if (updatedData.proposer && hasData(updatedData.proposer)) {
-      changes.push({
-        type: "updated",
-        field: "Proposer",
-        newValue: updatedData.proposer.proposerID,
-        description: `Proposer changed to: ${updatedData.proposer.proposerID}`
-      });
-    }
-
-    if (updatedData.executiveProposer && hasData(updatedData.executiveProposer)) {
-      changes.push({
-        type: "updated",
-        field: "Executive Proposer",
-        newValue: updatedData.executiveProposer.proposerID,
-        description: `Executive Proposer changed to: ${updatedData.executiveProposer.proposerID}`
-      });
-    }
-
-    if (updatedData.branchDetails && hasData(updatedData.branchDetails)) {
-      const branchData = updatedData.branchDetails;
-      
-      if (branchData.newBranchSchema && branchData.newBranchSchema.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Branches",
-          newValue: branchData.newBranchSchema,
-          description: `${branchData.newBranchSchema.length} new branch(es) added`
-        });
-      }
-
-      if (branchData.updateBranchSchema && branchData.updateBranchSchema.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Branches",
-          newValue: branchData.updateBranchSchema,
-          description: `${branchData.updateBranchSchema.length} branch(es) updated`
-        });
-      }
-
-      if (branchData.deleteBranchSchema && branchData.deleteBranchSchema.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Branches",
-          newValue: branchData.deleteBranchSchema,
-          description: `${branchData.deleteBranchSchema.length} branch(es) deleted`
-        });
-      }
-    }
-
-    if (updatedData.partnerDetails && hasData(updatedData.partnerDetails)) {
-      const partnerData = updatedData.partnerDetails;
-      
-      if (partnerData.newPartnerDetails && partnerData.newPartnerDetails.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Partners",
-          newValue: partnerData.newPartnerDetails,
-          description: `${partnerData.newPartnerDetails.length} new partner(s) added`
-        });
-      }
-
-      if (partnerData.updatePartnerDetails && partnerData.updatePartnerDetails.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Partners",
-          newValue: partnerData.updatePartnerDetails,
-          description: `${partnerData.updatePartnerDetails.length} partner(s) updated`
-        });
-      }
-
-      if (partnerData.deletePartnerDetails && partnerData.deletePartnerDetails.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Partners",
-          newValue: partnerData.deletePartnerDetails,
-          description: `${partnerData.deletePartnerDetails.length} partner(s) deleted`
-        });
-      }
-    }
-
-    if (updatedData.machineryInformations && hasData(updatedData.machineryInformations)) {
-      const machineryData = updatedData.machineryInformations;
-      
-      if (machineryData.newMachineryInformations && machineryData.newMachineryInformations.length > 0) {
-        changes.push({
-          type: "added",
-          field: "New Machinery",
-          newValue: machineryData.newMachineryInformations,
-          description: `${machineryData.newMachineryInformations.length} new machinery item(s) added`
-        });
-      }
-
-      if (machineryData.updateMachineryInformations && machineryData.updateMachineryInformations.length > 0) {
-        changes.push({
-          type: "updated",
-          field: "Updated Machinery",
-          newValue: machineryData.updateMachineryInformations,
-          description: `${machineryData.updateMachineryInformations.length} machinery item(s) updated`
-        });
-      }
-
-      if (machineryData.deleteMachineryInformations && machineryData.deleteMachineryInformations.length > 0) {
-        changes.push({
-          type: "deleted",
-          field: "Deleted Machinery",
-          newValue: machineryData.deleteMachineryInformations,
-          description: `${machineryData.deleteMachineryInformations.length} machinery item(s) deleted`
+          field: fullFieldName,
+          newValue: displayValue,
+          description: description
         });
       }
     }
@@ -464,161 +500,19 @@ const ChangesApprovalPage = () => {
     return changes;
   };
 
-  // Membership Fees change processing functions
+  // Member change processing functions (now using generic extractor)
+  const extractMemberChanges = (updatedData: any): ChangeDetails[] => {
+    return extractAllChanges(updatedData);
+  };
+
+  // Membership Fees change processing functions (now using generic extractor)
   const extractMembershipFeesChanges = (updatedData: any): BillChangeDetails[] => {
-    const changes: BillChangeDetails[] = [];
-
-    if (updatedData.paidAmount !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Paid Amount",
-        newValue: updatedData.paidAmount,
-        description: `Paid amount updated to: ₹${updatedData.paidAmount}`
-      });
-    }
-
-    if (updatedData.fromDate && updatedData.toDate) {
-      changes.push({
-        type: "updated",
-        field: "Billing Period",
-        newValue: {
-          fromDate: updatedData.fromDate,
-          toDate: updatedData.toDate
-        },
-        description: `Billing period updated from ${format(new Date(updatedData.fromDate), "MMM dd, yyyy")} to ${format(new Date(updatedData.toDate), "MMM dd, yyyy")}`
-      });
-    } else if (updatedData.fromDate) {
-      changes.push({
-        type: "updated",
-        field: "From Date",
-        newValue: updatedData.fromDate,
-        description: `From date updated to: ${format(new Date(updatedData.fromDate), "MMM dd, yyyy")}`
-      });
-    } else if (updatedData.toDate) {
-      changes.push({
-        type: "updated",
-        field: "To Date",
-        newValue: updatedData.toDate,
-        description: `To date updated to: ${format(new Date(updatedData.toDate), "MMM dd, yyyy")}`
-      });
-    }
-
-    return changes;
+    return extractAllChanges(updatedData);
   };
 
-  // Invoice change processing functions
+  // Invoice change processing functions (now using generic extractor)
   const extractInvoiceChanges = (updatedData: any): InvoiceChangeDetails[] => {
-    const changes: InvoiceChangeDetails[] = [];
-
-    if (updatedData.total !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Total Amount",
-        newValue: updatedData.total,
-        description: `Total amount updated to: ₹${updatedData.total}`
-      });
-    }
-
-    if (updatedData.subTotal !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Sub Total",
-        newValue: updatedData.subTotal,
-        description: `Sub total updated to: ₹${updatedData.subTotal}`
-      });
-    }
-
-    if (updatedData.cGSTInPercent !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "CGST Percentage",
-        newValue: updatedData.cGSTInPercent,
-        description: `CGST percentage updated to: ${updatedData.cGSTInPercent}%`
-      });
-    }
-
-    if (updatedData.sGSTInPercent !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "SGST Percentage",
-        newValue: updatedData.sGSTInPercent,
-        description: `SGST percentage updated to: ${updatedData.sGSTInPercent}%`
-      });
-    }
-
-    if (updatedData.iGSTInPercent !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "IGST Percentage",
-        newValue: updatedData.iGSTInPercent,
-        description: `IGST percentage updated to: ${updatedData.iGSTInPercent}%`
-      });
-    }
-
-    if (updatedData.customerName !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Customer Name",
-        newValue: updatedData.customerName,
-        description: `Customer name updated to: ${updatedData.customerName}`
-      });
-    }
-
-    if (updatedData.phoneNumber !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Phone Number",
-        newValue: updatedData.phoneNumber,
-        description: `Phone number updated to: ${updatedData.phoneNumber}`
-      });
-    }
-
-    if (updatedData.gstInNumber !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "GSTIN Number",
-        newValue: updatedData.gstInNumber,
-        description: `GSTIN number updated to: ${updatedData.gstInNumber}`
-      });
-    }
-
-    if (updatedData.eWayNumber !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "E-Way Number",
-        newValue: updatedData.eWayNumber,
-        description: `E-Way number updated to: ${updatedData.eWayNumber}`
-      });
-    }
-
-    if (updatedData.billingAddress !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Billing Address",
-        newValue: updatedData.billingAddress,
-        description: `Billing address updated to: ${updatedData.billingAddress}`
-      });
-    }
-
-    if (updatedData.shippingAddress !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Shipping Address",
-        newValue: updatedData.shippingAddress,
-        description: `Shipping address updated to: ${updatedData.shippingAddress}`
-      });
-    }
-
-    if (updatedData.invoiceDate !== undefined) {
-      changes.push({
-        type: "updated",
-        field: "Invoice Date",
-        newValue: updatedData.invoiceDate,
-        description: `Invoice date updated to: ${format(new Date(updatedData.invoiceDate), "MMM dd, yyyy")}`
-      });
-    }
-
-    return changes;
+    return extractAllChanges(updatedData);
   };
 
   // Generic approval/decline handlers
@@ -925,24 +819,35 @@ const ChangesApprovalPage = () => {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">All Changes</h1>
-          <div className="flex items-center gap-4">
-            <Select
-              value={approvalStatusFilter}
-              onValueChange={setApprovalStatusFilter}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="DECLINED">Declined</SelectItem>
-              </SelectContent>
-            </Select>
+                                   {/* Main Content */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">All Changes</h1>
+                         <div className="flex items-center gap-4">
+               <div className="relative">
+                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                 <Input
+                   type="text"
+                   placeholder="Search by ID, name..."
+                   value={searchFilter}
+                   onChange={(e) => setSearchFilter(e.target.value)}
+                   className="w-[250px] pl-9"
+                 />
+               </div>
+              
+              <Select
+                value={approvalStatusFilter}
+                onValueChange={setApprovalStatusFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="DECLINED">Declined</SelectItem>
+                </SelectContent>
+              </Select>
             
             <Select
               value={dateFilter}
@@ -1037,40 +942,44 @@ const ChangesApprovalPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedChange({ ...change, type: 'member' });
-                            setShowDetailsDialog(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Show Changes
-                        </Button>
-                        
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleApprove(change, 'member')}
-                          disabled={isProcessing}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDecline(change, 'member')}
-                          disabled={isProcessing}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Decline
-                        </Button>
-                      </div>
+                                             <div className="flex items-center gap-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => {
+                             setSelectedChange({ ...change, type: 'member' });
+                             setShowDetailsDialog(true);
+                           }}
+                         >
+                           <Eye className="h-4 w-4 mr-2" />
+                           Show Changes
+                         </Button>
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => handleApprove(change, 'member')}
+                             disabled={isProcessing}
+                             className="bg-primary hover:bg-primary/90"
+                           >
+                             <Check className="h-4 w-4 mr-2" />
+                             Approve
+                           </Button>
+                         )}
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                           <Button
+                             variant="destructive"
+                             size="sm"
+                             onClick={() => handleDecline(change, 'member')}
+                             disabled={isProcessing}
+                           >
+                             <X className="h-4 w-4 mr-2" />
+                             Decline
+                           </Button>
+                         )}
+                       </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -1118,40 +1027,44 @@ const ChangesApprovalPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedChange({ ...change, type: 'membershipFees' });
-                            setShowDetailsDialog(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Show Changes
-                        </Button>
-                        
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleApprove(change, 'membershipFees')}
-                          disabled={isProcessing}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDecline(change, 'membershipFees')}
-                          disabled={isProcessing}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Decline
-                        </Button>
-                      </div>
+                                             <div className="flex items-center gap-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => {
+                             setSelectedChange({ ...change, type: 'membershipFees' });
+                             setShowDetailsDialog(true);
+                           }}
+                         >
+                           <Eye className="h-4 w-4 mr-2" />
+                           Show Changes
+                         </Button>
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => handleApprove(change, 'membershipFees')}
+                             disabled={isProcessing}
+                             className="bg-primary hover:bg-primary/90"
+                           >
+                             <Check className="h-4 w-4 mr-2" />
+                             Approve
+                           </Button>
+                         )}
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                           <Button
+                             variant="destructive"
+                             size="sm"
+                             onClick={() => handleDecline(change, 'membershipFees')}
+                             disabled={isProcessing}
+                           >
+                             <X className="h-4 w-4 mr-2" />
+                             Decline
+                           </Button>
+                         )}
+                       </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -1199,40 +1112,44 @@ const ChangesApprovalPage = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedChange({ ...change, type: 'invoice' });
-                            setShowDetailsDialog(true);
-                          }}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Show Changes
-                        </Button>
-                        
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleApprove(change, 'invoice')}
-                          disabled={isProcessing}
-                          className="bg-primary hover:bg-primary/90"
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          Approve
-                        </Button>
-                        
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDecline(change, 'invoice')}
-                          disabled={isProcessing}
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Decline
-                        </Button>
-                      </div>
+                                             <div className="flex items-center gap-2">
+                         <Button
+                           variant="outline"
+                           size="sm"
+                           onClick={() => {
+                             setSelectedChange({ ...change, type: 'invoice' });
+                             setShowDetailsDialog(true);
+                           }}
+                         >
+                           <Eye className="h-4 w-4 mr-2" />
+                           Show Changes
+                         </Button>
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => handleApprove(change, 'invoice')}
+                             disabled={isProcessing}
+                             className="bg-primary hover:bg-primary/90"
+                           >
+                             <Check className="h-4 w-4 mr-2" />
+                             Approve
+                           </Button>
+                         )}
+                         
+                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                           <Button
+                             variant="destructive"
+                             size="sm"
+                             onClick={() => handleDecline(change, 'invoice')}
+                             disabled={isProcessing}
+                           >
+                             <X className="h-4 w-4 mr-2" />
+                             Decline
+                           </Button>
+                         )}
+                       </div>
                     </CardContent>
                   </Card>
                 ))}
