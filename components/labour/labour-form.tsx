@@ -509,7 +509,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
   };
 
   return (
-    <div className="container">
+    <div className="">
       <Card>
         <CardHeader>
           <div className="flex  gap-2">

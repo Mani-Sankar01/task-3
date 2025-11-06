@@ -354,7 +354,7 @@ export default function LabourList() {
   };
 
   return (
-    <div className="container">
+    <div className="">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Labour Management</h1>
