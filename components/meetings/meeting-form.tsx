@@ -1009,7 +1009,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                   control={form.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem className="">
                       <FormLabel>Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -1643,7 +1643,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                               control={form.control}
                                 name={`followUpMeeting.${index}.date`}
                               render={({ field }) => (
-                                <FormItem className="flex flex-col">
+                                <FormItem className="">
                                   <FormLabel>Follow-up Date</FormLabel>
                                   <Popover>
                                     <PopoverTrigger asChild>
