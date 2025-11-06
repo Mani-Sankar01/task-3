@@ -16,6 +16,7 @@ import {
   ClipboardList,
   Dices,
   DownloadCloudIcon,
+  FileText,
   GalleryVerticalEnd,
   IndianRupee,
   ListTodoIcon,
@@ -85,6 +86,11 @@ const data = {
           title: "Changes Approval",
           url: "/admin/changes-approval",
           icon: AlertCircle,
+        },
+        {
+          title: "System Logs",
+          url: "/admin/logs",
+          icon: FileText,
         },
         // {
         //   title: "All Media",

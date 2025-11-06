@@ -71,6 +71,7 @@ export default function LeaseQueryList() {
         "Session token:",
         session?.user?.token ? "Exists" : "Missing"
       );
+      console.log("Session user:", session?.user.token);
 
       if (status === "authenticated" && session?.user?.token) {
         try {
