@@ -476,7 +476,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full p-6">
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center">
           <Button variant="outline" onClick={handleBack} className="mr-4">

@@ -38,7 +38,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { AlertCircle, FileText, Plus, Trash2, Upload } from "lucide-react";
+import { AlertCircle, ArrowLeft, FileText, Plus, Trash2, Upload } from "lucide-react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { renderRoleBasedPath } from "@/lib/utils";
@@ -502,18 +502,41 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     }
   };
 
+  const handleCancel = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to cancel? All changes will be lost."
+      )
+    ) {
+      router.back();
+    }
+  };
+
   return (
-    <div className="container mx-auto p-6">
+    <div className="p-6">
       <Card>
         <CardHeader>
-          <CardTitle>
+          <div className="flex  gap-2">
+          <Button 
+                variant="outline" 
+                onClick={handleCancel} 
+                type="button"
+                className=""
+              >
+                <ArrowLeft className=" h-4 w-4" />
+              </Button>
+              <div>
+              <CardTitle>
             {id ? "Edit Lease Query" : "Add New Lease Query"}
           </CardTitle>
           <CardDescription>
-            {id
+          {id
               ? "Update the details of an existing lease query"
               : "Create a new lease query record"}
           </CardDescription>
+              </div>
+          </div>
+          
         </CardHeader>
         <CardContent>
           <Form {...form}>
