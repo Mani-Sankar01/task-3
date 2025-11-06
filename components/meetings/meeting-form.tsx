@@ -589,85 +589,158 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         const originalMandals = originalMemberAttendee.mandals?.map((m: any) => m.mandal) || [];
         const newMandals = data.memberAttendees?.mandal || [];
         
+        // Determine original type based on original data
+        const originalType = originalMemberAttendee.all ? "all" :
+                            originalMemberAttendee.allExecutives ? "allExecutives" :
+                            originalZones.length > 0 ? "selectedZone" :
+                            originalMandals.length > 0 ? "selectedMandal" :
+                            originalCustomMembers.length > 0 ? "selectedMembers" : undefined;
+        const newType = data.memberAttendees?.type;
+        
         // Debug original structure
         console.log("=== ORIGINAL DATA STRUCTURE DEBUG ===");
         console.log("Original member attendee:", originalMemberAttendee);
+        console.log("Original type:", originalType);
+        console.log("New type:", newType);
         console.log("Original custom members:", originalMemberAttendee.customMembers);
         console.log("Original zones:", originalMemberAttendee.zones);
         console.log("Original mandals:", originalMemberAttendee.mandals);
         
+        // Check if type changed or if values within the same type changed
+        const typeChanged = originalType !== newType;
         const memberChanged = 
-          data.memberAttendees?.all !== originalMemberAttendee.all ||
-          data.memberAttendees?.allExecutives !== originalMemberAttendee.allExecutives ||
-          JSON.stringify(newZones) !== JSON.stringify(originalZones) ||
-          JSON.stringify(newMandals) !== JSON.stringify(originalMandals) ||
-          JSON.stringify(newCustomMembers) !== JSON.stringify(originalCustomMembers);
+          typeChanged ||
+          (newType === "selectedZone" && JSON.stringify(newZones) !== JSON.stringify(originalZones)) ||
+          (newType === "selectedMandal" && JSON.stringify(newMandals) !== JSON.stringify(originalMandals)) ||
+          (newType === "selectedMembers" && JSON.stringify(newCustomMembers) !== JSON.stringify(originalCustomMembers));
 
         if (memberChanged) {
           updateData.attendees = updateData.attendees || {};
           
           // Handle member attendee changes with proper add/delete logic
+          // Determine all and allExecutives based on the current type selection
+          const memberType = data.memberAttendees?.type;
           const memberUpdates: any = {
-            all: data.memberAttendees?.all || false,
-            allExecutives: data.memberAttendees?.allExecutives || false,
+            all: memberType === "all" ? true : false,
+            allExecutives: memberType === "allExecutives" ? true : false,
           };
           
-          // Handle zone changes
-          if (JSON.stringify(newZones) !== JSON.stringify(originalZones)) {
-            const addedZones = newZones.filter((zone: string) => !originalZones.includes(zone));
-            const deletedZones = originalZones.filter((zone: string) => !newZones.includes(zone));
-            
-            if (addedZones.length > 0) {
-              memberUpdates.newZone = addedZones;
-            }
-            if (deletedZones.length > 0) {
-              // Get the IDs of deleted zones
+          // If type changed, delete old selections
+          if (typeChanged) {
+            // Delete old zones if switching away from selectedZone
+            if (originalType === "selectedZone" && originalZones.length > 0) {
               const deletedZoneIds = originalMemberAttendee.zones
-                ?.filter((z: any) => deletedZones.includes(z.zone))
                 ?.map((z: any) => z.id)
                 ?.filter(Boolean) || [];
               if (deletedZoneIds.length > 0) {
                 memberUpdates.deleteZone = deletedZoneIds;
               }
             }
-          }
-          
-          // Handle mandal changes
-          if (JSON.stringify(newMandals) !== JSON.stringify(originalMandals)) {
-            const addedMandals = newMandals.filter((mandal: string) => !originalMandals.includes(mandal));
-            const deletedMandals = originalMandals.filter((mandal: string) => !newMandals.includes(mandal));
             
-            if (addedMandals.length > 0) {
-              memberUpdates.newMandal = addedMandals;
-            }
-            if (deletedMandals.length > 0) {
-              // Get the IDs of deleted mandals
+            // Delete old mandals if switching away from selectedMandal
+            if (originalType === "selectedMandal" && originalMandals.length > 0) {
               const deletedMandalIds = originalMemberAttendee.mandals
-                ?.filter((m: any) => deletedMandals.includes(m.mandal))
                 ?.map((m: any) => m.id)
                 ?.filter(Boolean) || [];
               if (deletedMandalIds.length > 0) {
                 memberUpdates.deleteMandal = deletedMandalIds;
               }
             }
-          }
-          
-          // Handle custom member changes
-          if (JSON.stringify(newCustomMembers) !== JSON.stringify(originalCustomMembers)) {
-            const addedMembers = newCustomMembers.filter((member: string) => !originalCustomMembers.includes(member));
-            const deletedMembers = originalCustomMembers.filter((member: string) => !newCustomMembers.includes(member));
             
-            if (addedMembers.length > 0) {
-              memberUpdates.newCustom = addedMembers;
-            }
-            if (deletedMembers.length > 0) {
-              // Get the IDs of deleted members
+            // Delete old custom members if switching away from selectedMembers
+            if (originalType === "selectedMembers" && originalCustomMembers.length > 0) {
               const deletedMemberIds = originalMemberAttendee.customMembers
-                ?.filter((m: any) => deletedMembers.includes(m.membershipId || m))
                 ?.map((m: any) => m.id)
                 ?.filter(Boolean) || [];
               if (deletedMemberIds.length > 0) {
                 memberUpdates.deleteCustom = deletedMemberIds;
+              }
+            }
+          }
+          
+          // Handle zone changes (only if type is selectedZone)
+          if (memberType === "selectedZone") {
+            if (typeChanged || JSON.stringify(newZones) !== JSON.stringify(originalZones)) {
+              if (typeChanged) {
+                // If switching to selectedZone, add all new zones
+                if (newZones.length > 0) {
+                  memberUpdates.newZone = newZones;
+                }
+              } else {
+                // If staying in selectedZone, handle additions and deletions
+                const addedZones = newZones.filter((zone: string) => !originalZones.includes(zone));
+                const deletedZones = originalZones.filter((zone: string) => !newZones.includes(zone));
+                
+                if (addedZones.length > 0) {
+                  memberUpdates.newZone = addedZones;
+                }
+                if (deletedZones.length > 0) {
+                  const deletedZoneIds = originalMemberAttendee.zones
+                    ?.filter((z: any) => deletedZones.includes(z.zone))
+                    ?.map((z: any) => z.id)
+                    ?.filter(Boolean) || [];
+                  if (deletedZoneIds.length > 0) {
+                    memberUpdates.deleteZone = deletedZoneIds;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Handle mandal changes (only if type is selectedMandal)
+          if (memberType === "selectedMandal") {
+            if (typeChanged || JSON.stringify(newMandals) !== JSON.stringify(originalMandals)) {
+              if (typeChanged) {
+                // If switching to selectedMandal, add all new mandals
+                if (newMandals.length > 0) {
+                  memberUpdates.newMandal = newMandals;
+                }
+              } else {
+                // If staying in selectedMandal, handle additions and deletions
+                const addedMandals = newMandals.filter((mandal: string) => !originalMandals.includes(mandal));
+                const deletedMandals = originalMandals.filter((mandal: string) => !newMandals.includes(mandal));
+                
+                if (addedMandals.length > 0) {
+                  memberUpdates.newMandal = addedMandals;
+                }
+                if (deletedMandals.length > 0) {
+                  const deletedMandalIds = originalMemberAttendee.mandals
+                    ?.filter((m: any) => deletedMandals.includes(m.mandal))
+                    ?.map((m: any) => m.id)
+                    ?.filter(Boolean) || [];
+                  if (deletedMandalIds.length > 0) {
+                    memberUpdates.deleteMandal = deletedMandalIds;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Handle custom member changes (only if type is selectedMembers)
+          if (memberType === "selectedMembers") {
+            if (typeChanged || JSON.stringify(newCustomMembers) !== JSON.stringify(originalCustomMembers)) {
+              if (typeChanged) {
+                // If switching to selectedMembers, add all new members
+                if (newCustomMembers.length > 0) {
+                  memberUpdates.newCustom = newCustomMembers;
+                }
+              } else {
+                // If staying in selectedMembers, handle additions and deletions
+                const addedMembers = newCustomMembers.filter((member: string) => !originalCustomMembers.includes(member));
+                const deletedMembers = originalCustomMembers.filter((member: string) => !newCustomMembers.includes(member));
+                
+                if (addedMembers.length > 0) {
+                  memberUpdates.newCustom = addedMembers;
+                }
+                if (deletedMembers.length > 0) {
+                  const deletedMemberIds = originalMemberAttendee.customMembers
+                    ?.filter((m: any) => deletedMembers.includes(m.membershipId || m))
+                    ?.map((m: any) => m.id)
+                    ?.filter(Boolean) || [];
+                  if (deletedMemberIds.length > 0) {
+                    memberUpdates.deleteCustom = deletedMemberIds;
+                  }
+                }
               }
             }
           }
