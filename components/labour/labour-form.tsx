@@ -76,6 +76,9 @@ const formSchema = z.object({
   eShramId: z.string().optional().or(z.literal("")),
   assignedTo: z.string().optional().or(z.literal("")),
   branchId: z.string().optional().or(z.literal("")),
+  labourStatus: z.enum(["ACTIVE", "INACTIVE", "ON_BENCH"], {
+    required_error: "Labour status is required",
+  }),
   additionalDocs: z
     .array(
       z.object({
@@ -140,6 +143,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           eShramId: labour.eShramId || "",
           assignedTo: labour.assignedTo || "",
           branchId: "",
+          labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
           additionalDocs:
             labour.laboursAdditionalDocs?.map((doc: any) => ({
               id: doc.id,
@@ -163,6 +167,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           eShramId: "",
           assignedTo: "",
           branchId: "",
+          labourStatus: "ACTIVE" as "ACTIVE" | "INACTIVE" | "ON_BENCH",
           additionalDocs: [],
         },
   });
@@ -198,6 +203,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         eShramId: labour.eShramId || "",
         assignedTo: labour.assignedTo || "",
         branchId: "",
+        labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
         additionalDocs:
           labour.laboursAdditionalDocs?.map((doc: any) => ({
             id: doc.id,
@@ -368,6 +374,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         eShramId: data.eShramId || "",
         assignedTo: data.assignedTo || "",
         branchId: data.branchId || "",
+        labourStatus: data.labourStatus,
       };
 
       // Handle additional documents
@@ -559,7 +566,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
             >
               <div className="space-y-6">
                 <h3 className="text-lg font-medium">Assignment Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FormField
                     control={form.control}
                     name="assignedTo"
@@ -648,6 +655,32 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                             branches.
                           </p>
                         )}
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="labourStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Labour Status</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select labour status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="ACTIVE">Active</SelectItem>
+                            <SelectItem value="INACTIVE">Inactive</SelectItem>
+                            <SelectItem value="ON_BENCH">On Bench</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
