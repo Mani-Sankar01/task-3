@@ -150,11 +150,11 @@ export default function MembershipFeeForm({
         }
       : {
           memberId: "",
-          amount: 5000, // Default amount
+          amount: 100, // Default amount
           paidAmount: 0,
           paidDate: undefined,
           periodFrom: new Date(),
-          periodTo: new Date(new Date().setMonth(new Date().getMonth() + 3)), // Default 3 months period
+          periodTo: new Date(new Date().setMonth(new Date().getMonth() + 1)), // Default 3 months period
           status: "due",
           notes: "",
           paymentMethod: "",
@@ -327,7 +327,7 @@ export default function MembershipFeeForm({
   };
 
   return (
-    <div className="container">
+    <div className="">
       {isEditMode && isLoadingFee ? (
         <div className="flex flex-col items-center justify-center min-h-[200px]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
@@ -562,7 +562,7 @@ export default function MembershipFeeForm({
                         control={form.control}
                         name="paidDate"
                         render={({ field }) => (
-                          <FormItem className="flex flex-col">
+                          <FormItem className="">
                             <FormLabel>Payment Date</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>

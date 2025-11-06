@@ -29,6 +29,7 @@ export default function Page({ params }: { params: { id: string } }) {
               },
             }
           );
+          console.log("Membership Fee API Response:", response.data);
           setFee(response.data);
         } catch (err) {
           console.error("Error fetching membership fee:", err);

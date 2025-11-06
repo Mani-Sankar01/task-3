@@ -32,6 +32,38 @@ export default function MembershipFeeDetails({
   const router = useRouter();
   const session = useSession();
 
+  // Helper function to safely format date
+  const formatDate = (dateValue: any): string => {
+    if (!dateValue) return "N/A";
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return "N/A";
+      return date.toLocaleString();
+    } catch {
+      return "N/A";
+    }
+  };
+
+  // Get the last updated date from various possible field names
+  const getLastUpdatedDate = (): string => {
+    const possibleFields = [
+      fee?.updatedAt,
+      fee?.modifiedAt,
+      fee?.updated_at,
+      fee?.modified_at,
+    ];
+    
+    for (const field of possibleFields) {
+      if (field) {
+        const formatted = formatDate(field);
+        if (formatted !== "N/A") return formatted;
+      }
+    }
+    
+    // Fallback to createdAt if updatedAt is not available
+    return formatDate(fee?.createdAt || fee?.created_at);
+  };
+
   const handleEdit = () => {
     router.push(
       `/${renderRoleBasedPath(session?.data?.user.role)}/membership-fees/${
@@ -163,13 +195,13 @@ export default function MembershipFeeDetails({
                 <div>
                   <p className="font-medium">Created</p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(fee.createdAt).toLocaleString()}
+                    {formatDate(fee?.createdAt || fee?.created_at)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="font-medium">Last Updated</p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(fee.updatedAt).toLocaleString()}
+                    {getLastUpdatedDate()}
                   </p>
                 </div>
               </div>
