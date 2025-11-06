@@ -301,7 +301,7 @@ export default function TripDetails({ tripId }: TripDetailsProps) {
               </div>
             )}
             {trip.modifiedAt && (
-              <div>
+              <div className="md:text-right text-start">
                 <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
                 <p className="text-sm">
                   {format(new Date(trip.modifiedAt), "MMM dd, yyyy 'at' HH:mm")}

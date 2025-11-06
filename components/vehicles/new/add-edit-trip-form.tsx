@@ -108,8 +108,8 @@ export default function AddEditTripForm({
     defaultValues: {
       date: new Date(),
       totalRounds: 1,
-      pricePerRound: 500, // Default price
-      totalAmountToPay: 500, // Default total amount
+      pricePerRound: 10, // Default price
+      totalAmountToPay: 10  , // Default total amount
       amountPaid: 0,
       paymentStatus: "unpaid",
       notes: "",
@@ -418,7 +418,7 @@ export default function AddEditTripForm({
                   control={form.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem className="">
                       <FormLabel>Trip Date</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
