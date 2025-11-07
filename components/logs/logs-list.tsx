@@ -3,9 +3,13 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { Loader2, AlertCircle, FileText, Server, Bell } from "lucide-react";
+import { Loader2, AlertCircle, FileText, Server, Bell, Calendar as CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface LogEntry {
   timestamp?: string;
@@ -17,39 +21,51 @@ interface LogEntry {
 export default function LogsList() {
   const { data: session, status: sessionStatus } = useSession();
   const [activeTab, setActiveTab] = useState("backend-combined");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [logs, setLogs] = useState<{
     "backend-combined": LogEntry[];
     "backend-error": LogEntry[];
     "notify-error": LogEntry[];
     "notify-combined": LogEntry[];
+    "action-logs": LogEntry[];
   }>({
     "backend-combined": [],
     "backend-error": [],
     "notify-error": [],
     "notify-combined": [],
+    "action-logs": [],
   });
   const [isLoading, setIsLoading] = useState<{
     "backend-combined": boolean;
     "backend-error": boolean;
     "notify-error": boolean;
     "notify-combined": boolean;
+    "action-logs": boolean;
   }>({
     "backend-combined": false,
     "backend-error": false,
     "notify-error": false,
     "notify-combined": false,
+    "action-logs": false,
   });
   const [errors, setErrors] = useState<{
     "backend-combined": string | null;
     "backend-error": string | null;
     "notify-error": string | null;
     "notify-combined": string | null;
+    "action-logs": string | null;
   }>({
     "backend-combined": null,
     "backend-error": null,
     "notify-error": null,
     "notify-combined": null,
+    "action-logs": null,
   });
+
+  // Format date as YYYY-MM-DD
+  const formatDateForAPI = (date: Date) => {
+    return format(date, "yyyy-MM-dd");
+  };
 
   const apiEndpoints = {
     "backend-combined": {
@@ -61,18 +77,22 @@ export default function LogsList() {
       baseUrl: "backend.tsmwa.online",
     },
     "notify-error": {
-      url: `https://notify.tsmwa.online/api/logs?type=error`,
+      url: `${process.env.NOTIFY_API_URL || "https://notify.tsmwa.online"}/api/logs?type=error`,
       baseUrl: "notify.tsmwa.online",
     },
     "notify-combined": {
-      url: `https://notify.tsmwa.online/api/logs?type=combined`,
+      url: `${process.env.NOTIFY_API_URL || "https://notify.tsmwa.online"}/api/logs?type=combined`,
       baseUrl: "notify.tsmwa.online",
+    },
+    "action-logs": {
+      url: `${process.env.BACKEND_API_URL || "https://backend.tsmwa.online"}/api/logs/action_logs?date=${formatDateForAPI(selectedDate)}`,
+      baseUrl: "backend.tsmwa.online",
     },
   };
 
   const fetchLogs = async (tabKey: keyof typeof apiEndpoints) => {
     // For backend APIs, require authentication
-    if (tabKey.startsWith("backend") && (sessionStatus !== "authenticated" || !session?.user?.token)) {
+    if ((tabKey.startsWith("backend") || tabKey === "action-logs") && (sessionStatus !== "authenticated" || !session?.user?.token)) {
       return;
     }
 
@@ -83,8 +103,8 @@ export default function LogsList() {
       const endpoint = apiEndpoints[tabKey];
       const headers: any = {};
       
-      // Only add auth header if we have a token (for backend APIs)
-      if (session?.user?.token && tabKey.startsWith("backend")) {
+      // Only add auth header if we have a token (for backend APIs and action-logs)
+      if (session?.user?.token && (tabKey.startsWith("backend") || tabKey === "action-logs")) {
         headers.Authorization = `Bearer ${session.user.token}`;
       }
 
@@ -134,9 +154,9 @@ export default function LogsList() {
   };
 
   useEffect(() => {
-    // For backend APIs, wait for authentication
+    // For backend APIs and action-logs, wait for authentication
     // For notify APIs, we can fetch immediately
-    if (activeTab.startsWith("backend")) {
+    if (activeTab.startsWith("backend") || activeTab === "action-logs") {
       if (sessionStatus === "authenticated" && session?.user?.token) {
         fetchLogs(activeTab as keyof typeof apiEndpoints);
       }
@@ -144,7 +164,7 @@ export default function LogsList() {
       // Notify APIs can be fetched without waiting for auth
       fetchLogs(activeTab as keyof typeof apiEndpoints);
     }
-  }, [sessionStatus, session?.user?.token, activeTab]);
+  }, [sessionStatus, session?.user?.token, activeTab, selectedDate]);
 
   const formatLogEntry = (entry: LogEntry, index: number): string => {
     if (typeof entry === "string") {
@@ -237,7 +257,12 @@ export default function LogsList() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="action-logs" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Action Logs
+              </TabsTrigger>
+
               <TabsTrigger value="backend-combined" className="flex items-center gap-2">
                 <Server className="h-4 w-4" />
                 Backend Combined
@@ -246,6 +271,7 @@ export default function LogsList() {
                 <AlertCircle className="h-4 w-4" />
                 Backend Errors
               </TabsTrigger>
+              
               <TabsTrigger value="notify-combined" className="flex items-center gap-2">
                 <Bell className="h-4 w-4" />
                 Notify Combined
@@ -269,6 +295,35 @@ export default function LogsList() {
                 Error logs from: {apiEndpoints["backend-error"].baseUrl}
               </div>
               {renderLogs("backend-error")}
+            </TabsContent>
+
+            <TabsContent value="action-logs" className="mt-4">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  Action logs from: {apiEndpoints["action-logs"].baseUrl}
+                </div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(selectedDate, "PPP")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(date);
+                        }
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {renderLogs("action-logs")}
             </TabsContent>
 
             <TabsContent value="notify-error" className="mt-4">
