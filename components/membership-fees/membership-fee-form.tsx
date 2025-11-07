@@ -49,6 +49,8 @@ import {
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import PopupMessage from "@/components/ui/popup-message";
 
 const formSchema = z.object({
   memberId: z.string().min(1, "Member is required"),
@@ -81,12 +83,17 @@ export default function MembershipFeeForm({
 }: MembershipFeeFormProps) {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
   const [memberSearchTerm, setMemberSearchTerm] = useState("");
   const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [isLoadingFee, setIsLoadingFee] = useState(false);
   const [originalFee, setOriginalFee] = useState<any>(null);
+  const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: "",
+  });
 
   // Fetch members from API
   React.useEffect(() => {
@@ -224,7 +231,10 @@ export default function MembershipFeeForm({
     setIsSubmitting(true);
     try {
       if (sessionStatus !== "authenticated" || !session?.user?.token) {
-        alert("Authentication required");
+        setErrorPopup({
+          isOpen: true,
+          message: "Authentication required. Please log in to continue.",
+        });
         setIsSubmitting(false);
         return;
       }
@@ -268,6 +278,10 @@ export default function MembershipFeeForm({
             },
           }
         );
+        toast({
+          title: "Success",
+          description: "Membership fee updated successfully.",
+        });
         router.push(
           `/${renderRoleBasedPath(session?.user?.role)}/membership-fees`
         );
@@ -302,15 +316,19 @@ export default function MembershipFeeForm({
           },
         }
       );
+      toast({
+        title: "Success",
+        description: "Membership fee added successfully.",
+      });
       router.push(
         `/${renderRoleBasedPath(session?.user?.role)}/membership-fees`
       );
       router.refresh();
     } catch (error: any) {
-      alert(
-        "Failed to save membership fee. Please try again.\n" +
-          (error?.response?.data?.message || error.message)
-      );
+      setErrorPopup({
+        isOpen: true,
+        message: error?.response?.data?.message || error.message || "Failed to save membership fee. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -705,6 +723,20 @@ export default function MembershipFeeForm({
           </Card>
         </>
       )}
+
+      {/* Error Popup */}
+      <PopupMessage
+        isOpen={errorPopup.isOpen}
+        onClose={() => setErrorPopup({ isOpen: false, message: "" })}
+        type="error"
+        title="Error"
+        message={errorPopup.message}
+        primaryButton={{
+          text: "OK",
+          onClick: () => setErrorPopup({ isOpen: false, message: "" }),
+          variant: "default",
+        }}
+      />
     </div>
   );
 }
