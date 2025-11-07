@@ -363,6 +363,22 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
 
       if (id) {
         // Edit mode - Update existing lease query
+        // Only include attachments that are truly new (not existing ones)
+        const newAttachments = data.leaseQueryAttachments
+          .filter((attachment) => {
+            // Include only if it has a file (newly uploaded) or documentPath but NOT existingPath
+            const hasFile = attachment.file;
+            const hasDocPath = attachment.documentPath;
+            const isExisting = attachment.existingPath;
+            
+            // Only include if it has a file OR (has documentPath but is not an existing one)
+            return hasFile || (hasDocPath && !isExisting);
+          })
+          .map((attachment) => ({
+            documentName: attachment.documentName,
+            documentPath: attachment.documentPath || "",
+          }));
+
         const updatePayload = {
           leaseQueryId: id,
           membershipId: data.membershipId,
@@ -371,12 +387,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           expiryOfLease: data.expiryOfLease,
           dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
-          newAttachments: data.leaseQueryAttachments
-            .filter((attachment) => attachment.file || attachment.documentPath)
-            .map((attachment) => ({
-              documentName: attachment.documentName,
-              documentPath: attachment.documentPath || "",
-            })),
+          newAttachments: newAttachments,
           updateAttachments: existingAttachments.map((attachment) => ({
             id: attachment.id,
             documentName: attachment.documentName,
@@ -476,6 +487,28 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     });
   };
 
+  const removeAttachment = (index: number) => {
+    const attachment = form.getValues(`leaseQueryAttachments.${index}`);
+    
+    // If this is an existing attachment (has existingPath), add its ID to deletedAttachments
+    if (attachment.existingPath) {
+      // Find the attachment ID from existingAttachments by matching the documentPath
+      const existingAtt = existingAttachments.find(
+        (att) => att.documentPath === attachment.existingPath
+      );
+      
+      if (existingAtt) {
+        setDeletedAttachments((prev) => [...prev, { id: existingAtt.id }]);
+        // Also remove from existingAttachments state
+        setExistingAttachments((prev) =>
+          prev.filter((att) => att.id !== existingAtt.id)
+        );
+      }
+    }
+    
+    // Remove from form field array
+    attachmentFields.remove(index);
+  };
 
   const deleteExistingAttachment = (attachmentId: number) => {
     setDeletedAttachments((prev) => [...prev, { id: attachmentId }]);
@@ -718,47 +751,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                 />
               </div>
 
-              {/* Existing Documents Section (Edit Mode Only) */}
-              {id && existingAttachments.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-medium">Existing Documents</h3>
-                  </div>
-                  <div className="space-y-4">
-                    {existingAttachments.map((attachment) => (
-                      <Card key={attachment.id}>
-                        <CardContent className="pt-6">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <p className="font-medium">
-                                  {attachment.documentName}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {attachment.documentPath}
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                deleteExistingAttachment(attachment.id)
-                              }
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Deleted Documents Section (Edit Mode Only) */}
               {id && deletedAttachments.length > 0 && (
                 <div className="space-y-4">
@@ -837,7 +829,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => attachmentFields.remove(index)}
+                              onClick={() => removeAttachment(index)}
                               className="text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
