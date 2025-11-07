@@ -369,7 +369,7 @@ export default function MembershipFeesList() {
     try {
       // Format the date as YYYY-MM-DD
       const formattedDate = dueDate ? format(new Date(dueDate), "yyyy-MM-dd") : "";
-      const apiUrl = `${process.env.BACKEND_API_URL}/api/bill/payment_reminder?billingID=${billingId}&dueDate=${formattedDate}`;
+      const apiUrl = `${process.env.BACKEND_API_URL}/api/bill/payment_reminder?billingId=${billingId}&dueDate=${formattedDate}`;
       
       console.log("API URL:", apiUrl);
       console.log("Formatted Date:", formattedDate);
