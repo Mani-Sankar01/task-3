@@ -58,10 +58,12 @@ import {
   type MembershipFeeStatus,
 } from "@/data/membership-fees";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MembershipFeesList() {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -80,6 +82,7 @@ export default function MembershipFeesList() {
   const itemsPerPage = 10;
   const [memberOptions, setMemberOptions] = useState<any[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
   // Remove: const statistics = getMembershipFeeStatistics();
   // Add dynamic statistics calculation from fees:
   const totalFees = fees.length;
@@ -344,6 +347,61 @@ export default function MembershipFeesList() {
       ) {
         setCurrentPage(currentPage - 1);
       }
+    }
+  };
+
+  // Send payment reminder
+  const handleSendReminder = async (billingId: string, dueDate: string) => {
+    console.log("=== SEND REMINDER DEBUG ===");
+    console.log("Billing ID:", billingId);
+    console.log("Due Date:", dueDate);
+    
+    if (!session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSendingReminder(billingId);
+    try {
+      // Format the date as YYYY-MM-DD
+      const formattedDate = dueDate ? format(new Date(dueDate), "yyyy-MM-dd") : "";
+      const apiUrl = `${process.env.BACKEND_API_URL}/api/bill/payment_reminder?billingID=${billingId}&dueDate=${formattedDate}`;
+      
+      console.log("API URL:", apiUrl);
+      console.log("Formatted Date:", formattedDate);
+      
+      const response = await axios.get(
+        apiUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+      
+      console.log("URL Response:", apiUrl);
+
+      if (response.data.Success) {
+        toast({
+          title: "Reminder Sent",
+          description: "Payment reminder has been sent successfully."
+        });
+      } else {
+        throw new Error("Failed to send reminder");
+      }
+    } catch (error: any) {
+      console.error("Error sending reminder:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to send reminder. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingReminder(null);
     }
   };
 
@@ -685,8 +743,12 @@ export default function MembershipFeesList() {
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // TODO: Add send reminder functionality when API is available
+                                    console.log("Fee object:", fee);
+                                    console.log("Billing ID from fee:", fee.billingId);
+                                    console.log("To Date from fee:", fee.toDate);
+                                    handleSendReminder(fee.billingId, fee.toDate);
                                   }}
+                                  disabled={isSendingReminder === fee.billingId}
                                 >
                                   <Mail className="h-4 w-4 " />
                                   Send Reminder

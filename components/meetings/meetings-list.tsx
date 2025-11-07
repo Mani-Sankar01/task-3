@@ -14,6 +14,8 @@ import {
   Trash2,
   Eye,
   Edit,
+  XCircle,
+  Bell,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 // Types for the API response
 interface Meeting {
@@ -117,6 +121,11 @@ export default function MeetingsList() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [meetingToCancel, setMeetingToCancel] = useState<{ id: string; title: string } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
   const itemsPerPage = 20;
 
   // Fetch meetings from API
@@ -293,6 +302,118 @@ export default function MeetingsList() {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Open cancel dialog
+  const openCancelDialog = (meetingId: string, meetingTitle: string) => {
+    setMeetingToCancel({ id: meetingId, title: meetingTitle });
+    setCancelReason("");
+    setShowCancelDialog(true);
+  };
+
+  // Close cancel dialog
+  const closeCancelDialog = () => {
+    setShowCancelDialog(false);
+    setMeetingToCancel(null);
+    setCancelReason("");
+  };
+
+  // Cancel a meeting with reason
+  const handleCancelMeeting = async () => {
+    if (!session?.user?.token || !meetingToCancel) {
+      return;
+    }
+
+    if (!cancelReason.trim()) {
+      toast({
+        title: "Reason Required",
+        description: "Please provide a reason for cancelling the meeting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const payload = {
+        meetId: meetingToCancel.id,
+        status: "CANCELLED",
+        notes: cancelReason,
+      };
+
+      await axios.post(
+        `${process.env.BACKEND_API_URL}/api/meeting/update_meeting`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      toast({
+        title: "Meeting Cancelled",
+        description: "Meeting has been cancelled successfully."
+      });
+
+      // Refresh the meetings list
+      await fetchMeetings();
+      
+      // Close dialog
+      closeCancelDialog();
+    } catch (error: any) {
+      console.error("Error cancelling meeting:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to cancel meeting. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // Send meeting reminder
+  const handleSendReminder = async (meetingId: string) => {
+    if (!session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsSendingReminder(meetingId);
+    try {
+      const response = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/meeting/meeting_reminder?meetId=${meetingId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (response.data.Success) {
+        toast({
+          title: "Reminder Sent",
+          description: "Meeting reminder has been sent successfully."
+        });
+      } else {
+        throw new Error("Failed to send reminder");
+      }
+    } catch (error: any) {
+      console.error("Error sending reminder:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to send reminder. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingReminder(null);
     }
   };
 
@@ -549,6 +670,30 @@ export default function MeetingsList() {
                             >
                               <Edit className="mr-1 h-4 w-4" /> Edit Meeting
                             </DropdownMenuItem>
+
+                            {meeting.status?.toUpperCase() === "SCHEDULED" && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendReminder(meeting.meetId);
+                                }}
+                                disabled={isSendingReminder === meeting.meetId}
+                              >
+                                <Bell className="mr-1 h-4 w-4" /> Send Reminder
+                              </DropdownMenuItem>
+                            )}
+                            
+                            {meeting.status?.toUpperCase() !== "CANCELLED" && (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openCancelDialog(meeting.meetId, meeting.title);
+                                }}
+                              >
+                                <XCircle className="mr-1 h-4 w-4" /> Cancel Meeting
+                              </DropdownMenuItem>
+                            )}
+                            
                             <DropdownMenuSeparator />
                             <Dialog>
                               <DialogTrigger asChild>
@@ -556,7 +701,7 @@ export default function MeetingsList() {
                                   className="text-destructive focus:text-destructive"
                                   onSelect={(e) => e.preventDefault()}
                                 >
-                                  <Trash2 className="mr-1 h-4 w-4" /> Cancel Meeting
+                                  <Trash2 className="mr-1 h-4 w-4" /> Delete Meeting
                                 </DropdownMenuItem>
                               </DialogTrigger>
                               <DialogContent className="sm:max-w-md">
@@ -565,10 +710,10 @@ export default function MeetingsList() {
                                     <span className="text-destructive">
                                       ⚠️
                                     </span>
-                                    Cancel Meeting
+                                    Delete Meeting
                                   </DialogTitle>
                                   <DialogDescription>
-                                    Are you sure you want to cancel meeting{" "}
+                                    Are you sure you want to delete meeting{" "}
                                     <span className="font-semibold">
                                       {meeting.meetId}
                                     </span>
@@ -642,6 +787,49 @@ export default function MeetingsList() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cancel Meeting Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Meeting</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel meeting{" "}
+              <span className="font-semibold">{meetingToCancel?.title}</span>?
+              Please provide a reason for cancellation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-4">
+            <Label htmlFor="cancel-reason">Cancellation Reason</Label>
+            <Textarea
+              id="cancel-reason"
+              placeholder="Enter reason for cancelling this meeting..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="min-h-[100px]"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeCancelDialog}>
+              Close
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleCancelMeeting}
+              disabled={isCancelling || !cancelReason.trim()}
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                "Cancel Meeting"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
