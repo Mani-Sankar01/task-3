@@ -12,6 +12,11 @@ import {
   Phone,
   User,
   Loader2,
+  XCircle,
+  PauseCircle,
+  Eye,
+  Edit,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -82,6 +87,7 @@ export default function LabourList() {
     id: string;
     name: string;
   } | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Load labour list from API
@@ -345,6 +351,66 @@ export default function LabourList() {
     }
   };
 
+  // Update labour status
+  const handleUpdateStatus = async (labourId: string, newStatus: "INACTIVE" | "ON_BENCH") => {
+    if (!session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingStatus(labourId);
+    try {
+      const payload = {
+        labourId: labourId,
+        labourStatus: newStatus,
+        assignedTo: null, // Clear assignment when making inactive or on bench
+      };
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/update_labour`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast({
+        title: "Success",
+        description: `Labour status updated to ${newStatus === "INACTIVE" ? "Inactive" : "On Bench"} successfully.`,
+      });
+
+      // Refresh the labour list
+      const refreshResponse = await axios.get(
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"}/api/labour/get_all_labours`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      if (refreshResponse.data) {
+        setLabourList(refreshResponse.data);
+      }
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to update labour status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(null);
+    }
+  };
+
   // Reset all filters
   const resetFilters = () => {
     setSearchTerm("");
@@ -574,30 +640,64 @@ export default function LabourList() {
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem
+                              <DropdownMenuItem className="cursor-pointer"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   viewLabourDetails(labour.labourId);
                                 }}
                               >
+                                <Eye className="h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
                               {(session?.user?.role === "ADMIN" ||
                                 session?.user?.role === "TSMWA_EDITOR" ||
                                 session?.user?.role === "TQMA_EDITOR") && (
-                                <DropdownMenuItem
+                                <DropdownMenuItem className="cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     editLabour(labour.labourId);
                                   }}
                                 >
+                                  <Edit className="h-4 w-4" />
                                   Edit Labour
+                                </DropdownMenuItem>
+                              )}
+
+                              {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TSMWA_EDITOR" ||
+                                session?.user?.role === "TQMA_EDITOR") && 
+                                labour.labourStatus?.toUpperCase() !== "INACTIVE" && (
+                                <DropdownMenuItem className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateStatus(labour.labourId, "INACTIVE");
+                                  }}
+                                  disabled={isUpdatingStatus === labour.labourId}
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                  Mark as Inactive
+                                </DropdownMenuItem>
+                              )}
+
+                              {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TSMWA_EDITOR" ||
+                                session?.user?.role === "TQMA_EDITOR") && 
+                                labour.labourStatus?.toUpperCase() !== "ON_BENCH" && (
+                                <DropdownMenuItem className="cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateStatus(labour.labourId, "ON_BENCH");
+                                  }}
+                                  disabled={isUpdatingStatus === labour.labourId}
+                                >
+                                  <PauseCircle className="h-4 w-4" />
+                                  Mark as On Bench
                                 </DropdownMenuItem>
                               )}
 
                               {session?.user?.role === "ADMIN" && (
                                 <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
+                                  className="text-destructive focus:text-destructive cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openDeleteDialog(
@@ -606,6 +706,7 @@ export default function LabourList() {
                                     );
                                   }}
                                 >
+                                  <Trash2 className="h-4 w-4" />
                                   Delete Labour
                                 </DropdownMenuItem>
                               )}

@@ -45,6 +45,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import PopupMessage from "@/components/ui/popup-message";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -99,6 +100,7 @@ interface LabourFormProps {
 
 export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const { data: session, status: sessionStatus } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -142,7 +144,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           esiNumber: labour.esiNumber || "",
           eShramId: labour.eShramId || "",
           assignedTo: labour.assignedTo || "",
-          branchId: "",
+          branchId: labour.branchId || "",
           labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
           additionalDocs:
             labour.laboursAdditionalDocs?.map((doc: any) => ({
@@ -202,7 +204,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         esiNumber: labour.esiNumber || "",
         eShramId: labour.eShramId || "",
         assignedTo: labour.assignedTo || "",
-        branchId: "",
+        branchId: labour.branchId || "",
         labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
         additionalDocs:
           labour.laboursAdditionalDocs?.map((doc: any) => ({
@@ -357,6 +359,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       }
 
       // Prepare API payload
+      // If status is ON_BENCH or INACTIVE, set assignedTo to null
+      const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
+      
       const payload: any = {
         labourId: labour?.labourId || "",
         fullName: data.fullName,
@@ -372,7 +377,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         panNumber: data.panNumber || "",
         esiNumber: data.esiNumber || "",
         eShramId: data.eShramId || "",
-        assignedTo: data.assignedTo || "",
+        assignedTo: shouldClearAssignment ? null : (data.assignedTo || ""),
         branchId: data.branchId || "",
         labourStatus: data.labourStatus,
       };
@@ -443,16 +448,15 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
 
       console.log("API response:", JSON.stringify(response.data));
 
-      setPopupMessage({
-        isOpen: true,
-        type: "success",
-        title: isEditMode
-          ? "Labour Updated Successfully!"
-          : "Labour Added Successfully!",
-        message: isEditMode
-          ? "The labour record has been updated successfully. You will be redirected to the labour list."
-          : "The labour record has been added successfully. You will be redirected to the labour list.",
+      toast({
+        title: "Success",
+        description: isEditMode
+          ? "Labour updated successfully!"
+          : "Labour added successfully!",
       });
+      
+      // Redirect to labour list
+      router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
     } catch (error: any) {
       console.error("Error submitting form:", error);
       setPopupMessage({
@@ -1059,19 +1063,11 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         type={popupMessage.type}
         title={popupMessage.title}
         message={popupMessage.message}
-        primaryButton={
-          popupMessage.type === "success"
-            ? {
-                text: "Go to Labour List",
-                onClick: handleSuccessPopupClose,
-                variant: "default",
-              }
-            : {
-                text: "OK",
-                onClick: handlePopupClose,
-                variant: "default",
-              }
-        }
+        primaryButton={{
+          text: "OK",
+          onClick: handlePopupClose,
+          variant: "default",
+        }}
         showCloseButton={false}
       />
     </div>
