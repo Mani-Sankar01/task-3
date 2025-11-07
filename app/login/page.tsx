@@ -116,6 +116,9 @@ export default function LoginPage() {
             <p className="text-slate-400 text-left font-light text-[12px] max-w-md mt-8">
               ©Copyright - Tandur Stone Merchant Welfare Association
             </p>
+            <p className="mt-2 text-slate-400 text-left font-light text-[12px] text-center">
+              <span>Version: 1.0.0</span>
+            </p>
           </div>
         </div>
       </div>

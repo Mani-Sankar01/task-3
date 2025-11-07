@@ -284,6 +284,9 @@ export default function Layout({
             >
               Logout
             </Button>
+            <p className="mt-2 text-sm text-muted-foreground text-center">
+              <span>Version: 1.0.0</span>
+            </p>
           </div>
         </SidebarContent>
         <SidebarRail />

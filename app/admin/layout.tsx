@@ -301,6 +301,10 @@ const { data: session, status } = useSession();
             >
               Logout
             </Button>
+
+            <p className="mt-2 text-sm text-muted-foreground text-center">
+              <span>Version: 1.0.0</span>
+            </p>
           </div>
         </SidebarContent>
         <SidebarRail />
