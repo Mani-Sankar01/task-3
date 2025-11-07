@@ -26,6 +26,7 @@ import { useSession } from "next-auth/react";
 import { uploadFile } from "@/lib/client-file-upload";
 import { useToast } from "@/hooks/use-toast";
 import { renderRoleBasedPath } from "@/lib/utils";
+import PopupMessage from "@/components/ui/popup-message";
 // import { addMemberAction } from "@/app/actions/member-actions";
 
 // Define the form schema
@@ -233,6 +234,10 @@ const AddMemberForm = () => {
     [key: string]: string | undefined;
   }>({});
   const [isValidating, setIsValidating] = useState(false);
+  const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: "",
+  });
 
   useEffect(() => {
     if (status == "loading" || status === "authenticated") {
@@ -379,7 +384,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.gstinDoc = result.filePath;
         } else {
-          alert(`Failed to upload GSTIN Certificate: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload GSTIN Certificate: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -393,7 +401,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.factoryLicenseDoc = result.filePath;
         } else {
-          alert(`Failed to upload Factory License: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload Factory License: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -407,7 +418,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.tspcbOrderDoc = result.filePath;
         } else {
-          alert(`Failed to upload TSPCB Certificate: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload TSPCB Certificate: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -421,7 +435,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.mdlDoc = result.filePath;
         } else {
-          alert(`Failed to upload MDL Certificate: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload MDL Certificate: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -435,7 +452,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.udyamCertificateDoc = result.filePath;
         } else {
-          alert(`Failed to upload Udyam Certificate: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload Udyam Certificate: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -447,7 +467,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.photoUpload = result.filePath;
         } else {
-          alert(`Failed to upload Photo: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload Photo: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -461,7 +484,10 @@ const AddMemberForm = () => {
         if (result.success && result.filePath) {
           uploadedFiles.signatureUpload = result.filePath;
         } else {
-          alert(`Failed to upload Signature: ${result.error}`);
+          setErrorPopup({
+            isOpen: true,
+            message: `Failed to upload Signature: ${result.error}`,
+          });
           setIsSubmitting(false);
           return;
         }
@@ -486,7 +512,10 @@ const AddMemberForm = () => {
                 : null,
             });
           } else {
-            alert(`Failed to upload ${attachment.name}: ${result.error}`);
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload ${attachment.name}: ${result.error}`,
+            });
             setIsSubmitting(false);
             return;
           }
@@ -665,21 +694,28 @@ const AddMemberForm = () => {
         if (response.status === 200 || response.status === 201) {
           const addedMember = response.data;
           setIsSubmitting(false);
-          alert(
-            `✅ Member added successfully! ID: ${
+          toast({
+            title: "Success",
+            description: `Member added successfully! ID: ${
               addedMember?.memberId || "unknown"
-            }`
-          );
+            }`,
+          });
           router.push(
             `/${renderRoleBasedPath(session?.user.role)}/memberships`
           );
         } else {
-          alert("⚠️ Something went wrong. Member not added.");
+          setErrorPopup({
+            isOpen: true,
+            message: "Something went wrong. Member not added.",
+          });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      alert("Failed to add member. Please try again.");
+      setErrorPopup({
+        isOpen: true,
+        message: error?.response?.data?.message || error?.message || "Failed to add member. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -1324,6 +1360,20 @@ const AddMemberForm = () => {
           )}
         </CardFooter>
       </Card>
+
+      {/* Error Popup */}
+      <PopupMessage
+        isOpen={errorPopup.isOpen}
+        onClose={() => setErrorPopup({ isOpen: false, message: "" })}
+        type="error"
+        title="Error"
+        message={errorPopup.message}
+        primaryButton={{
+          text: "OK",
+          onClick: () => setErrorPopup({ isOpen: false, message: "" }),
+          variant: "default",
+        }}
+      />
     </div>
   );
 };

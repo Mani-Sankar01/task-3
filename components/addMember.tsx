@@ -44,6 +44,8 @@ import {
   SelectValue,
 } from "./ui/select";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import PopupMessage from "@/components/ui/popup-message";
 
 // Define the form schema
 const formSchema = z.object({
@@ -197,6 +199,7 @@ const AddMember = ({
   editMode: boolean;
 }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const memberId = meterId;
   const isEditMode = editMode;
 
@@ -209,6 +212,10 @@ const AddMember = ({
   const [otpError, setOtpError] = useState("");
   const [formData, setFormData] = useState<FormValues | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: "",
+  });
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -362,18 +369,22 @@ const AddMember = ({
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Show success message
-      alert(
-        isEditMode
+      // Show success toast
+      toast({
+        title: "Success",
+        description: isEditMode
           ? "Member updated successfully!"
-          : "Member added successfully!"
-      );
+          : "Member added successfully!",
+      });
 
       // Redirect to memberships page
       router.push("/memberships");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      alert("Failed to save member. Please try again.");
+      setErrorPopup({
+        isOpen: true,
+        message: error?.message || "Failed to save member. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -446,18 +457,22 @@ const AddMember = ({
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Show success message
-      alert(
-        isEditMode
+      // Show success toast
+      toast({
+        title: "Success",
+        description: isEditMode
           ? "Member updated successfully!"
-          : "Member added successfully!"
-      );
+          : "Member added successfully!",
+      });
 
       // Redirect to memberships page
       router.push(`/${renderRoleBasedPath(userRole)}/memberships`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error);
-      alert("Failed to save member. Please try again.");
+      setErrorPopup({
+        isOpen: true,
+        message: error?.message || "Failed to save member. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -747,6 +762,20 @@ const AddMember = ({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Error Popup */}
+        <PopupMessage
+          isOpen={errorPopup.isOpen}
+          onClose={() => setErrorPopup({ isOpen: false, message: "" })}
+          type="error"
+          title="Error"
+          message={errorPopup.message}
+          primaryButton={{
+            text: "OK",
+            onClick: () => setErrorPopup({ isOpen: false, message: "" }),
+            variant: "default",
+          }}
+        />
       </div>
     </SidebarInset>
   );
