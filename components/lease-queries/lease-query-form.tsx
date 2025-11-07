@@ -44,6 +44,8 @@ import axios from "axios";
 import { renderRoleBasedPath } from "@/lib/utils";
 import { FileUpload } from "@/components/ui/file-upload";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
+import { useToast } from "@/hooks/use-toast";
+import PopupMessage from "@/components/ui/popup-message";
 
 // Form schema
 const leaseQueryAttachmentSchema = z.object({
@@ -105,8 +107,13 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   const [formPopulated, setFormPopulated] = useState(false);
   const [leaseQueryData, setLeaseQueryData] = useState<any>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: "",
+  });
 
   const router = useRouter();
+  const { toast } = useToast();
   const { data: session, status } = useSession();
 
   const form = useForm<LeaseQueryFormValues>({
@@ -344,7 +351,10 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
 
     try {
       if (status !== "authenticated" || !session?.user?.token) {
-        alert("Authentication required");
+        setErrorPopup({
+          isOpen: true,
+          message: "Authentication required. Please log in to continue.",
+        });
         setIsSubmitting(false);
         return;
       }
@@ -388,7 +398,10 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
         );
 
         console.log("Update API Response:", response.data);
-        alert("Lease query updated successfully!");
+        toast({
+          title: "Success",
+          description: "Lease query updated successfully!",
+        });
       } else {
         // Add mode - Create new lease query
         const addPayload = {
@@ -420,7 +433,10 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
         );
 
         console.log("Add API Response:", response.data);
-        alert("Lease query added successfully!");
+        toast({
+          title: "Success",
+          description: "Lease query added successfully!",
+        });
       }
 
       // Redirect back to list
@@ -428,11 +444,13 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     } catch (error: any) {
       console.error("Error submitting form:", error);
       console.error("Error response:", error.response?.data);
-      alert(
-        id
-          ? "Failed to update lease query. Please try again."
-          : "Failed to add lease query. Please try again."
-      );
+      setErrorPopup({
+        isOpen: true,
+        message: error?.response?.data?.message || error?.message || 
+          (id
+            ? "Failed to update lease query. Please try again."
+            : "Failed to add lease query. Please try again."),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -494,11 +512,17 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
       } else {
-        alert('Failed to download file');
+        setErrorPopup({
+          isOpen: true,
+          message: 'Failed to download file',
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Download error:', error);
-      alert('Failed to download file');
+      setErrorPopup({
+        isOpen: true,
+        message: error?.message || 'Failed to download file',
+      });
     }
   };
 
@@ -912,6 +936,20 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Error Popup */}
+      <PopupMessage
+        isOpen={errorPopup.isOpen}
+        onClose={() => setErrorPopup({ isOpen: false, message: "" })}
+        type="error"
+        title="Error"
+        message={errorPopup.message}
+        primaryButton={{
+          text: "OK",
+          onClick: () => setErrorPopup({ isOpen: false, message: "" }),
+          variant: "default",
+        }}
+      />
     </div>
   );
 }

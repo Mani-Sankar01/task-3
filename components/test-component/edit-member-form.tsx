@@ -25,6 +25,7 @@ import Step5ProposerDeclaration from "@/components/add-member/step-5-proposer-de
 import { uploadFile } from "@/lib/client-file-upload";
 import PopupMessage from "@/components/ui/popup-message";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 // Define the form schema
 const formSchema = z.object({
@@ -258,6 +259,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1480,19 +1482,14 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         if (response.status === 200 || response.status === 201) {
           const updatedMember = response.data;
           setIsSubmitting(false);
-          setPopupMessage({
-            isOpen: true,
-            type: "success",
+          toast({
             title: "Success",
-            message: `Member updated successfully! ID: ${
+            description: `Member updated successfully! ID: ${
               updatedMember?.data?.membershipId || "unknown"
             }`,
-            primaryButton: {
-              text: "Go to Memberships",
-              onClick: () => router.push("/admin/memberships"),
-            },
           });
           console.log("updated DATA", JSON.stringify(updatedMember));
+          router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
         } else {
           setPopupMessage({
             isOpen: true,
@@ -1502,13 +1499,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating member:", error);
       setPopupMessage({
         isOpen: true,
         type: "error",
         title: "Update Failed",
-        message: "Failed to update member. Please try again.",
+        message: error?.response?.data?.message || error?.message || "Failed to update member. Please try again.",
       });
     } finally {
       setIsSubmitting(false);
