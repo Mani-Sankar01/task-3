@@ -52,6 +52,14 @@ import { renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import PopupMessage from "@/components/ui/popup-message";
 
+const toMidnightUTCISOString = (value?: Date | string | null) => {
+  if (!value) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+  ).toISOString();
+};
+
 const formSchema = z.object({
   memberId: z.string().min(1, "Member is required"),
   amount: z.coerce.number().min(1, "Amount must be at least 1"),
@@ -248,23 +256,23 @@ export default function MembershipFeeForm({
         if (data.paidAmount !== parseFloat(originalFee.paidAmount))
           payload.paidAmount = data.paidAmount;
         if (data.notes !== originalFee.notes) payload.notes = data.notes;
-        if (
-          data.paidDate &&
-          new Date(data.paidDate).toISOString() !== originalFee.paymentDate
-        )
-          payload.paymentDate = new Date(data.paidDate).toISOString();
+        const normalizedPaymentDate = toMidnightUTCISOString(data.paidDate);
+        if (normalizedPaymentDate && normalizedPaymentDate !== toMidnightUTCISOString(originalFee.paymentDate))
+          payload.paymentDate = normalizedPaymentDate;
         if (data.paymentMethod !== originalFee.paymentMode)
           payload.paymentMode = data.paymentMethod;
+        const normalizedFromDate = toMidnightUTCISOString(data.periodFrom);
         if (
-          data.periodFrom &&
-          new Date(data.periodFrom).toISOString() !== originalFee.fromDate
+          normalizedFromDate &&
+          normalizedFromDate !== toMidnightUTCISOString(originalFee.fromDate)
         )
-          payload.fromDate = new Date(data.periodFrom).toISOString();
+          payload.fromDate = normalizedFromDate;
+        const normalizedToDate = toMidnightUTCISOString(data.periodTo);
         if (
-          data.periodTo &&
-          new Date(data.periodTo).toISOString() !== originalFee.toDate
+          normalizedToDate &&
+          normalizedToDate !== toMidnightUTCISOString(originalFee.toDate)
         )
-          payload.toDate = new Date(data.periodTo).toISOString();
+          payload.toDate = normalizedToDate;
           console.log(payload);
         await axios.post(
           `${
@@ -292,18 +300,20 @@ export default function MembershipFeeForm({
       // Format dates
       const payload: any = {
         membershipId: data.memberId,
-        fromDate: data.periodFrom.toISOString(),
-        toDate: data.periodTo.toISOString(),
+        fromDate: toMidnightUTCISOString(data.periodFrom),
+        toDate: toMidnightUTCISOString(data.periodTo),
         totalAmount: data.amount,
         paidAmount: data.paidAmount,
         notes: data.notes,
       };
       if (data.paidDate) {
-        payload.paymentDate = data.paidDate.toISOString();
+        payload.paymentDate = toMidnightUTCISOString(data.paidDate);
       }
       if (data.paymentMethod) {
         payload.paymentMode = data.paymentMethod;
       }
+      console.log(session?.user?.token);
+      console.log(JSON.stringify(payload));
       await axios.post(
         `${
           process.env.BACKEND_API_URL || "https://tsmwa.online"

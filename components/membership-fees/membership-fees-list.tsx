@@ -79,7 +79,7 @@ export default function MembershipFeesList() {
     from: startOfYear,
     to: today,
   });
-  const itemsPerPage = 10;
+  const itemsPerPage = 20;
   const [memberOptions, setMemberOptions] = useState<any[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
