@@ -1171,7 +1171,12 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: capture any additional context or reminders for this meeting."
+                    >
+                      Notes
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Enter additional notes"

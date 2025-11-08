@@ -599,7 +599,12 @@ export default function AddEditTripForm({
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: record any driver remarks or payment notes for this trip."
+                    >
+                      Notes
+                    </FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Enter any additional notes"

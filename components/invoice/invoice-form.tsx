@@ -1175,7 +1175,12 @@ export default function InvoiceForm({
                             name={`items.${index}.noOfStones`}
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>No. of Stones (Optional)</FormLabel>
+                                <FormLabel
+                                  data-required="false"
+                                  data-tooltip="Optional: enter the number of stones included in this line item."
+                                >
+                                  No. of Stones
+                                </FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"

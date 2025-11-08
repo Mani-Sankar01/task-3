@@ -11,9 +11,16 @@ import {
   FormProvider,
   useFormContext,
 } from "react-hook-form"
+import { Info } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 const Form = FormProvider
 
@@ -88,17 +95,63 @@ FormItem.displayName = "FormItem"
 
 const FormLabel = React.forwardRef<
   React.ElementRef<typeof LabelPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
->(({ className, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & {
+    "data-required"?: boolean | string
+    "data-tooltip"?: React.ReactNode
+  }
+>(({ className, children, ...props }, ref) => {
   const { error, formItemId } = useFormField()
+  const {
+    ["data-required"]: dataRequired,
+    ["data-tooltip"]: dataTooltip,
+    ...restProps
+  } = props
+
+  const isRequired =
+    dataRequired === undefined
+      ? true
+      : typeof dataRequired === "boolean"
+      ? dataRequired
+      : dataRequired !== "false"
+
+  const tooltipContent =
+    dataTooltip ??
+    (isRequired
+      ? "This field is mandatory. Please provide the required information."
+      : "This field is optional. Provide details if available.")
 
   return (
     <Label
       ref={ref}
-      className={cn(error && "text-destructive", className)}
+      className={cn(
+        "flex items-center gap-2",
+        error && "text-destructive",
+        className
+      )}
       htmlFor={formItemId}
-      {...props}
-    />
+      {...restProps}
+    >
+      <span className="flex items-center gap-1">
+        {children}
+        {isRequired && <span className="text-destructive">*</span>}
+      </span>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            {typeof tooltipContent === "string" ? (
+              <p>{tooltipContent}</p>
+            ) : (
+              tooltipContent
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </Label>
   )
 })
 FormLabel.displayName = "FormLabel"

@@ -685,7 +685,12 @@ export default function MembershipFeeForm({
                     name="notes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Notes</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: add any reference or comments for this billing entry."
+                        >
+                          Notes
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Enter any additional notes"

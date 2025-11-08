@@ -576,7 +576,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="assignedTo"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Assign to Member</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: assign this labour to a member. Leave empty if the worker is not currently assigned."
+                        >
+                          Assign to Member
+                        </FormLabel>
                         <Select
                           onValueChange={(value) => {
                             field.onChange(value);
@@ -621,7 +626,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="branchId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Branch</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: choose a branch for the selected member. Required only when a member is assigned."
+                        >
+                          Branch
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value || ""}
@@ -668,7 +678,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="labourStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Labour Status</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: select the current engagement status of the labour.">
+                          Labour Status
+                        </FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
@@ -699,7 +711,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="fullName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: enter the labour's legal full name as per official documents.">
+                          Full Name
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter full name" {...field} />
                         </FormControl>
@@ -713,7 +727,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="fatherName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Father's Name</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: provide the father's name for identification purposes.">
+                          Father's Name
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter father's name" {...field} />
                         </FormControl>
@@ -727,7 +743,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="dob"
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Date of Birth</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: select the labour's date of birth. Future dates are disabled.">
+                          Date of Birth
+                        </FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
@@ -766,7 +784,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="phoneNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: enter a 10-digit contact number. WhatsApp-enabled number preferred.">
+                          Phone Number
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter phone number" {...field} />
                         </FormControl>
@@ -780,7 +800,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="emailId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: provide email to receive communication updates."
+                        >
+                          Email
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter email address" {...field} />
                         </FormControl>
@@ -794,7 +819,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="aadharNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Aadhar Number</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: enter the 12-digit Aadhar number. Digits only.">
+                          Aadhar Number
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter Aadhar number" {...field} />
                         </FormControl>
@@ -813,7 +840,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="permanentAddress"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Permanent Address</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: enter the permanent residential address as per ID proof.">
+                          Permanent Address
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Enter permanent address"
@@ -831,7 +860,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="presentAddress"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Present Address</FormLabel>
+                        <FormLabel data-tooltip="Mandatory: enter the current address where the labour resides.">
+                          Present Address
+                        </FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Enter present address"
@@ -854,7 +885,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="panNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>PAN Number (Optional)</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: provide if PAN is available for the labour."
+                        >
+                          PAN Number
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter PAN number" {...field} />
                         </FormControl>
@@ -868,7 +904,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="esiNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>ESI Number (Optional)</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: enter Employee State Insurance number, if applicable."
+                        >
+                          ESI Number
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter ESI number" {...field} />
                         </FormControl>
@@ -882,7 +923,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                     name="eShramId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>E-Shram ID (Optional)</FormLabel>
+                        <FormLabel
+                          data-required="false"
+                          data-tooltip="Optional: enter the e-Shram ID issued by the government."
+                        >
+                          E-Shram ID
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Enter E-Shram ID" {...field} />
                         </FormControl>
@@ -897,7 +943,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                 <h3 className="text-lg font-medium">Document Uploads</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <FormLabel>Photo</FormLabel>
+                    <FormLabel data-tooltip="Mandatory: upload a recent photograph of the labour (JPG or PNG, up to 5MB).">
+                      Photo
+                    </FormLabel>
                     <FileUpload
                       onFileSelect={setPhotoFile}
                       onUploadComplete={(path) => {
@@ -922,7 +970,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                   </div>
 
                   <div>
-                    <FormLabel>Aadhar Card</FormLabel>
+                    <FormLabel data-tooltip="Mandatory: upload a clear scan of the labour's Aadhar card (PDF/JPG/PNG, up to 10MB).">
+                      Aadhar Card
+                    </FormLabel>
                     <FileUpload
                       onFileSelect={setAadharFile}
                       onUploadComplete={(path) => {
@@ -970,7 +1020,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                           name={`additionalDocs.${index}.docName`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Document Name</FormLabel>
+                              <FormLabel data-tooltip="Mandatory: provide a descriptive name for this document.">
+                                Document Name
+                              </FormLabel>
                               <FormControl>
                                 <Input
                                   placeholder="Enter document name"
@@ -983,7 +1035,9 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
                         />
 
                         <div>
-                          <FormLabel>Document Upload</FormLabel>
+                          <FormLabel data-tooltip="Mandatory: upload the selected document file (PDF/JPG/PNG).">
+                            Document Upload
+                          </FormLabel>
                           <FileUpload
                             onFileSelect={(file) => {
                               // Handle file upload for additional documents

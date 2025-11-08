@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
-import { CalendarIcon, Info } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
 import { Input } from "@/components/ui/input";
@@ -26,12 +26,6 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface Step1PersonalBusinessProps {
   isEditMode?: boolean;
@@ -75,19 +69,9 @@ export default function Step1PersonalBusiness({
             name="applicationDetails.electricalUscNumber"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <FormLabel>Electrical USC Number</FormLabel>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>eUSC number should be unique</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <FormLabel data-tooltip="Must be unique. This value is validated automatically.">
+                  Electrical USC Number
+                </FormLabel>
                 <FormControl>
                   <Input 
                     placeholder="Enter USC number" 
@@ -122,19 +106,9 @@ export default function Step1PersonalBusiness({
             name="applicationDetails.scNumber"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  <FormLabel>SC Number</FormLabel>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>SC number should be unique</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <FormLabel data-tooltip="Must be unique. This value is validated automatically.">
+                  SC Number
+                </FormLabel>
                 <FormControl>
                   <Input 
                     placeholder="Enter SC number" 
@@ -191,7 +165,9 @@ export default function Step1PersonalBusiness({
             name="applicationDetails.dateOfApplication"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Date of Application</FormLabel>
+                <FormLabel data-tooltip="Select the date when this application is submitted.">
+                  Date of Application
+                </FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -240,7 +216,9 @@ export default function Step1PersonalBusiness({
             name="memberDetails.applicantName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Applicant Name</FormLabel>
+                <FormLabel data-tooltip="Enter the primary applicant's full name.">
+                  Applicant Name
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter full name" {...field} />
                 </FormControl>
@@ -254,7 +232,9 @@ export default function Step1PersonalBusiness({
             name="memberDetails.relation"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>S/O, D/O, W/O</FormLabel>
+                <FormLabel data-tooltip="Select the relationship prefix for the applicant.">
+                  S/O, D/O, W/O
+                </FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -280,7 +260,9 @@ export default function Step1PersonalBusiness({
             name="memberDetails.relativeName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Relative Name</FormLabel>
+                <FormLabel data-tooltip="Provide the name that corresponds to the selected relation.">
+                  Relative Name
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter relative's name" {...field} />
                 </FormControl>
@@ -300,7 +282,9 @@ export default function Step1PersonalBusiness({
             name="firmDetails.firmName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Firm Name</FormLabel>
+                <FormLabel data-tooltip="Enter the registered name of the firm.">
+                  Firm Name
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter firm name" {...field} />
                 </FormControl>
@@ -314,7 +298,9 @@ export default function Step1PersonalBusiness({
             name="firmDetails.proprietorName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Proprietor/Managing Partner Name</FormLabel>
+                <FormLabel data-tooltip="Enter the name of the proprietor or managing partner.">
+                  Proprietor/Managing Partner Name
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter proprietor name" {...field} />
                 </FormControl>
@@ -328,19 +314,9 @@ export default function Step1PersonalBusiness({
             name="firmDetails.contact1"
             render={({ field }) => (
               <FormItem>
-                <div className="flex items-center gap-2">
-                  <FormLabel>Contact 1 (Primary)</FormLabel>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Please add WhatsApp number so that WhatsApp alerts will be sent</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <FormLabel data-tooltip="Please provide a primary phone number. WhatsApp-enabled numbers receive alerts.">
+                  Contact 1 (Primary)
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter primary number" {...field} />
                 </FormControl>
@@ -354,7 +330,12 @@ export default function Step1PersonalBusiness({
             name="firmDetails.contact2"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Contact 2 (Optional)</FormLabel>
+                <FormLabel
+                  data-required="false"
+                  data-tooltip="Optional secondary contact number for backup communication."
+                >
+                  Contact 2
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Enter phone number"
@@ -380,7 +361,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.surveyNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Survey Number</FormLabel>
+                <FormLabel data-tooltip="Enter the land survey number associated with the unit.">
+                  Survey Number
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter survey number" {...field} />
                 </FormControl>
@@ -394,7 +377,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.village"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Village</FormLabel>
+                <FormLabel data-tooltip="Enter the village or locality name.">
+                  Village
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter village name" {...field} />
                 </FormControl>
@@ -442,7 +427,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.mandal"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mandal</FormLabel>
+                <FormLabel data-tooltip="Select the mandal in which the unit operates.">
+                  Mandal
+                </FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -470,7 +457,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.district"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>District</FormLabel>
+                <FormLabel data-tooltip="Specify the district for this business location.">
+                  District
+                </FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -496,7 +485,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.state"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>State</FormLabel>
+                <FormLabel data-tooltip="Select the state where the firm operates.">
+                  State
+                </FormLabel>
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
@@ -525,7 +516,9 @@ export default function Step1PersonalBusiness({
             name="businessDetails.pincode"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Pincode</FormLabel>
+                <FormLabel data-tooltip="Enter the 6-digit postal code for the business location.">
+                  Pincode
+                </FormLabel>
                 <FormControl>
                   <Input placeholder="Enter pincode" maxLength={6} {...field} />
                 </FormControl>
@@ -566,7 +559,12 @@ export default function Step1PersonalBusiness({
               name="businessDetails.ownerSubType"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Proprietor Type</FormLabel>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: refine the ownership classification."
+                  >
+                    Proprietor Type
+                  </FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
