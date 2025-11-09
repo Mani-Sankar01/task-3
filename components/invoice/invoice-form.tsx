@@ -1185,10 +1185,23 @@ export default function InvoiceForm({
                                   <Input
                                     type="number"
                                     placeholder="Enter quantity (optional)"
-                                    {...field}
-                                    onChange={(e) => {
-                                      field.onChange(e);
-                                    }}
+                              {...field}
+                              value={
+                                field.value === undefined || field.value === null
+                                  ? ""
+                                  : field.value
+                              }
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === "") {
+                                  field.onChange(undefined);
+                                  return;
+                                }
+                                const numericValue = Number(raw);
+                                if (!Number.isNaN(numericValue)) {
+                                  field.onChange(numericValue);
+                                }
+                              }}
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -1241,9 +1254,24 @@ export default function InvoiceForm({
                                       type="number"
                                       placeholder={placeholder}
                                       {...field}
+                                      value={
+                                        field.value === undefined ||
+                                        field.value === null
+                                          ? ""
+                                          : field.value
+                                      }
                                       onChange={(e) => {
-                                        field.onChange(e);
-                                        calculateItemAmount(index);
+                                        const raw = e.target.value;
+                                        if (raw === "") {
+                                          field.onChange("");
+                                          calculateItemAmount(index);
+                                          return;
+                                        }
+                                        const numericValue = Number(raw);
+                                        if (!Number.isNaN(numericValue)) {
+                                          field.onChange(numericValue);
+                                          calculateItemAmount(index);
+                                        }
                                       }}
                                     />
                                   </FormControl>
@@ -1269,9 +1297,24 @@ export default function InvoiceForm({
                                       type="number"
                                       placeholder={placeholder}
                                       {...field}
+                                      value={
+                                        field.value === undefined ||
+                                        field.value === null
+                                          ? ""
+                                          : field.value
+                                      }
                                       onChange={(e) => {
-                                        field.onChange(e);
-                                        calculateItemAmount(index);
+                                        const raw = e.target.value;
+                                        if (raw === "") {
+                                          field.onChange("");
+                                          calculateItemAmount(index);
+                                          return;
+                                        }
+                                        const numericValue = Number(raw);
+                                        if (!Number.isNaN(numericValue)) {
+                                          field.onChange(numericValue);
+                                          calculateItemAmount(index);
+                                        }
                                       }}
                                     />
                                   </FormControl>

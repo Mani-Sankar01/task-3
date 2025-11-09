@@ -2,7 +2,7 @@
 
 import { useFormContext } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
-import { Plus, Trash2, CheckCircle, Info } from "lucide-react";
+import { Plus, Trash2, CheckCircle } from "lucide-react";
 import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface Step3ComplianceLegalProps {
   isEditMode?: boolean;
@@ -116,19 +110,9 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.gstinNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>GSTIN No</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>GSTIN number should be unique</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <FormLabel data-tooltip="GSTIN number should be unique">
+                    GSTIN No
+                  </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Enter GSTIN number" 
@@ -174,7 +158,9 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.gstInUsername"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>GST Username</FormLabel>
+                    <FormLabel data-tooltip="Enter the registered GST portal username">
+                      GST Username
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Enter GST username" 
@@ -201,7 +187,9 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.gstInPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>GST Password</FormLabel>
+                    <FormLabel data-tooltip="Enter the GST portal password">
+                      GST Password
+                    </FormLabel>
                     <div className="flex gap-2">
                       <FormControl>
                         <Input 
@@ -241,7 +229,9 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.gstinDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>GSTIN Certificate</FormLabel>
+                  <FormLabel data-tooltip="Upload the active GSTIN registration certificate">
+                    GSTIN Certificate
+                  </FormLabel>
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
@@ -273,19 +263,9 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.factoryLicenseNo"
               render={({ field }) => (
                   <FormItem className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Factory License No</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Factory License number should be unique</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <FormLabel data-tooltip="Factory License number should be unique">
+                    Factory License No
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter factory license number"
@@ -311,7 +291,9 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.factoryLicenseExpiredAt"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Factory License Expiry Date</FormLabel>
+                    <FormLabel data-tooltip="Factory License expiry date">
+                      Factory License Expiry Date
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
@@ -328,7 +310,9 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.factoryLicenseDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Factory License Document</FormLabel>
+                  <FormLabel data-tooltip="Upload the factory license document">
+                    Factory License Document
+                  </FormLabel>
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
@@ -360,19 +344,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.tspcbOrderNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>TSPCB Order No</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>TSPCB Order number should be unique</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: add the TSPCB order number if available"
+                  >
+                    TSPCB Order No
+                  </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Enter TSPCB order number" 
@@ -398,7 +375,12 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.tspcbExpiredAt"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>TSPCB Expiry Date</FormLabel>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: add the TSPCB approval expiry date"
+                    >
+                      TSPCB Expiry Date
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
@@ -415,7 +397,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.tspcbOrderDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>TSPCB Certificate</FormLabel>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: upload the TSPCB approval certificate"
+                  >
+                    TSPCB Certificate
+                  </FormLabel>
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
@@ -447,19 +434,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.mdlNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>M.D.L No</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>M.D.L number should be unique</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: add the MDL authorization number if available"
+                  >
+                    M.D.L No
+                  </FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Enter M.D.L number" 
@@ -485,7 +465,12 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.mdlExpiredAt"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>MDL Expiry Date</FormLabel>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: add the MDL expiry date"
+                    >
+                      MDL Expiry Date
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
@@ -502,7 +487,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.mdlDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>MDL Certificate</FormLabel>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: upload the MDL certificate"
+                  >
+                    MDL Certificate
+                  </FormLabel>
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
@@ -534,19 +524,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.udyamCertificateNo"
               render={({ field }) => (
                 <FormItem className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <FormLabel>Udyam Certificate No</FormLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Udyam Certificate number should be unique</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: add the Udyam registration number if available"
+                  >
+                    Udyam Certificate No
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Enter Udyam certificate number"
@@ -572,7 +555,12 @@ export default function Step3ComplianceLegal({
                 name="complianceDetails.udyamCertificateExpiredAt"
                 render={({ field }) => (
                   <FormItem className="flex-1">
-                    <FormLabel>Udyam Certificate Expiry Date</FormLabel>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: add the Udyam certificate expiry date"
+                    >
+                      Udyam Certificate Expiry Date
+                    </FormLabel>
                     <FormControl>
                       <Input
                         type="date"
@@ -589,7 +577,12 @@ export default function Step3ComplianceLegal({
               name="complianceDetails.udyamCertificateDoc"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Udyam Certificate</FormLabel>
+                  <FormLabel
+                    data-required="false"
+                    data-tooltip="Optional: upload the Udyam certificate"
+                  >
+                    Udyam Certificate
+                  </FormLabel>
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload

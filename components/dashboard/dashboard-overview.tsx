@@ -1076,7 +1076,7 @@ export default function DashboardOverview() {
                             className="ml-2"
                             onClick={() =>
                               navigateToSection(
-                                `/admin/vehicles/${payment.vehicleId}`
+                                `/admin/vehicle/${payment.vehicleId}`
                               )
                             }
                           >

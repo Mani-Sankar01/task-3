@@ -49,9 +49,6 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 
 import {
-  getAllMembershipFees,
-  deleteMembershipFee,
-  getMemberNameById,
   getMemberOptions,
   getMembershipFeeStatistics,
   type MembershipFee,
@@ -332,21 +329,66 @@ export default function MembershipFeesList() {
   };
 
   // Delete a fee
-  const handleDeleteFee = (feeId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this membership fee? This action cannot be undone."
-      )
-    ) {
-      deleteMembershipFee(feeId);
-      setFees(getAllMembershipFees());
+  const handleDeleteFee = async (feeId: string) => {
+    console.log("Delete requested for:", feeId);
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this membership fee? This action cannot be undone."
+    );
+    console.log("Delete confirmation result:", confirmDelete);
+    if (!confirmDelete) return;
 
-      if (
-        currentPage > 1 &&
-        (currentPage - 1) * itemsPerPage >= sortedFees.length - 1
-      ) {
-        setCurrentPage(currentPage - 1);
-      }
+    if (sessionStatus !== "authenticated" || !session?.user?.token) {
+      console.warn("Delete aborted: missing authentication token");
+      toast({
+        title: "Error",
+        description: "Authentication required to delete membership fee.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      console.log("Deleting membership fee:", feeId);
+      console.log("Calling delete API with token...");
+      const response = await axios.delete(
+        `${
+          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        }/api/bill/delete_bill/${feeId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+      console.log("Delete API response status:", response.status);
+      console.log("Delete successful for:", feeId);
+
+      setFees((prevFees) => {
+        const updatedFees = prevFees.filter(
+          (fee) => fee.billingId !== feeId
+        );
+        if (
+          currentPage > 1 &&
+          (currentPage - 1) * itemsPerPage >= updatedFees.length
+        ) {
+          setCurrentPage(currentPage - 1);
+        }
+        return updatedFees;
+      });
+
+      toast({
+        title: "Deleted",
+        description: "Membership fee deleted successfully.",
+      });
+    } catch (error: any) {
+      console.error("Failed to delete membership fee:", error);
+      toast({
+        title: "Error",
+        description:
+          error?.response?.data?.message ||
+          "Failed to delete membership fee. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -563,7 +605,7 @@ export default function MembershipFeesList() {
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   {statusOptions.map((status) => (
                     <SelectItem key={status} value={status}>
                       {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -755,11 +797,16 @@ export default function MembershipFeesList() {
                                 </DropdownMenuItem>
                               )}
                               {session?.user.role === "ADMIN" && (
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                  }}
-                                >
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (fee.billingId) {
+                                    handleDeleteFee(fee.billingId);
+                                  } else {
+                                    console.warn("Missing billingId for fee:", fee);
+                                  }
+                                }}
+                              >
                                   <Trash2 className="h-4 w-4 text-red-600" />   
                                   Delete
                                 </DropdownMenuItem>

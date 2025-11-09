@@ -297,6 +297,9 @@ export default function AddEditTripForm({
     }
   };
 
+  const totalAmountValue = Number(form.watch("totalAmountToPay")) || 0;
+  const amountPaidValue = Number(form.watch("amountPaid")) || 0;
+
   const handleCancel = () => {
     if (
       window.confirm(
@@ -489,10 +492,23 @@ export default function AddEditTripForm({
                           type="number"
                           min="1"
                           placeholder="Enter total rounds"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
+                        {...field}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : field.value
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            field.onChange("");
+                            return;
                           }
+                          const numericValue = Number(raw);
+                          if (!Number.isNaN(numericValue)) {
+                            field.onChange(numericValue);
+                          }
+                        }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -511,10 +527,23 @@ export default function AddEditTripForm({
                           type="number"
                           min="1"
                           placeholder="Enter price per round"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
+                        {...field}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : field.value
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            field.onChange("");
+                            return;
                           }
+                          const numericValue = Number(raw);
+                          if (!Number.isNaN(numericValue)) {
+                            field.onChange(numericValue);
+                          }
+                        }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -533,10 +562,23 @@ export default function AddEditTripForm({
                           type="number"
                           min="1"
                           placeholder="Enter total amount"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
+                        {...field}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : field.value
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            field.onChange("");
+                            return;
                           }
+                          const numericValue = Number(raw);
+                          if (!Number.isNaN(numericValue)) {
+                            field.onChange(numericValue);
+                          }
+                        }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -555,10 +597,23 @@ export default function AddEditTripForm({
                           type="number"
                           min="0"
                           placeholder="Enter amount paid"
-                          {...field}
-                          onChange={(e) =>
-                            field.onChange(Number(e.target.value))
+                        {...field}
+                        value={
+                          field.value === undefined || field.value === null
+                            ? ""
+                            : field.value
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            field.onChange("");
+                            return;
                           }
+                          const numericValue = Number(raw);
+                          if (!Number.isNaN(numericValue)) {
+                            field.onChange(numericValue);
+                          }
+                        }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -570,26 +625,23 @@ export default function AddEditTripForm({
               <div className="bg-muted p-4 rounded-md">
                 <div className="flex justify-between items-center">
                   <span className="font-medium">Total Amount:</span>
-                  <span className="font-bold">
-                    ₹{form.watch("totalAmountToPay")}
-                  </span>
+                  <span className="font-bold">₹{totalAmountValue}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="font-medium">Amount Paid:</span>
-                  <span>₹{form.watch("amountPaid")}</span>
+                  <span>₹{amountPaidValue}</span>
                 </div>
                 <div className="flex justify-between items-center mt-2">
                   <span className="font-medium">Balance:</span>
                   <span
                     className={
-                      form.watch("totalAmountToPay") -
-                        form.watch("amountPaid") >
+                      totalAmountValue - amountPaidValue >
                       0
                         ? "text-destructive font-bold"
                         : "text-green-600 font-bold"
                     }
                   >
-                    ₹{form.watch("totalAmountToPay") - form.watch("amountPaid")}
+                    ₹{totalAmountValue - amountPaidValue}
                   </span>
                 </div>
               </div>

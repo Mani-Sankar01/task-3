@@ -182,12 +182,15 @@ export default function MembershipFeeForm({
   const paidAmount = form.watch("paidAmount");
 
   // Update status based on paid amount
-  const updateStatus = (paid: number, total: number) => {
-    if (paid === 0) {
+  const updateStatus = (paid: number | string, total: number | string) => {
+    const paidValue = Number(paid) || 0;
+    const totalValue = Number(total) || 0;
+
+    if (paidValue === 0) {
       form.setValue("status", "due");
-    } else if (paid < total) {
+    } else if (paidValue < totalValue) {
       form.setValue("status", "due");
-    } else if (paid >= total) {
+    } else if (paidValue >= totalValue) {
       form.setValue("status", "paid");
     }
   };
@@ -544,10 +547,23 @@ export default function MembershipFeeForm({
                               type="number"
                               placeholder="Enter total amount"
                               {...field}
+                              value={
+                                field.value === undefined || field.value === null
+                                  ? ""
+                                  : field.value
+                              }
                               onChange={(e) => {
-                                const value = Number(e.target.value);
-                                field.onChange(value);
-                                updateStatus(paidAmount, value);
+                                const raw = e.target.value;
+                                if (raw === "") {
+                                  field.onChange("");
+                                  updateStatus(paidAmount, 0);
+                                  return;
+                                }
+                                const numericValue = Number(raw);
+                                if (!Number.isNaN(numericValue)) {
+                                  field.onChange(numericValue);
+                                  updateStatus(paidAmount, numericValue);
+                                }
                               }}
                             />
                           </FormControl>
@@ -567,10 +583,23 @@ export default function MembershipFeeForm({
                               type="number"
                               placeholder="Enter paid amount"
                               {...field}
+                              value={
+                                field.value === undefined || field.value === null
+                                  ? ""
+                                  : field.value
+                              }
                               onChange={(e) => {
-                                const value = Number(e.target.value);
-                                field.onChange(value);
-                                updateStatus(value, amount);
+                                const raw = e.target.value;
+                                if (raw === "") {
+                                  field.onChange("");
+                                  updateStatus(0, amount);
+                                  return;
+                                }
+                                const numericValue = Number(raw);
+                                if (!Number.isNaN(numericValue)) {
+                                  field.onChange(numericValue);
+                                  updateStatus(numericValue, amount);
+                                }
                               }}
                             />
                           </FormControl>

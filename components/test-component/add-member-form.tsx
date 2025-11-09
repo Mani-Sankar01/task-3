@@ -117,17 +117,36 @@ const formSchema = z.object({
       .default([]),
   }),
   complianceDetails: z.object({
-    gstinNo: z.string(),
-    gstInUsername: z.string().optional(),
-    gstInPassword: z.string().optional(),
-    factoryLicenseNo: z.string(),
-    tspcbOrderNo: z.string(),
-    mdlNo: z.string(),
-    udyamCertificateNo: z.string(),
-    gstinDoc: z.any().optional(),
-    gstinExpiredAt: z.string().optional(),
-    factoryLicenseDoc: z.any().optional(),
-    factoryLicenseExpiredAt: z.string().optional(),
+    gstinNo: z.string().min(1, "GSTIN number is required"),
+    gstInUsername: z.string().min(1, "GST username is required"),
+    gstInPassword: z.string().min(1, "GST password is required"),
+    factoryLicenseNo: z.string().min(1, "Factory License number is required"),
+    tspcbOrderNo: z.string().optional(),
+    mdlNo: z.string().optional(),
+    udyamCertificateNo: z.string().optional(),
+    gstinDoc: z
+      .any()
+      .refine(
+        (file) =>
+          !!file &&
+          (file instanceof File ||
+            (typeof file === "object" && file !== null && "existingPath" in file)),
+        "GSTIN certificate is required"
+      ),
+    gstinExpiredAt: z.string().min(1, "GSTIN expiry date is required"),
+    factoryLicenseDoc: z
+      .any()
+      .refine(
+        (file) =>
+          !!file &&
+          (file instanceof File ||
+            (typeof file === "object" && file !== null && "existingPath" in file)),
+        "Factory License document is required"
+      ),
+    factoryLicenseExpiredAt: z.string().min(
+      1,
+      "Factory License expiry date is required"
+    ),
     tspcbOrderDoc: z.any().optional(),
     tspcbExpiredAt: z.string().optional(),
     mdlDoc: z.any().optional(),
@@ -311,7 +330,15 @@ const AddMemberForm = () => {
         fullAddress: "",
       },
       representativeDetails: {
-        partners: [],
+        partners: [
+          {
+            name: "",
+            contactNo: "",
+            aadharNo: "",
+            pan: "",
+            email: "",
+          },
+        ],
       },
       membershipDetails: {
         isMemberOfOrg: "",
@@ -523,17 +550,19 @@ const AddMemberForm = () => {
       }
 
       // Build the request data
+      const resolveExistingPath = (value: any) => {
+        if (!value) return undefined;
+        if (typeof value === "string") return value;
+        if (value?.existingPath) return value.existingPath;
+        return undefined;
+      };
+
       const shouldSendCompliance =
         data.complianceDetails.gstinNo ||
-        data.complianceDetails.factoryLicenseNo ||
-        data.complianceDetails.tspcbOrderNo ||
-        data.complianceDetails.mdlNo ||
-        data.complianceDetails.udyamCertificateNo ||
+        data.complianceDetails.gstInUsername ||
+        data.complianceDetails.gstInPassword ||
         uploadedFiles.gstinDoc ||
-        uploadedFiles.factoryLicenseDoc ||
-        uploadedFiles.tspcbOrderDoc ||
-        uploadedFiles.mdlDoc ||
-        uploadedFiles.udyamCertificateDoc;
+        resolveExistingPath(data.complianceDetails.gstinDoc);
 
       const requestData: any = {
         membershipType: data.membershipType,
@@ -621,51 +650,22 @@ const AddMemberForm = () => {
 
         declarations: {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
-          membershipFormPath:
-            uploadedFiles.photoUpload || "/uploads/membership-form.pdf",
-          applicationSignaturePath:
-            uploadedFiles.signatureUpload || "/uploads/app-signature.pdf",
+          membershipFormPath: uploadedFiles.photoUpload || null,
+          applicationSignaturePath: uploadedFiles.signatureUpload || null,
         },
       };
 
       if (shouldSendCompliance) {
-        requestData.complianceDetails = {
-          gstInNumber: data.complianceDetails.gstinNo,
-          gstInUsername: data.complianceDetails.gstInUsername || "",
-          gstInPassword: data.complianceDetails.gstInPassword || "",
-          gstInCertificatePath: uploadedFiles.gstinDoc || "/uploads/gstin.pdf",
-          gstExpiredAt: data.complianceDetails.gstinExpiredAt
-            ? new Date(data.complianceDetails.gstinExpiredAt).toISOString()
-            : null,
-          factoryLicenseNumber: data.complianceDetails.factoryLicenseNo,
-          factoryLicensePath:
-            uploadedFiles.factoryLicenseDoc || "/uploads/factory-license.pdf",
-          factoryLicenseExpiredAt: data.complianceDetails
-            .factoryLicenseExpiredAt
-            ? new Date(
-                data.complianceDetails.factoryLicenseExpiredAt
-              ).toISOString()
-            : null,
-          tspcbOrderNumber: data.complianceDetails.tspcbOrderNo,
-          tspcbCertificatePath:
-            uploadedFiles.tspcbOrderDoc || "/uploads/tspcb.pdf",
-          tspcbExpiredAt: data.complianceDetails.tspcbExpiredAt
-            ? new Date(data.complianceDetails.tspcbExpiredAt).toISOString()
-            : null,
-          mdlNumber: data.complianceDetails.mdlNo,
-          mdlCertificatePath: uploadedFiles.mdlDoc || "/uploads/mdl.pdf",
-          mdlExpiredAt: data.complianceDetails.mdlExpiredAt
-            ? new Date(data.complianceDetails.mdlExpiredAt).toISOString()
-            : null,
-          udyamCertificateNumber: data.complianceDetails.udyamCertificateNo,
-          udyamCertificatePath:
-            uploadedFiles.udyamCertificateDoc || "/uploads/udyam.pdf",
-          udyamCertificateExpiredAt: data.complianceDetails
-            .udyamCertificateExpiredAt
-            ? new Date(
-                data.complianceDetails.udyamCertificateExpiredAt
-              ).toISOString()
-            : null,
+        const complianceDetails: Record<string, any> = {
+          gstInNumber: data.complianceDetails.gstinNo.trim(),
+          gstInUsername: data.complianceDetails.gstInUsername?.trim() || "",
+          gstInPassword: data.complianceDetails.gstInPassword?.trim() || "",
+          gstInCertificatePath:
+            uploadedFiles.gstinDoc ||
+            resolveExistingPath(data.complianceDetails.gstinDoc),
+          gstExpiredAt: new Date(
+            data.complianceDetails.gstinExpiredAt
+          ).toISOString(),
           fullAddress: data.communicationDetails.fullAddress,
           partnerName: data.representativeDetails.partners[0]?.name || "",
           contactNumber:
@@ -674,6 +674,75 @@ const AddMemberForm = () => {
           emailId: data.representativeDetails.partners[0]?.email,
           panNumber: data.representativeDetails.partners[0]?.pan,
         };
+
+        const factoryLicenseNo =
+          data.complianceDetails.factoryLicenseNo?.trim() || "";
+        if (factoryLicenseNo) {
+          complianceDetails.factoryLicenseNumber = factoryLicenseNo;
+        }
+        const factoryLicensePath =
+          uploadedFiles.factoryLicenseDoc ||
+          resolveExistingPath(data.complianceDetails.factoryLicenseDoc);
+        if (factoryLicensePath) {
+          complianceDetails.factoryLicensePath = factoryLicensePath;
+        }
+        if (data.complianceDetails.factoryLicenseExpiredAt) {
+          complianceDetails.factoryLicenseExpiredAt = new Date(
+            data.complianceDetails.factoryLicenseExpiredAt
+          ).toISOString();
+        }
+
+        const tspcbOrderNo =
+          data.complianceDetails.tspcbOrderNo?.trim() || "";
+        if (tspcbOrderNo) {
+          complianceDetails.tspcbOrderNumber = tspcbOrderNo;
+        }
+        const tspcbCertificatePath =
+          uploadedFiles.tspcbOrderDoc ||
+          resolveExistingPath(data.complianceDetails.tspcbOrderDoc);
+        if (tspcbCertificatePath) {
+          complianceDetails.tspcbCertificatePath = tspcbCertificatePath;
+        }
+        if (data.complianceDetails.tspcbExpiredAt) {
+          complianceDetails.tspcbExpiredAt = new Date(
+            data.complianceDetails.tspcbExpiredAt
+          ).toISOString();
+        }
+
+        const mdlNumber = data.complianceDetails.mdlNo?.trim() || "";
+        if (mdlNumber) {
+          complianceDetails.mdlNumber = mdlNumber;
+        }
+        const mdlCertificatePath =
+          uploadedFiles.mdlDoc ||
+          resolveExistingPath(data.complianceDetails.mdlDoc);
+        if (mdlCertificatePath) {
+          complianceDetails.mdlCertificatePath = mdlCertificatePath;
+        }
+        if (data.complianceDetails.mdlExpiredAt) {
+          complianceDetails.mdlExpiredAt = new Date(
+            data.complianceDetails.mdlExpiredAt
+          ).toISOString();
+        }
+
+        const udyamCertificateNo =
+          data.complianceDetails.udyamCertificateNo?.trim() || "";
+        if (udyamCertificateNo) {
+          complianceDetails.udyamCertificateNumber = udyamCertificateNo;
+        }
+        const udyamCertificatePath =
+          uploadedFiles.udyamCertificateDoc ||
+          resolveExistingPath(data.complianceDetails.udyamCertificateDoc);
+        if (udyamCertificatePath) {
+          complianceDetails.udyamCertificatePath = udyamCertificatePath;
+        }
+        if (data.complianceDetails.udyamCertificateExpiredAt) {
+          complianceDetails.udyamCertificateExpiredAt = new Date(
+            data.complianceDetails.udyamCertificateExpiredAt
+          ).toISOString();
+        }
+
+        requestData.complianceDetails = complianceDetails;
       }
 
       console.log(JSON.stringify(requestData));
