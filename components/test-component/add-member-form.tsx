@@ -766,7 +766,7 @@ const AddMemberForm = () => {
           toast({
             title: "Success",
             description: `Member added successfully! ID: ${
-              addedMember?.memberId || "unknown"
+              addedMember?.membershipId || "unknown"
             }`,
           });
           router.push(

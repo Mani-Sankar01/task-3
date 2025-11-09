@@ -50,6 +50,38 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { renderRoleBasedPath } from "@/lib/utils";
+
+type MemberAttendeeResponse = {
+  id?: number;
+  meetId?: string;
+  all?: boolean;
+  allExecutives?: boolean;
+  zones?: Array<{ id?: number; zone: string; memberAttendeesId?: number }> | string[];
+  mandals?: Array<{ id?: number; mandal: string; memberAttendeesId?: number }> | string[];
+  customMembers?: Array<{ membershipId: string }> | string[];
+};
+
+type VehicleAttendeeResponse = {
+  id?: number;
+  meetId?: string;
+  owner?: boolean;
+  driver?: boolean;
+  all?: boolean;
+  customVehicle?: Array<{
+    vehicleId: string;
+    owner?: boolean;
+    driver?: boolean;
+  }>;
+};
+
+type LabourAttendeeResponse = {
+  id?: number;
+  meetId?: string;
+  all?: boolean;
+  membershipID?: string[];
+  customLabours?: Array<{ labourId: string }> | string[];
+};
 
 // Types for the API
 interface Meeting {
@@ -60,42 +92,9 @@ interface Meeting {
   notes?: string;
   startTime: string;
   location: string;
-  memberAttendees: Array<{
-    id?: number;
-    meetId?: string;
-    all: boolean;
-    allExecutives: boolean;
-    zones: Array<{
-      id?: number;
-      zone: string;
-      memberAttendeesId?: number;
-    }>;
-    mandals: Array<{
-      id?: number;
-      mandal: string;
-      memberAttendeesId?: number;
-    }>;
-    customMembers: string[];
-  }>;
-  vehicleAttendees: Array<{
-    id?: number;
-    meetId?: string;
-    owner: boolean;
-    driver: boolean;
-    all: boolean;
-    customVehicle: Array<{
-      vehicleId: string;
-      owner: boolean;
-      driver: boolean;
-    }>;
-  }>;
-  labourAttendees: Array<{
-    id?: number;
-    meetId?: string;
-    all: boolean;
-
-    customLabours?: string[];
-  }>;
+  memberAttendees?: MemberAttendeeResponse[] | MemberAttendeeResponse | null;
+  vehicleAttendees?: VehicleAttendeeResponse[] | VehicleAttendeeResponse | null;
+  labourAttendees?: LabourAttendeeResponse[] | LabourAttendeeResponse | null;
   status: string;
   followUpMeetings?: Array<{
     dateTime: string;
@@ -137,18 +136,25 @@ interface Labour {
 
 // Zones and Mandals from member form
 const zones = [
-  { value: "zone1", label: "Zone 1" },
-  { value: "zone2", label: "Zone 2" },
-  { value: "zone3", label: "Zone 3" },
-  { value: "zone4", label: "Zone 4" },
+  { value: "Gouthapur_Road", label: "Gouthapur Road" },
+  { value: "Basaveshwar_Nagar", label: "Basaveshwar Nagar" },
+  { value: "Chengole", label: "Chengole" },
+  { value: "Allapur", label: "Allapur" },
+  { value: "Karankote_Road", label: "Karankote Road" },
+  { value: "Karankote_Village", label: "Karankote Village" },
+  { value: "Chengeshpur_Road", label: "Chengeshpur Road" },
+  { value: "Kodangal_Road", label: "Kodangal Road" },
+  { value: "Kokat_Road", label: "Kokat Road" },
+  { value: "Hyderabad_Road", label: "Hyderabad Road" },
+  { value: "Local", label: "Local" },
 ];
 
 const mandals = [
-  { value: "mandal1", label: "Mandal 1" },
-  { value: "mandal2", label: "Mandal 2" },
-  { value: "mandal3", label: "Mandal 3" },
-  { value: "mandal4", label: "Mandal 4" },
-  { value: "mandal5", label: "Mandal 5" },
+  { value: "Tandur_town", label: "Tandur town" },
+  { value: "Tandur_Mandal", label: "Tandur Mandal" },
+  { value: "Yalal_Mandal", label: "Yalal Mandal" },
+  { value: "Peddamul_Mandal", label: "Peddamul Mandal" },
+  { value: "Basheerabad_Mandal", label: "Basheerabad Mandal" },
 ];
 
 const formSchema = z.object({
@@ -302,7 +308,9 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       console.log("Meeting data:", JSON.stringify(response.data));
       
       // Extract meeting from array response
-      const meetingData = Array.isArray(response.data) ? response.data[0] : response.data.data?.[0] || response.data;
+      const meetingData = Array.isArray(response.data)
+        ? response.data[0]
+        : response.data.data?.[0] || response.data;
       setMeeting(meetingData);
       
       // Set form values
@@ -310,9 +318,19 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       const startTime = format(startDate, "HH:mm");
       
       // Extract attendee data from the new structure
-      const memberAttendee = meetingData.memberAttendees?.[0] || {};
-      const vehicleAttendee = meetingData.vehicleAttendees?.[0] || {};
-      const labourAttendee = meetingData.labourAttendees?.[0] || {};
+      const memberAttendeeRaw = meetingData.memberAttendees;
+      const vehicleAttendeeRaw = meetingData.vehicleAttendees;
+      const labourAttendeeRaw = meetingData.labourAttendees;
+
+      const memberAttendee = Array.isArray(memberAttendeeRaw)
+        ? memberAttendeeRaw[0] || {}
+        : memberAttendeeRaw || {};
+      const vehicleAttendee = Array.isArray(vehicleAttendeeRaw)
+        ? vehicleAttendeeRaw[0] || {}
+        : vehicleAttendeeRaw || {};
+      const labourAttendee = Array.isArray(labourAttendeeRaw)
+        ? labourAttendeeRaw[0] || {}
+        : labourAttendeeRaw || {};
       
       // Debug labour attendee structure
       console.log("=== FETCH MEETING LABOUR DEBUG ===");
@@ -331,11 +349,17 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       console.log("customMembers:", memberAttendee.customMembers);
       
       // Calculate member type
-      const memberType = memberAttendee.all ? "all" :
-                        memberAttendee.allExecutives ? "allExecutives" :
-                        memberAttendee.zones?.length ? "selectedZone" :
-                        memberAttendee.mandals?.length ? "selectedMandal" :
-                        memberAttendee.customMembers?.length ? "selectedMembers" : undefined;
+      const memberType = memberAttendee.all
+        ? "all"
+        : memberAttendee.allExecutives
+        ? "allExecutives"
+        : memberAttendee.zones?.length
+        ? "selectedZone"
+        : memberAttendee.mandals?.length
+        ? "selectedMandal"
+        : memberAttendee.customMembers?.length
+        ? "selectedMembers"
+        : undefined;
       console.log("Calculated member type:", memberType);
       
       form.reset({
@@ -347,36 +371,58 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         notes: meetingData.notes || "",
         location: meetingData.location,
                 memberAttendees: {
-          type: memberAttendee.all ? "all" :
-                memberAttendee.allExecutives ? "allExecutives" :
-                memberAttendee.zones?.length ? "selectedZone" :
-                memberAttendee.mandals?.length ? "selectedMandal" :
-                memberAttendee.customMembers?.length ? "selectedMembers" : undefined,
-          zone: memberAttendee.zones?.map((z: any) => z.zone) || [],
-          mandal: memberAttendee.mandals?.map((m: any) => m.mandal) || [],
+          type: memberAttendee.all
+            ? "all"
+            : memberAttendee.allExecutives
+            ? "allExecutives"
+            : memberAttendee.zones?.length
+            ? "selectedZone"
+            : memberAttendee.mandals?.length
+            ? "selectedMandal"
+            : memberAttendee.customMembers?.length
+            ? "selectedMembers"
+            : undefined,
+          zone: (memberAttendee.zones || []).map((z: any) => z.zone ?? z),
+          mandal: (memberAttendee.mandals || []).map((m: any) => m.mandal ?? m),
           all: memberAttendee.all || false,
           allExecutives: memberAttendee.allExecutives || false,
-          custom: memberAttendee.customMembers?.map((m: any) => m.membershipId || m) || [],
+          custom:
+            (memberAttendee.customMembers || []).map(
+              (m: any) => m.membershipId || m
+            ) || [],
         },
         vehicleAttendees: {
-          type: vehicleAttendee.all 
-                ? (vehicleAttendee.owner && vehicleAttendee.driver ? "allOwners" : vehicleAttendee.owner ? "allOwners" : "allDrivers")
-                : vehicleAttendee.customVehicle?.length 
-                  ? (vehicleAttendee.owner ? "selectedOwners" : "selectedDrivers")
-                  : undefined,
+          type: vehicleAttendee.all
+            ? vehicleAttendee.owner && vehicleAttendee.driver
+              ? "allOwners"
+              : vehicleAttendee.owner
+              ? "allOwners"
+              : "allDrivers"
+            : vehicleAttendee.customVehicle?.length
+            ? vehicleAttendee.owner
+              ? "selectedOwners"
+              : "selectedDrivers"
+            : undefined,
           owner: vehicleAttendee.owner || false,
           driver: vehicleAttendee.driver || false,
-          custom: vehicleAttendee.customVehicle?.map((v: any) => ({
-            vehicleId: v.vehicleId,
-            owner: v.owner || vehicleAttendee.owner,
-            driver: v.driver || vehicleAttendee.driver
-          })) || [],
+          custom:
+            (vehicleAttendee.customVehicle || []).map((v: any) => ({
+              vehicleId: v.vehicleId,
+              owner: v.owner ?? vehicleAttendee.owner,
+              driver: v.driver ?? vehicleAttendee.driver,
+            })) || [],
         },
         labourAttendees: {
-          type: labourAttendee.all ? "all" :
-                labourAttendee.customLabours?.length ? "selectedLabour" : undefined,
+          type: labourAttendee.all
+            ? "all"
+            : labourAttendee.customLabours?.length
+            ? "selectedLabour"
+            : undefined,
           all: labourAttendee.all || false,
-          custom: labourAttendee.customLabours?.map((lab: any) => lab.labourId) || [],
+          custom:
+            (labourAttendee.customLabours || []).map(
+              (lab: any) => lab.labourId || lab
+            ) || [],
         },
         followUpMeeting: meetingData.followUpMeetings?.map((followUp: any) => ({
           date: new Date(followUp.dateTime),
@@ -433,11 +479,11 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         } else if (data.memberAttendees?.type === "allExecutives") {
           memberAttendees.allExecutives = true;
         } else if (data.memberAttendees?.type === "selectedZone" && data.memberAttendees.zone && data.memberAttendees.zone.length > 0) {
-          memberAttendees.zone = data.memberAttendees.zone;
+          memberAttendees.zones = data.memberAttendees.zone;
         } else if (data.memberAttendees?.type === "selectedMandal" && data.memberAttendees.mandal && data.memberAttendees.mandal.length > 0) {
-          memberAttendees.mandal = data.memberAttendees.mandal;
+          memberAttendees.mandals = data.memberAttendees.mandal;
         } else if (data.memberAttendees?.type === "selectedMembers" && data.memberAttendees.custom && data.memberAttendees.custom.length > 0) {
-          memberAttendees.custom = data.memberAttendees.custom;
+          memberAttendees.customMembers = data.memberAttendees.custom;
         }
         
         return memberAttendees;
@@ -458,12 +504,12 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           vehicleAttendees.owner = true;
           vehicleAttendees.driver = false;
           vehicleAttendees.all = false;
-          vehicleAttendees.custom = data.vehicleAttendees.custom;
+          vehicleAttendees.customVehicle = data.vehicleAttendees.custom;
         } else if (data.vehicleAttendees?.type === "selectedDrivers" && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
           vehicleAttendees.owner = false;
           vehicleAttendees.driver = true;
           vehicleAttendees.all = false;
-          vehicleAttendees.custom = data.vehicleAttendees.custom;
+          vehicleAttendees.customVehicle = data.vehicleAttendees.custom;
         }
         
         return vehicleAttendees;
@@ -478,7 +524,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         } else if (data.labourAttendees?.type === "selectedLabour" && data.labourAttendees.custom && data.labourAttendees.custom.length > 0) {
           // 3. Selected Labour
           labourAttendees.all = false;
-          labourAttendees.custom = data.labourAttendees.custom;
+          labourAttendees.customLabours = data.labourAttendees.custom;
         }
         
         return labourAttendees;
@@ -564,29 +610,34 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         if (data.status !== meeting?.status) updateData.status = data.status;
 
         // Check for attendee changes
-        const originalMemberAttendee = meeting?.memberAttendees?.[0] || {
+        const getOriginalAttendee = <T,>(raw: T | T[] | null | undefined, fallback: any = {}) => {
+          if (!raw) return fallback;
+          return Array.isArray(raw) ? raw[0] || fallback : raw || fallback;
+        };
+
+        const originalMemberAttendee = getOriginalAttendee(meeting?.memberAttendees, {
           all: false,
           allExecutives: false,
           zones: [],
           mandals: [],
-          customMembers: []
-        };
-        const originalVehicleAttendee = meeting?.vehicleAttendees?.[0] || {
+          customMembers: [],
+        });
+        const originalVehicleAttendee = getOriginalAttendee(meeting?.vehicleAttendees, {
           owner: false,
           driver: false,
-          customVehicle: []
-        };
-        const originalLabourAttendee = (meeting?.labourAttendees?.[0] || {
+          customVehicle: [],
+        });
+        const originalLabourAttendee = getOriginalAttendee(meeting?.labourAttendees, {
           all: false,
-          customLabours: []
+          customLabours: [],
         }) as any;
 
         // Check if member attendees changed
-        const originalCustomMembers = originalMemberAttendee.customMembers?.map((m: any) => m.membershipId || m) || [];
+        const originalCustomMembers = (originalMemberAttendee.customMembers || []).map((m: any) => m.membershipId || m);
         const newCustomMembers = data.memberAttendees?.custom || [];
-        const originalZones = originalMemberAttendee.zones?.map((z: any) => z.zone) || [];
+        const originalZones = (originalMemberAttendee.zones || []).map((z: any) => z.zone || z);
         const newZones = data.memberAttendees?.zone || [];
-        const originalMandals = originalMemberAttendee.mandals?.map((m: any) => m.mandal) || [];
+        const originalMandals = (originalMemberAttendee.mandals || []).map((m: any) => m.mandal || m);
         const newMandals = data.memberAttendees?.mandal || [];
         
         // Determine original type based on original data
@@ -722,7 +773,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               if (typeChanged) {
                 // If switching to selectedMembers, add all new members
                 if (newCustomMembers.length > 0) {
-                  memberUpdates.newCustom = newCustomMembers;
+                  memberUpdates.newCustomMembers = newCustomMembers;
                 }
               } else {
                 // If staying in selectedMembers, handle additions and deletions
@@ -730,16 +781,10 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 const deletedMembers = originalCustomMembers.filter((member: string) => !newCustomMembers.includes(member));
                 
                 if (addedMembers.length > 0) {
-                  memberUpdates.newCustom = addedMembers;
+                  memberUpdates.newCustomMembers = addedMembers;
                 }
                 if (deletedMembers.length > 0) {
-                  const deletedMemberIds = originalMemberAttendee.customMembers
-                    ?.filter((m: any) => deletedMembers.includes(m.membershipId || m))
-                    ?.map((m: any) => m.id)
-                    ?.filter(Boolean) || [];
-                  if (deletedMemberIds.length > 0) {
-                    memberUpdates.deleteCustom = deletedMemberIds;
-                  }
+                  memberUpdates.deleteCustomMembers = deletedMembers;
                 }
               }
             }
@@ -761,7 +806,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         }
 
         // Check if vehicle attendees changed
-        const originalCustomVehicles = originalVehicleAttendee.customVehicle?.map((v: any) => ({
+        const originalCustomVehicles = (originalVehicleAttendee.customVehicle || []).map((v: any) => ({
           vehicleId: v.vehicleId,
           owner: v.owner,
           driver: v.driver
@@ -795,16 +840,16 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             );
             
             if (addedVehicles.length > 0) {
-              vehicleUpdates.newCustom = addedVehicles;
+              vehicleUpdates.newCustomVehicle = addedVehicles;
             }
             if (deletedVehicles.length > 0) {
               // Get the IDs of deleted vehicles
-              const deletedVehicleIds = originalVehicleAttendee.customVehicle
+              const deletedVehicleIds = (originalVehicleAttendee.customVehicle || [])
                 ?.filter((v: any) => deletedVehicles.some((delV: any) => delV.vehicleId === v.vehicleId))
                 ?.map((v: any) => v.id)
                 ?.filter(Boolean) || [];
               if (deletedVehicleIds.length > 0) {
-                vehicleUpdates.deleteCustom = deletedVehicleIds;
+                vehicleUpdates.deleteCustomVehicle = deletedVehicleIds;
               }
             }
           }
@@ -823,7 +868,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         }
 
         // Check if labour attendees changed
-        const originalCustomLabours = originalLabourAttendee.customLabours?.map((lab: any) => lab.labourId) || [];
+        const originalCustomLabours = (originalLabourAttendee.customLabours || []).map((lab: any) => lab.labourId || lab);
         const newCustomLabours = data.labourAttendees?.custom || [];
         
         // Debug labour change detection
@@ -855,17 +900,17 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             console.log("Deleted custom labours:", deletedCustomLabours);
             
             if (addedCustomLabours.length > 0) {
-              labourUpdates.newCustom = addedCustomLabours;
+              labourUpdates.newCustomLabours = addedCustomLabours;
             }
             if (deletedCustomLabours.length > 0) {
               // Get the IDs of deleted custom labours
-              const deletedCustomLabourIds = originalLabourAttendee.customLabours
+              const deletedCustomLabourIds = (originalLabourAttendee.customLabours || [])
                 ?.filter((l: any) => deletedCustomLabours.includes(l.labourId))
                 ?.map((l: any) => l.id)
                 ?.filter(Boolean) || [];
               console.log("Deleted custom labour IDs:", deletedCustomLabourIds);
               if (deletedCustomLabourIds.length > 0) {
-                labourUpdates.deleteCustom = deletedCustomLabourIds;
+                labourUpdates.deleteCustomLabours = deletedCustomLabourIds;
               }
             }
           }
@@ -957,7 +1002,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         });
       }
 
-      router.push("/admin/meetings");
+      router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings`);
     } catch (error) {
       console.error("Meeting form error:", error);
       

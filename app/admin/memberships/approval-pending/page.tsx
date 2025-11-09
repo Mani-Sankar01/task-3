@@ -112,6 +112,204 @@ const ApprovalPendingPage = () => {
     fetchPendingChanges();
   }, [status, session?.user?.token, toast]);
 
+  const humanizeLabel = (label: string) =>
+    label
+      .replace(/_/g, " ")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/^./, (str) => str.toUpperCase());
+
+  const renderValue = (value: any): React.ReactNode => {
+    if (value === null || value === undefined || value === "") {
+      return <span className="text-muted-foreground">-</span>;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-muted-foreground">-</span>;
+      }
+
+      return (
+        <div className="space-y-3 mt-1">
+          {value.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-md border border-dashed bg-muted/40 p-3"
+            >
+              {typeof item === "object" && item !== null ? (
+                renderKeyValueGrid(item as Record<string, any>)
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {String(item)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === "object") {
+      return (
+        <div className="mt-1 rounded-md border bg-muted/40 p-3">
+          {renderKeyValueGrid(value as Record<string, any>)}
+        </div>
+      );
+    }
+
+    return <span className="text-muted-foreground">{String(value)}</span>;
+  };
+
+  const renderKeyValueGrid = (data: Record<string, any>) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {Object.entries(data).map(([key, value]) => (
+        <div key={key} className="text-sm">
+          <div className="font-medium text-foreground">
+            {humanizeLabel(key)}
+          </div>
+          <div className="text-muted-foreground">{renderValue(value)}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderMachineryList = (machines: any[]) => (
+    <div className="space-y-2">
+      {machines.map((machine, index) => (
+        <div
+          key={machine?.id ?? `${machine?.machineName ?? "machine"}-${index}`}
+          className="rounded-md border border-dashed bg-background p-3"
+        >
+          {renderKeyValueGrid(machine as Record<string, any>)}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderBranchChanges = (branches: any[]) => (
+    <div className="space-y-4">
+      {branches.map((branch, index) => (
+        <div
+          key={branch?.id ?? branch?.scNumber ?? `branch-${index}`}
+          className="space-y-4 rounded-lg border bg-muted/30 p-4"
+        >
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Branch {branch?.placeOfBusiness || branch?.scNumber || `#${index + 1}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {branch?.proprietorStatus
+                ? humanizeLabel(String(branch.proprietorStatus))
+                : ""}
+            </p>
+          </div>
+          {renderKeyValueGrid(branch as Record<string, any>)}
+
+          {Array.isArray(branch?.newMachineryInformations) &&
+            branch.newMachineryInformations.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  New Machinery
+                </h4>
+                {renderMachineryList(branch.newMachineryInformations)}
+              </div>
+            )}
+
+          {Array.isArray(branch?.updateMachineryInformations) &&
+            branch.updateMachineryInformations.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Updated Machinery
+                </h4>
+                {renderMachineryList(branch.updateMachineryInformations)}
+              </div>
+            )}
+
+          {Array.isArray(branch?.deleteMachineryInformations) &&
+            branch.deleteMachineryInformations.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-foreground">
+                  Deleted Machinery
+                </h4>
+                {renderMachineryList(branch.deleteMachineryInformations)}
+              </div>
+            )}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderPartnerList = (partners: any[]) => (
+    <div className="space-y-2">
+      {partners.map((partner, index) => (
+        <div
+          key={partner?.id ?? partner?.membershipId ?? `partner-${index}`}
+          className="rounded-md border border-dashed bg-muted/30 p-3"
+        >
+          {renderKeyValueGrid(partner as Record<string, any>)}
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderChangeContent = (change: ChangeDetails): React.ReactNode => {
+    const value = change.newValue;
+    if (value === undefined || value === null || value === "") {
+      return null;
+    }
+
+    const field = change.field.toLowerCase();
+
+    if (Array.isArray(value)) {
+      if (field.includes("branch")) {
+        return renderBranchChanges(value);
+      }
+      if (field.includes("partner")) {
+        return renderPartnerList(value);
+      }
+      if (field.includes("machinery")) {
+        return renderMachineryList(value);
+      }
+    }
+
+    if (!Array.isArray(value) && typeof value === "object") {
+      if (field.includes("machinery")) {
+        return renderMachineryList([value]);
+      }
+      if (field.includes("branch")) {
+        return renderBranchChanges([value]);
+      }
+      if (field.includes("partner")) {
+        return renderPartnerList([value]);
+      }
+      return (
+        <div className="rounded-md border bg-muted/30 p-3">
+          {renderKeyValueGrid(value as Record<string, any>)}
+        </div>
+      );
+    }
+
+    if (Array.isArray(value)) {
+      return (
+        <div className="space-y-2">
+          {value.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-md border border-dashed bg-muted/40 p-2"
+            >
+              {typeof item === "object" && item !== null
+                ? renderKeyValueGrid(item as Record<string, any>)
+                : item ?? "-"}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    return <span className="text-sm text-muted-foreground">{String(value)}</span>;
+  };
+
   // Process changes and extract meaningful changes
   const extractChanges = (updatedData: any): ChangeDetails[] => {
     const changes: ChangeDetails[] = [];
@@ -597,10 +795,8 @@ const ApprovalPendingPage = () => {
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-2">{change.description}</p>
                       {change.newValue && (
-                        <div className="bg-muted p-3 rounded-md">
-                          <pre className="text-xs overflow-x-auto">
-                            {JSON.stringify(change.newValue, null, 2)}
-                          </pre>
+                        <div className="space-y-3">
+                          {renderChangeContent(change)}
                         </div>
                       )}
                     </CardContent>

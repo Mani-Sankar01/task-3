@@ -289,6 +289,7 @@ export default function MembershipFeeForm({
             },
           }
         );
+        console.log(JSON.stringify(payload));
         toast({
           title: "Success",
           description: "Membership fee updated successfully.",

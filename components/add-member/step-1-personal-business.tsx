@@ -440,11 +440,11 @@ export default function Step1PersonalBusiness({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="mandal1">Mandal 1</SelectItem>
-                    <SelectItem value="mandal2">Mandal 2</SelectItem>
-                    <SelectItem value="mandal3">Mandal 3</SelectItem>
-                    <SelectItem value="mandal4">Mandal 4</SelectItem>
-                    <SelectItem value="mandal5">Mandal 5</SelectItem>
+                    <SelectItem value="Tandur_town">Tandur town</SelectItem>
+                    <SelectItem value="Tandur_Mandal">Tandur Mandal</SelectItem>
+                    <SelectItem value="Yalal_Mandal">Yalal Mandal</SelectItem>
+                    <SelectItem value="Peddamul_Mandal">Peddamul Mandal</SelectItem>
+                    <SelectItem value="Basheerabad_Mandal">Basheerabad Mandal</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

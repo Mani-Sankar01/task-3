@@ -65,8 +65,43 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Types for the API response
+interface MemberAttendeePayload {
+  id?: number;
+  meetId?: string;
+  all?: boolean;
+  allExecutives?: boolean;
+  zones?: Array<{ zone: string }> | string[];
+  mandals?: Array<{ mandal: string }> | string[];
+  customMembers?: Array<{ membershipId: string }> | string[];
+}
+
+interface VehicleAttendeePayload {
+  id?: number;
+  meetId?: string;
+  owner?: boolean;
+  driver?: boolean;
+  all?: boolean;
+  customVehicle?: Array<{
+    vehicleId: string;
+    owner?: boolean;
+    driver?: boolean;
+  }>;
+}
+
+interface LabourAttendeePayload {
+  id?: number;
+  meetId?: string;
+  all?: boolean;
+  membershipID?: string[];
+  customLabours?: Array<{
+    id?: number;
+    labourId: string;
+  }> | string[];
+}
+
 interface Meeting {
   id: number;
   meetId: string;
@@ -75,37 +110,9 @@ interface Meeting {
   notes?: string;
   startTime: string;
   location: string;
-  memberAttendees: Array<{
-    id: number;
-    meetId: string;
-    all: boolean;
-    allExecutives: boolean;
-    zones: string[];
-    mandals: string[];
-    customMembers: string[];
-  }>;
-  vehicleAttendees: Array<{
-    id: number;
-    meetId: string;
-    owner: boolean;
-    driver: boolean;
-    all: boolean;
-    customVehicle: Array<{
-      vehicleId: string;
-      owner: boolean;
-      driver: boolean;
-    }>;
-  }>;
-  labourAttendees: Array<{
-    id: number;
-    meetId: string;
-    all: boolean;
-    membershipID?: string[];
-    customLabours?: Array<{
-      id?: number;
-      labourId: string;
-    }>;
-  }>;
+  memberAttendees?: MemberAttendeePayload[] | MemberAttendeePayload | null;
+  vehicleAttendees?: VehicleAttendeePayload[] | VehicleAttendeePayload | null;
+  labourAttendees?: LabourAttendeePayload[] | LabourAttendeePayload | null;
   status: string;
   followUpMeeting?: Array<{
     dateTime: string;
@@ -244,17 +251,17 @@ export default function MeetingsList() {
 
   // Navigate to meeting details
   const viewMeetingDetails = (meetingId: string) => {
-    router.push(`/admin/meetings/${meetingId}`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings/${meetingId}`);
   };
 
   // Navigate to add new meeting
   const addNewMeeting = () => {
-    router.push("/admin/meetings/add");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings/add`);
   };
 
   // Navigate to edit meeting
   const editMeeting = (meetingId: string) => {
-    router.push(`/admin/meetings/${meetingId}/edit`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings/${meetingId}/edit`);
   };
 
   // Delete a meeting
@@ -444,12 +451,20 @@ export default function MeetingsList() {
     }
   };
 
-  const getAttendeeTypeLabel = (meeting: Meeting) => {
-    const types = [];
-    
-    // Check member attendees
-    if (meeting.memberAttendees && meeting.memberAttendees.length > 0) {
-      const memberAttendee = meeting.memberAttendees[0];
+  const normalizeAttendee = <T,>(value: T | T[] | null | undefined): T | undefined => {
+    if (!value) return undefined;
+    if (Array.isArray(value)) return value[0];
+    return value;
+  };
+
+  const getAttendeeTypeLabel = (meeting: Meeting): string => {
+    const types: string[] = [];
+
+    const memberAttendee = normalizeAttendee(meeting.memberAttendees);
+    const vehicleAttendee = normalizeAttendee(meeting.vehicleAttendees);
+    const labourAttendee = normalizeAttendee(meeting.labourAttendees);
+
+    if (memberAttendee) {
       if (memberAttendee.all) {
         types.push("All Members");
       } else if (memberAttendee.allExecutives) {
@@ -462,10 +477,8 @@ export default function MeetingsList() {
         types.push("Selected Members");
       }
     }
-    
-    // Check vehicle attendees
-    if (meeting.vehicleAttendees && meeting.vehicleAttendees.length > 0) {
-      const vehicleAttendee = meeting.vehicleAttendees[0];
+
+    if (vehicleAttendee) {
       if (vehicleAttendee.all) {
         // All vehicles
         if (vehicleAttendee.owner && vehicleAttendee.driver) {
@@ -489,10 +502,8 @@ export default function MeetingsList() {
         }
       }
     }
-    
-    // Check labour attendees
-    if (meeting.labourAttendees && meeting.labourAttendees.length > 0) {
-      const labourAttendee = meeting.labourAttendees[0];
+
+    if (labourAttendee) {
       if (labourAttendee.all) {
         types.push("All Labour");
       } else if (labourAttendee.membershipID && labourAttendee.membershipID.length > 0) {
@@ -501,7 +512,7 @@ export default function MeetingsList() {
         types.push("Selected Labour");
       }
     }
-    
+
     return types.join(", ") || "No attendees";
   };
 

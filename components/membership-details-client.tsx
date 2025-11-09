@@ -659,11 +659,11 @@ export default function MembershipDetailsClient({
   }, []);
 
   const handleEdit = () => {
-    router.push(`/admin/memberships/${member.membershipId}/edit`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/memberships/${member.membershipId}/edit`);
   };
 
   const handleBack = () => {
-    router.push("/admin/memberships");
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/memberships`);
   };
 
   const handleStatusChange = (newStatus: string) => {

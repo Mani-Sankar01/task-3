@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import Link from "next/link";
+import { renderRoleBasedPath } from "@/lib/utils";
 
 // Types for the API response
 interface Meeting {
@@ -147,7 +148,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
   };
 
   const handleEdit = () => {
-    router.push(`/admin/meetings/${meetingId}/edit`);
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings/${meetingId}/edit`);
   };
 
   const getAttendeeTypeLabel = (meeting: Meeting) => {
