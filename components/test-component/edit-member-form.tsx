@@ -655,20 +655,31 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   }, [status, session?.user?.token, memberId]);
 
   // USC and SC Number validation function
-  const validateUscScNumbers = async (uscNumber: string, scNumber: string) => {
-    if (!session?.user?.token) return false;
+  const validateUscScNumbers = async (
+    electricalUscNumber: string,
+    scNumber: string,
+    fieldKeys?: { uscKey: string; scKey: string },
+    activeField: "usc" | "sc" = "usc"
+  ) => {
+    if (!session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      return false;
+    }
 
     setIsValidating(true);
-    try {
-      console.log("Making API call to validate USC/SC numbers...");
 
+    try {
       const payload = {
-        electricalUscNumber: uscNumber.trim(),
+        electricalUscNumber: electricalUscNumber.trim(),
         scNumber: scNumber.trim(),
       };
 
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/member/validate_usc_sc_numbers`,
+        `${process.env.BACKEND_API_URL}/api/member/validate_usc_sc_number`,
         payload,
         {
           headers: {
@@ -677,34 +688,50 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         }
       );
 
-      console.log("USC/SC validation API response:", response.data);
-
-      const errors: any = {};
+      const errors: Record<string, string | undefined> = {};
+      const success: Record<string, string | undefined> = {};
       let hasErrors = false;
 
-      // Check USC number
-      if (response.data["Electrical USC Number"]) {
-        if (response.data["Electrical USC Number"].isMember) {
-          const firmName =
-            response.data["Electrical USC Number"].firmName || "Unknown Firm";
-          errors.electricalUscNumber = `Already added for ${firmName}`;
+      const uscKey = fieldKeys?.uscKey || "electricalUscNumber";
+      const scKey = fieldKeys?.scKey || "scNumber";
+      const targetKey = activeField === "usc" ? uscKey : scKey;
+
+      // Clear previous messages for the active field
+      setValidationErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[targetKey];
+        return updated;
+      });
+      setValidationSuccess((prev) => {
+        const updated = { ...prev };
+        delete updated[targetKey];
+        return updated;
+      });
+
+      if (activeField === "usc" && response.data["Electrical USC number"]) {
+        if (response.data["Electrical USC number"].isMember) {
+          const info = response.data["Electrical USC number"];
+          const message = `${info.message} (${info.member.membershipId} - ${info.member.firmName})`;
+          errors[uscKey] = message;
           hasErrors = true;
+        } else {
+          success[uscKey] = "This USC number is unique and can be used.";
         }
       }
 
-      // Check SC number
-      if (response.data["SC Number"]) {
-        if (response.data["SC Number"].isMember) {
-          const firmName =
-            response.data["SC Number"].firmName || "Unknown Firm";
-          errors.scNumber = `Already added for ${firmName}`;
+      if (activeField === "sc" && response.data["SC number"]) {
+        if (response.data["SC number"].isMember) {
+          const info = response.data["SC number"];
+          const message = `${info.message} (${info.member.membershipId} - ${info.member.firmName})`;
+          errors[scKey] = message;
           hasErrors = true;
+        } else {
+          success[scKey] = "This SC number is unique and can be used.";
         }
       }
 
-      if (hasErrors) {
-        setValidationErrors((prev) => ({ ...prev, ...errors }));
-      }
+      setValidationErrors((prev) => ({ ...prev, ...errors }));
+      setValidationSuccess((prev) => ({ ...prev, ...success }));
 
       return !hasErrors;
     } catch (error) {
@@ -734,7 +761,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
 
       if (fieldName === "electricalUscNumber" && value.length >= 3) {
         setTimeout(async () => {
-          const isValid = await validateUscScNumbers(value, scNumber);
+          const isValid = await validateUscScNumbers(
+            value,
+            scNumber,
+            undefined,
+            "usc"
+          );
           if (isValid) {
             setValidationErrors((prev) => ({
               ...prev,
@@ -748,7 +780,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         }, 500);
       } else if (fieldName === "scNumber" && value.length >= 3) {
         setTimeout(async () => {
-          const isValid = await validateUscScNumbers(uscNumber, value);
+          const isValid = await validateUscScNumbers(
+            uscNumber,
+            value,
+            undefined,
+            "sc"
+          );
           if (isValid) {
             setValidationErrors((prev) => ({ ...prev, scNumber: undefined }));
             setValidationSuccess((prev) => ({
@@ -773,35 +810,59 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       
       const uscNumber = fieldType === 'electricalUscNumber' ? value : currentBranch.electricalUscNumber || '';
       const scNumber = fieldType === 'scNumber' ? value : currentBranch.scNumber || '';
+      const uscKey = `branch_${branchIndex}_electricalUscNumber`;
+      const scKey = `branch_${branchIndex}_scNumber`;
 
       if (fieldType === 'electricalUscNumber' && value.length >= 3) {
         setTimeout(async () => {
-          const isValid = await validateUscScNumbers(value, scNumber);
+          const isValid = await validateUscScNumbers(
+            value,
+            scNumber,
+            {
+              uscKey,
+              scKey,
+            },
+            "usc"
+          );
           if (isValid) {
             setValidationErrors((prev) => ({
               ...prev,
-              [fieldName]: undefined,
+              [uscKey]: undefined,
             }));
             setValidationSuccess((prev) => ({
               ...prev,
-              [fieldName]: "This USC number is unique and can be used.",
+              [uscKey]: "This USC number is unique and can be used.",
             }));
           }
         }, 500);
       } else if (fieldType === 'scNumber' && value.length >= 3) {
         setTimeout(async () => {
-          const isValid = await validateUscScNumbers(uscNumber, value);
+          const isValid = await validateUscScNumbers(
+            uscNumber,
+            value,
+            {
+              uscKey,
+              scKey,
+            },
+            "sc"
+          );
           if (isValid) {
-            setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
+            setValidationErrors((prev) => ({ ...prev, [scKey]: undefined }));
             setValidationSuccess((prev) => ({
               ...prev,
-              [fieldName]: "This SC number is unique and can be used.",
+              [scKey]: "This SC number is unique and can be used.",
             }));
           }
         }, 500);
       } else if (value.length < 3) {
-        setValidationErrors((prev) => ({ ...prev, [fieldName]: undefined }));
-        setValidationSuccess((prev) => ({ ...prev, [fieldName]: undefined }));
+        setValidationErrors((prev) => ({
+          ...prev,
+          [fieldType === "electricalUscNumber" ? uscKey : scKey]: undefined,
+        }));
+        setValidationSuccess((prev) => ({
+          ...prev,
+          [fieldType === "electricalUscNumber" ? uscKey : scKey]: undefined,
+        }));
       }
     }
   };
