@@ -772,19 +772,6 @@ export default function MembershipDetailsClient({
 
   const buildBranchPayloadBase = (branch: Member["branches"][number]) => ({
     id: branch.id,
-    electricalUscNumber: branch.electricalUscNumber,
-    scNumber: branch.scNumber,
-    proprietorType: branch.proprietorType?.toUpperCase() || "OWNED",
-    proprietorStatus: branch.proprietorStatus?.toUpperCase() || "OWNER",
-    sanctionedHP:
-      parseFloat(
-        String(
-          (branch.sanctionedHP as unknown as string) ??
-            (branch as any).sanctionedHp ??
-            "0"
-        )
-      ) || 0,
-    placeOfBusiness: branch.placeOfBusiness,
   });
 
   const determineMachineType = (machine: MachineryInformation): string => {
@@ -925,9 +912,7 @@ export default function MembershipDetailsClient({
     const payload: any = {
       membershipId: member.membershipId,
       branchDetails: {
-        newBranchSchema: [],
         updateBranchSchema: [branchPayload],
-        deleteBranchSchema: [],
       },
     };
 
@@ -945,7 +930,7 @@ export default function MembershipDetailsClient({
         }
       );
 
-      console.log("Payload:", payload);
+      console.log("Payload:", JSON.stringify(payload));
 
       toast({
         title:
@@ -1021,9 +1006,7 @@ export default function MembershipDetailsClient({
     const payload: any = {
       membershipId: member.membershipId,
       branchDetails: {
-        newBranchSchema: [],
         updateBranchSchema: [branchPayload],
-        deleteBranchSchema: [],
       },
     };
 

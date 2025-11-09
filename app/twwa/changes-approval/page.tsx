@@ -1609,6 +1609,12 @@ const ChangesApprovalPage = () => {
               </div>
             )}
 
+            const selectedStatus = selectedChange?.approvalStatus;
+            const canApprove =
+              selectedStatus === "PENDING" || selectedStatus === "DECLINED";
+            const canDecline =
+              selectedStatus === "PENDING" || selectedStatus === "APPROVED";
+
             <DialogFooter className="flex gap-2">
               <Button
                 variant="outline"
@@ -1616,29 +1622,29 @@ const ChangesApprovalPage = () => {
               >
                 Close
               </Button>
-              {selectedChange && (
-                <>
-                  <Button
-                    variant="default"
-                    onClick={() => handleApprove(selectedChange, selectedChange.type)}
-                    disabled={isProcessing}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    <Check className="h-4 w-4 mr-2" />
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => {
-                      setShowDetailsDialog(false);
-                      setShowDeclineDialog(true);
-                    }}
-                    disabled={isProcessing}
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Decline
-                  </Button>
-                </>
+              {selectedChange && canApprove && (
+                <Button
+                  variant="default"
+                  onClick={() => handleApprove(selectedChange, selectedChange.type)}
+                  disabled={isProcessing}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Approve
+                </Button>
+              )}
+              {selectedChange && canDecline && (
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setShowDetailsDialog(false);
+                    setShowDeclineDialog(true);
+                  }}
+                  disabled={isProcessing}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Decline
+                </Button>
               )}
             </DialogFooter>
           </DialogContent>
