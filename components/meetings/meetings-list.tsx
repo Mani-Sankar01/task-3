@@ -689,6 +689,7 @@ export default function MeetingsList() {
                             >
                               <Eye className="mr-1 h-4 w-4" /> View Details
                             </DropdownMenuItem>
+                            {(session?.user?.role === "ADMIN" || session?.user?.role === "TSMWA_EDITOR" || session?.user?.role === "TQMA_EDITOR") && (<>
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -720,8 +721,9 @@ export default function MeetingsList() {
                                 <XCircle className="mr-1 h-4 w-4" /> Cancel Meeting
                               </DropdownMenuItem>
                             )}
-                            
+                            </>)}
                             <DropdownMenuSeparator />
+                            {session?.user?.role === "ADMIN" && (<>
                             <Dialog>
                               <DialogTrigger asChild>
                                 <DropdownMenuItem
@@ -767,7 +769,7 @@ export default function MeetingsList() {
                                   </DialogClose>
                                 </DialogFooter>
                               </DialogContent>
-                            </Dialog>
+                            </Dialog></>)}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
