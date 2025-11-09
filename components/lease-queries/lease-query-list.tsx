@@ -4,7 +4,20 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
-import { ArrowUpDown, MoreHorizontal, Plus, Search } from "lucide-react";
+import {
+  ArrowUpDown,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Eye,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  XCircle,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +46,22 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { renderRoleBasedPath } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 // Define the lease query type based on API response
 interface ApiLeaseQuery {
@@ -53,6 +82,7 @@ interface ApiLeaseQuery {
 export default function LeaseQueryList() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof ApiLeaseQuery | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -60,6 +90,24 @@ export default function LeaseQueryList() {
   const [filteredQueries, setFilteredQueries] = useState<ApiLeaseQuery[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [isSubmittingTransfer, setIsSubmittingTransfer] = useState(false);
+  const [members, setMembers] = useState<
+    Array<{
+      id: string;
+      membershipId: string;
+      applicantName: string;
+      firmName: string;
+    }>
+  >([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [selectedLease, setSelectedLease] = useState<ApiLeaseQuery | null>(null);
+  const [transferForm, setTransferForm] = useState({
+    membershipId: "",
+    dateOfLease: "",
+    expiryOfLease: "",
+  });
   const itemsPerPage = 10;
 
   // Load lease queries from API on component mount
@@ -263,6 +311,227 @@ export default function LeaseQueryList() {
     }
   };
 
+  const refreshLeaseQueries = async () => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+    const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+    const refreshResponse = await axios.get(
+      `${apiUrl}/api/lease_query/get_all_lease_queries`,
+      {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      }
+    );
+    const refreshed = Array.isArray(refreshResponse.data)
+      ? refreshResponse.data
+      : Array.isArray(refreshResponse.data?.data)
+      ? refreshResponse.data.data
+      : [];
+    setQueries(refreshed);
+    setFilteredQueries(refreshed);
+  };
+
+  const openTransferDialog = (query: ApiLeaseQuery) => {
+    setSelectedLease(query);
+    setTransferForm({
+      membershipId: "",
+      dateOfLease: "",
+      expiryOfLease: "",
+    });
+    setShowTransferDialog(true);
+  };
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!showTransferDialog || !session?.user?.token || status !== "authenticated") {
+        return;
+      }
+      setIsLoadingMembers(true);
+      try {
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const response = await axios.get(`${apiUrl}/api/member/get_members`, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        });
+        const data = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.data)
+          ? response.data.data
+          : Array.isArray(response.data?.members)
+          ? response.data.members
+          : [];
+        setMembers(
+          data.map((member: any) => ({
+            id: member.id?.toString() || member.membershipId,
+            membershipId: member.membershipId,
+            applicantName: member.applicantName || member.memberName || "Unknown",
+            firmName: member.firmName || "",
+          }))
+        );
+      } catch (error) {
+        console.error("Error fetching members for transfer:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load members. Please try again.",
+          variant: "destructive",
+        });
+        setMembers([]);
+      } finally {
+        setIsLoadingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, [showTransferDialog, session?.user?.token, status, toast]);
+
+  const closeTransferDialog = () => {
+    setShowTransferDialog(false);
+    setSelectedLease(null);
+    setTransferForm({ membershipId: "", dateOfLease: "", expiryOfLease: "" });
+  };
+
+  const handleTransferSubmit = async () => {
+    if (!selectedLease) return;
+    if (!transferForm.membershipId || !transferForm.dateOfLease || !transferForm.expiryOfLease) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a member and provide both lease dates.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmittingTransfer(true);
+    try {
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const payload = {
+        leaseQueryId: selectedLease.leaseQueryId,
+        membershipId: transferForm.membershipId,
+        dateOfLease: new Date(transferForm.dateOfLease).toISOString(),
+        expiryOfLease: new Date(transferForm.expiryOfLease).toISOString(),
+      };
+
+      await axios.post(`${apiUrl}/api/lease_query/renew_lease_query`, payload, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      toast({
+        title: "Lease Transferred",
+        description: "The lease has been transferred successfully.",
+      });
+
+      closeTransferDialog();
+      await refreshLeaseQueries();
+    } catch (error: any) {
+      console.error("Error transferring lease:", error);
+      toast({
+        title: "Transfer Failed",
+        description:
+          error?.response?.data?.message ||
+          "Unable to transfer the lease. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingTransfer(false);
+    }
+  };
+
+  const handleStatusUpdate = async (
+    query: ApiLeaseQuery,
+    nextStatus: "PENDING" | "PROCESSING" | "RESOLVED" | "REJECTED"
+  ) => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (query.status === nextStatus) return;
+
+    setIsUpdatingStatus(query.leaseQueryId);
+    try {
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const payload = {
+        leaseQueryId: query.leaseQueryId,
+        membershipId: query.membershipId,
+        presentLeaseHolder: query.presentLeaseHolder,
+        dateOfLease: query.dateOfLease,
+        expiryOfLease: query.expiryOfLease,
+        status: nextStatus,
+        newAttachments: [],
+        updateAttachments: [],
+        deleteAttachment: [],
+      };
+
+      await axios.post(`${apiUrl}/api/lease_query/update_lease_query`, payload, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      toast({
+        title: "Status Updated",
+        description: `Lease query has been marked as ${nextStatus}.`,
+      });
+
+      await refreshLeaseQueries();
+    } catch (error: any) {
+      console.error("Error updating lease status:", error);
+      toast({
+        title: "Update Failed",
+        description:
+          error?.response?.data?.message ||
+          "Unable to update the status. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(null);
+    }
+  };
+
+  const statusOptions: Array<{
+    value: "PENDING" | "PROCESSING" | "RESOLVED" | "REJECTED";
+    label: string;
+    icon: JSX.Element;
+  }> = [
+    {
+      value: "PENDING",
+      label: "Mark as Pending",
+      icon: <Clock className="mr-2 h-4 w-4" />,
+    },
+    {
+      value: "PROCESSING",
+      label: "Mark as Processing",
+      icon: <Loader2 className="mr-2 h-4 w-4" />,
+    },
+    {
+      value: "REJECTED",
+      label: "Mark as Rejected",
+      icon: <XCircle className="mr-2 h-4 w-4" />,
+    },
+    {
+      value: "RESOLVED",
+      label: "Mark as Resolved",
+      icon: <CheckCircle className="mr-2 h-4 w-4" />,
+    },
+  ];
+
   return (
     <div className="p-6">
       <Card>
@@ -425,31 +694,68 @@ export default function LeaseQueryList() {
                                 viewQueryDetails(query.leaseQueryId);
                               }}
                             >
-                              View Details
+                              <Eye className="mr-2 h-4 w-4" /> View Details
                             </DropdownMenuItem>
 
-                            {/* Show Edit option only for Admin or Editor roles */}
-                            {/* Removed role-based UI */}
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                editQuery(query.leaseQueryId);
-                              }}
-                            >
-                              Edit Query
-                            </DropdownMenuItem>
+                            {(session?.user?.role === "ADMIN" ||
+                              session?.user?.role === "TSMWA_EDITOR" ||
+                              session?.user?.role === "TQMA_EDITOR")
+                               && (
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      editQuery(query.leaseQueryId);
+                                    }}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" /> Edit Query
+                                  </DropdownMenuItem>
 
-                            {/* Show Delete option only for Admin role */}
-                            {/* Removed role-based UI */}
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteQuery(query.leaseQueryId);
-                              }}
-                            >
-                              Delete Query
-                            </DropdownMenuItem>
+                                  {statusOptions
+                                    .filter((option) => option.value !== query.status)
+                                    .map((option) => (
+                                      <DropdownMenuItem
+                                        key={option.value}
+                                        disabled={
+                                          isUpdatingStatus === query.leaseQueryId
+                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleStatusUpdate(query, option.value);
+                                        }}
+                                      >
+                                        {option.icon}
+                                        {option.label}
+                                      </DropdownMenuItem>
+                                    ))}
+
+                                  <DropdownMenuSeparator />
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openTransferDialog(query);
+                                    }}
+                                  >
+                                    <Calendar className="mr-2 h-4 w-4" /> Transfer
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+
+                            {session?.user?.role === "ADMIN" && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-red-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteQuery(query.leaseQueryId);
+                                    }}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Query
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -497,6 +803,86 @@ export default function LeaseQueryList() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={showTransferDialog} onOpenChange={(open) => (!open ? closeTransferDialog() : setShowTransferDialog(open))}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Transfer Lease</DialogTitle>
+            <DialogDescription>
+              Choose a member and new lease dates to transfer the selected lease query.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Select Member</label>
+              <Select
+                value={transferForm.membershipId}
+                onValueChange={(value) =>
+                  setTransferForm((prev) => ({ ...prev, membershipId: value }))
+                }
+                disabled={isLoadingMembers}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingMembers ? "Loading members..." : "Select member"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {members.map((member) => (
+                    <SelectItem key={member.membershipId} value={member.membershipId}>
+                      {member.membershipId} - {member.applicantName}
+                      {member.firmName ? ` (${member.firmName})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date of Lease</label>
+                <Input
+                  type="date"
+                  value={transferForm.dateOfLease}
+                  onChange={(event) =>
+                    setTransferForm((prev) => ({
+                      ...prev,
+                      dateOfLease: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Expiry of Lease</label>
+                <Input
+                  type="date"
+                  value={transferForm.expiryOfLease}
+                  onChange={(event) =>
+                    setTransferForm((prev) => ({
+                      ...prev,
+                      expiryOfLease: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+
+            {selectedLease ? (
+              <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+                Transferring lease <span className="font-semibold text-primary">{selectedLease.leaseQueryId}</span>
+                {" "}
+                (current membership <span className="font-semibold">{selectedLease.membershipId}</span>).
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeTransferDialog}>
+              Cancel
+            </Button>
+            <Button onClick={handleTransferSubmit} disabled={isSubmittingTransfer}>
+              {isSubmittingTransfer ? "Transferring..." : "Transfer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

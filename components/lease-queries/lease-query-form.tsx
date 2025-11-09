@@ -123,9 +123,8 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
       presentLeaseHolder: "",
       dateOfLease: "",
       expiryOfLease: "",
-      dateOfRenewal: "",
-      leaseQueryAttachments: [],
       status: "PENDING",
+      leaseQueryAttachments: [],
     },
   });
 
@@ -385,7 +384,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           presentLeaseHolder: data.presentLeaseHolder,
           dateOfLease: data.dateOfLease,
           expiryOfLease: data.expiryOfLease,
-          dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
           newAttachments: newAttachments,
           updateAttachments: existingAttachments.map((attachment) => ({
@@ -420,7 +418,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           presentLeaseHolder: data.presentLeaseHolder,
           dateOfLease: data.dateOfLease,
           expiryOfLease: data.expiryOfLease,
-          dateOfRenewal: data.dateOfRenewal || undefined,
           status: data.status,
           leaseQueryAttachments: data.leaseQueryAttachments
             .filter((attachment) => attachment.file || attachment.documentPath)
@@ -713,9 +710,19 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                   name="dateOfRenewal"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date of Renewal (Optional)</FormLabel>
+                      <FormLabel
+                        data-required="false"
+                        data-tooltip="Backend auto-handles renewal date when applicable"
+                      >
+                        Date of Renewal
+                      </FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} />
+                        <Input
+                          type="text"
+                          {...field}
+                          disabled
+                          placeholder="Auto-handled by backend"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
