@@ -55,6 +55,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 // Define the trip type based on API response
@@ -88,7 +95,8 @@ export default function AllTripsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
 
   // Fetch trips from API
   useEffect(() => {
@@ -615,10 +623,33 @@ export default function AllTripsList() {
                 </Table>
               </div>
 
-              <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">
-                  Showing {paginatedTrips.length} of {sortedTrips.length} trips
-                </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Showing {paginatedTrips.length} of {sortedTrips.length} trips
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Rows per page</span>
+                    <Select
+                      value={itemsPerPage.toString()}
+                      onValueChange={(value) => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-16">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {pageSizeOptions.map((size) => (
+                          <SelectItem key={size} value={size.toString()}>
+                            {size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="outline"

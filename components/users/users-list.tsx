@@ -74,7 +74,8 @@ export default function UsersList() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
   const [isLoading, setIsLoading] = useState(true);
   const [sortConfig, setSortConfig] = useState<{
     key: keyof User;
@@ -550,12 +551,34 @@ export default function UsersList() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Showing {indexOfFirstItem + 1}-
-              {Math.min(indexOfLastItem, filteredUsers.length)} of{" "}
-              {filteredUsers.length} users
+        {filteredUsers.length > 0 && (
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {indexOfFirstItem + 1}-
+                {Math.min(indexOfLastItem, filteredUsers.length)} of {filteredUsers.length} users
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <Button
@@ -567,7 +590,7 @@ export default function UsersList() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="text-sm">
-                Page {currentPage} of {totalPages}
+                Page {currentPage} of {totalPages || 1}
               </div>
               <Button
                 variant="outline"

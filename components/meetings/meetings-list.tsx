@@ -56,6 +56,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
@@ -119,6 +126,8 @@ export default function MeetingsList() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -126,7 +135,6 @@ export default function MeetingsList() {
   const [meetingToCancel, setMeetingToCancel] = useState<{ id: string; title: string } | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
-  const itemsPerPage = 20;
 
   // Fetch meetings from API
   const fetchMeetings = async () => {
@@ -776,11 +784,33 @@ export default function MeetingsList() {
             </Table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedMeetings.length} of {sortedMeetings.length}{" "}
-              meetings
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {paginatedMeetings.length} of {sortedMeetings.length} meetings
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"

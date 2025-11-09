@@ -8,6 +8,7 @@ import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { version } from "@/app/version";
 
 export default function LoginPage() {
   const [phone, setPhoneNumber] = useState("");
@@ -117,7 +118,7 @@ export default function LoginPage() {
               ©Copyright - Tandur Stone Merchant Welfare Association
             </p>
             <p className="mt-2 text-slate-400 text-left font-light text-[12px] text-center">
-              <span>Version: 1.0.0</span>
+              <span>Version: {version}</span>
             </p>
           </div>
         </div>

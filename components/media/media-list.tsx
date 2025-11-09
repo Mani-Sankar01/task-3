@@ -42,6 +42,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -71,7 +78,8 @@ export default function MediaList() {
   const [singleDeleteDialogOpen, setSingleDeleteDialogOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
 
   // API token for documents service
   const DOCUMENTS_API_TOKEN = "your-secret-api-token-2024";
@@ -628,10 +636,33 @@ export default function MediaList() {
           </div>
 
           {paginatedFiles.length > 0 && (
-            <div className="flex items-center justify-between mt-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {paginatedFiles.length} of {filteredFiles.length} files
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Showing {paginatedFiles.length} of {filteredFiles.length} files
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Rows per page</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pageSizeOptions.map((size) => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"

@@ -3,6 +3,7 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { version } from "@/app/version";
 
 import {
   AlertCircle,
@@ -303,7 +304,7 @@ const { data: session, status } = useSession();
             </Button>
 
             <p className="mt-2 text-sm text-muted-foreground text-center">
-              <span>Version: 1.0.0</span>
+              <span>Version: {version}</span>
             </p>
           </div>
         </SidebarContent>

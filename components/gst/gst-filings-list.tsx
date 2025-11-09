@@ -64,13 +64,14 @@ export default function GstFilingsList() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filings, setFilings] = useState(() => getAllGstFilings());
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
   const [selectedMember, setSelectedMember] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [dateRange, setDateRange] = useState({
     from: subMonths(new Date(), 3),
     to: new Date(),
   });
-  const itemsPerPage = 5;
   const memberOptions = getMemberOptions();
 
   // Apply all filters
@@ -490,11 +491,33 @@ export default function GstFilingsList() {
             </Table>
           </div>
 
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedFilings.length} of {sortedFilings.length}{" "}
-              filings
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {paginatedFilings.length} of {sortedFilings.length} filings
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"

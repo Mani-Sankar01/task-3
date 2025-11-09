@@ -88,7 +88,8 @@ export default function LabourList() {
     name: string;
   } | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
 
   // Load labour list from API
   useEffect(() => {
@@ -729,10 +730,33 @@ export default function LabourList() {
         )}
 
         {hasLoaded && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedLabour.length} of {sortedLabour.length} records
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {paginatedLabour.length} of {sortedLabour.length} records
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"

@@ -67,6 +67,8 @@ export default function MembershipFeesList() {
   const [fees, setFees] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
   const [selectedMember, setSelectedMember] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   // Set default date range: Jan 1st of current year to today
@@ -76,7 +78,6 @@ export default function MembershipFeesList() {
     from: startOfYear,
     to: today,
   });
-  const itemsPerPage = 20;
   const [memberOptions, setMemberOptions] = useState<any[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
@@ -828,10 +829,33 @@ export default function MembershipFeesList() {
               </Table>
             </div>
 
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {paginatedFees.length} of {sortedFees.length} fees
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Showing {paginatedFees.length} of {sortedFees.length} fees
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Rows per page</span>
+                  <Select
+                    value={itemsPerPage.toString()}
+                    onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-16">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pageSizeOptions.map((size) => (
+                        <SelectItem key={size} value={size.toString()}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"

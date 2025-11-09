@@ -89,6 +89,8 @@ export default function LeaseQueryList() {
   const [queries, setQueries] = useState<ApiLeaseQuery[]>([]);
   const [filteredQueries, setFilteredQueries] = useState<ApiLeaseQuery[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const pageSizeOptions = [20, 50, 100, 200];
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
@@ -108,7 +110,6 @@ export default function LeaseQueryList() {
     dateOfLease: "",
     expiryOfLease: "",
   });
-  const itemsPerPage = 10;
 
   // Load lease queries from API on component mount
   useEffect(() => {
@@ -773,10 +774,32 @@ export default function LeaseQueryList() {
           </div>
 
           <div className="flex items-center justify-between mt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedQueries.length} of {sortedQueries.length}{" "}
-              queries
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {paginatedQueries.length} of {sortedQueries.length} queries
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Rows per page</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(Number(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-16">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizeOptions.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
