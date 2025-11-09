@@ -1241,7 +1241,7 @@ export default function DashboardOverview() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigateToSection("/admin/licenses")}
+                  onClick={() => navigateToSection(`/${renderRoleBasedPath(session?.user?.role)}/licenses`)}
                 >
                   View All Licenses
                 </Button>
