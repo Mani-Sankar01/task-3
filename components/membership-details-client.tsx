@@ -1,11 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import {
   Edit,
   ArrowLeft,
   Save,
   CalendarDays,
+  Calendar,
   CreditCard,
   FileText,
   History,
@@ -20,6 +21,7 @@ import {
   CheckCircle,
   XCircle,
   Phone,
+  Mail,
   MoreHorizontal,
   Trash2,
   PencilIcon,
@@ -918,6 +920,222 @@ export default function MembershipDetailsClient({
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
   };
 
+  const formatBoolean = (value?: string | boolean | null) => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "boolean") return value ? "Yes" : "No";
+    const normalized = value.toString().trim().toLowerCase();
+    if (["true", "yes", "y", "1"].includes(normalized)) return "Yes";
+    if (["false", "no", "n", "0"].includes(normalized)) return "No";
+    return value;
+  };
+
+  const totalWorkers =
+    (Number(member.estimatedMaleWorker) || 0) +
+    (Number(member.estimatedFemaleWorker) || 0);
+  const primaryEmail =
+    member.complianceDetails?.emailId ||
+    member.partnerDetails?.find((partner) => partner.emailId)?.emailId ||
+    "-";
+  const branchSummary = member.branches.length
+    ? member.branches
+        .map(
+          (branch) =>
+            `${branch.placeOfBusiness || "Branch"}${
+              branch.electricalUscNumber
+                ? ` (${branch.electricalUscNumber})`
+                : ""
+            }`
+        )
+        .join(", ")
+    : "No additional branches";
+  const partnerSummary = member.partnerDetails?.length
+    ? `${member.partnerDetails.length} partner(s)`
+    : "No partners added";
+  const documentsSummary = member.attachments?.length
+    ? `${member.attachments.length} additional document(s)`
+    : "No additional documents uploaded";
+  const branchMachineryCount = member.branches.reduce(
+    (count, branch) => count + (branch.machineryInformations?.length || 0),
+    0
+  );
+  const totalMachinery =
+    (member.machineryInformations?.length || 0) + branchMachineryCount;
+  const similarInquiry = member.similarMembershipInquiry;
+  const similarOrgDetails =
+    (similarInquiry as any)?.org_details ??
+    (similarInquiry as any)?.orgDetails ??
+    "-";
+  const similarPreviousDetails =
+    (similarInquiry as any)?.previous_application_details ??
+    (similarInquiry as any)?.previousApplicationDetails ??
+    "-";
+
+  useEffect(() => {
+    if (!session?.user?.token) return;
+
+    const primaryId = member.proposer?.proposerID || null;
+    const executiveId = member.executiveProposer?.proposerID || null;
+
+    if (!primaryId && !executiveId) {
+      setPrimaryProposerMember(null);
+      setExecutiveProposerMember(null);
+      return;
+    }
+
+    let cancelled = false;
+    const loadProposers = async () => {
+      setIsLoadingProposers(true);
+      setProposerError(null);
+      try {
+        const uniqueIds = Array.from(
+          new Set([primaryId, executiveId].filter(Boolean) as string[])
+        );
+        const cache: Record<string, Member | null> = {};
+
+        for (const id of uniqueIds) {
+          const response = await axios.get(
+            `${process.env.BACKEND_API_URL}/api/member/get_member/${id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${session.user.token}`,
+              },
+            }
+          );
+          cache[id] = response.data || null;
+        }
+
+        if (cancelled) return;
+
+        setPrimaryProposerMember(primaryId ? cache[primaryId] || null : null);
+        setExecutiveProposerMember(
+          executiveId ? cache[executiveId] || null : null
+        );
+      } catch (error: any) {
+        if (cancelled) return;
+        console.error("Failed to fetch proposer details:", error);
+        setProposerError(
+          error?.response?.data?.message ||
+            "Unable to fetch proposer details right now."
+        );
+        setPrimaryProposerMember(null);
+        setExecutiveProposerMember(null);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingProposers(false);
+        }
+      }
+    };
+
+    loadProposers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    session?.user?.token,
+    member.proposer?.proposerID,
+    member.executiveProposer?.proposerID,
+  ]);
+
+  const displayValue = (value: ReactNode) => {
+    if (value === null || value === undefined) return "-";
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : "-";
+    }
+    if (Array.isArray(value) && value.length === 0) return "-";
+    return value;
+  };
+
+  const SummaryCard = ({
+    title,
+    value,
+    subtitle,
+    icon,
+  }: {
+    title: string;
+    value: ReactNode;
+    subtitle?: ReactNode;
+    icon?: ReactNode;
+  }) => (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{displayValue(value)}</div>
+        {subtitle ? (
+          <p className="text-xs text-muted-foreground break-words">{displayValue(subtitle)}</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+
+  const DetailItem = ({ label, value }: { label: string; value: ReactNode }) => (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className="text-sm text-foreground break-words">
+        {displayValue(value)}
+      </span>
+    </div>
+  );
+
+  const DetailSection = ({
+    title,
+    items,
+    columns = 2,
+  }: {
+    title: string;
+    items: Array<{ label: string; value: ReactNode }>;
+    columns?: number;
+  }) => (
+    <div className="space-y-3">
+      <h4 className="text-sm font-semibold text-primary">{title}</h4>
+      <div className={`grid gap-4 ${columns === 1 ? "grid-cols-1" : "sm:grid-cols-2"}`}>
+        {items.map((item) => (
+          <DetailItem key={item.label} label={item.label} value={item.value} />
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderProposerCard = (
+    title: string,
+    membershipId?: string | null,
+    memberData?: Member | null
+  ) => {
+    return (
+     <div className="rounded-md border bg-muted/40 px-4 py-3"> 
+       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          {title}
+        </p>
+       <div className="py-3 grid grid-cols-5 gap-3">
+        <DetailItem label="Membership ID" value={membershipId || "-"} />
+        <DetailItem
+          label="Applicant Name"
+          value={memberData?.applicantName || "-"}
+        />
+        <DetailItem label="Firm Name" value={memberData?.firmName || "-"} />
+        <DetailItem
+          label="Phone"
+          value={memberData?.phoneNumber1 || memberData?.phoneNumber2 || "-"}
+        />
+        <DetailItem
+          label="Email"
+          value={
+            memberData?.complianceDetails?.emailId ||
+            memberData?.partnerDetails?.[0]?.emailId ||
+            "-"
+          }
+        />
+      </div>
+     </div>
+    );
+  };
+
   // Download functions
   const handleDownloadDocument = async (filePath: string) => {
     try {
@@ -994,6 +1212,13 @@ export default function MembershipDetailsClient({
   const [isSavingGstCredentials, setIsSavingGstCredentials] = useState(false);
   const [gstCredentialsError, setGstCredentialsError] = useState("");
   const [showGstPassword, setShowGstPassword] = useState(false);
+  const [primaryProposerMember, setPrimaryProposerMember] = useState<Member | null>(
+    null
+  );
+  const [executiveProposerMember, setExecutiveProposerMember] =
+    useState<Member | null>(null);
+  const [isLoadingProposers, setIsLoadingProposers] = useState(false);
+  const [proposerError, setProposerError] = useState<string | null>(null);
 
   useEffect(() => {
     setGstUsername(memberCompliance?.gstInUsername || "");
@@ -1670,253 +1895,502 @@ export default function MembershipDetailsClient({
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Sanctioned HP
-                </CardTitle>
-                <Machinery className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {member.sanctionedHP} HP
-                </div>
-                <p className="text-xs text-muted-foreground">Main facility</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Branches</CardTitle>
-                <License className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {member.branches.length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Additional locations
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Workers</CardTitle>
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {member.estimatedMaleWorker + member.estimatedFemaleWorker}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {member.estimatedMaleWorker} male,{" "}
-                  {member.estimatedFemaleWorker} female
-                </p>
-              </CardContent>
-            </Card>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <SummaryCard
+              title="Sanctioned HP"
+              icon={<Machinery className="h-4 w-4 text-muted-foreground" />}
+              value={`${member.sanctionedHP} HP`}
+              subtitle="Main facility power"
+            />
+            <SummaryCard
+              title="Branches"
+              icon={<License className="h-4 w-4 text-muted-foreground" />}
+              value={member.branches.length}
+              subtitle={branchSummary}
+            />
+            <SummaryCard
+              title="Workforce"
+              icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
+              value={totalWorkers}
+              subtitle={`${member.estimatedMaleWorker} male • ${member.estimatedFemaleWorker} female`}
+            />
+            
+            <SummaryCard
+              title="Primary Contact"
+              icon={<Phone className="h-4 w-4 text-muted-foreground" />}
+              value={member.phoneNumber1 || "-"}
+              subtitle={member.phoneNumber2 ? `Alt: ${member.phoneNumber2}` : undefined}
+            />
+            <SummaryCard
+              title="Email"
+              icon={<Mail className="h-4 w-4 text-muted-foreground" />}
+              value={primaryEmail}
+              subtitle={partnerSummary}
+            />
+            <SummaryCard
+              title="Member Since"
+              icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+              value={new Date(member.createdAt).toLocaleDateString()}
+              subtitle={`Last updated ${new Date(member.modifiedAt).toLocaleDateString()}`}
+            />
+            <SummaryCard
+              title="Additional Documents"
+              icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+              value={member.attachments?.length || 0}
+              subtitle={documentsSummary}
+            />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+            <CardHeader>
+              <CardTitle>Profile Summary</CardTitle>
+              <CardDescription>Complete member and firm information</CardDescription>
+              </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-2">
+              <DetailSection
+                title="Application Information"
+                items={[
+                  { label: "Membership ID", value: member.membershipId },
+                  { label: "Membership Type", value: member.membershipType || "-" },
+                  { label: "Applicant Name", value: member.applicantName },
+                  { label: "Gender", value: member.gender },
+                  {
+                    label: "Relation",
+                    value: member.relation || "-",
+                  },
+                  {
+                    label: "Relative Name",
+                    value: member.relativeName || "-",
+                  },
+                  { label: "Membership Status", value: member.membershipStatus },
+                  { label: "Approval Status", value: member.approvalStatus },
+                  {
+                    label: "Payment Due",
+                    value: formatBoolean(member.isPaymentDue),
+                  },
+                  {
+                    label: "Next Due Date",
+                    value: member.nextDueDate ? prettyDate(member.nextDueDate) : "-",
+                  },
+                  {
+                    label: "Created At",
+                    value: new Date(member.createdAt).toLocaleDateString(),
+                  },
+                  {
+                    label: "Last Updated",
+                    value: new Date(member.modifiedAt).toLocaleDateString(),
+                  },
+                ]}
+              />
+              <DetailSection
+                title="Contact & Firm Details"
+                items={[
+                  { label: "Firm Name", value: member.firmName },
+                  { label: "Proprietor Name", value: member.proprietorName },
+                  { label: "Proprietor Status", value: member.proprietorStatus },
+                  { label: "Proprietor Type", value: member.proprietorType },
+                  { label: "Primary Contact", value: member.phoneNumber1 || "-" },
+                  { label: "Alternate Contact", value: member.phoneNumber2 || "-" },
+                  { label: "Email", value: primaryEmail },
+                  { label: "Survey Number", value: member.surveyNumber || "-" },
+                  { label: "Zone", value: member.zone || "-" },
+                  { label: "Village", value: member.village || "-" },
+                  { label: "Mandal", value: member.mandal || "-" },
+                  { label: "District", value: member.district || "-" },
+                  { label: "State", value: member.state || "-" },
+                  { label: "Pin Code", value: member.pinCode || "-" },
+                  {
+                    label: "Registered Address",
+                    value: member.complianceDetails?.fullAddress || "-",
+                  },
+                ]}
+              />
+              </CardContent>
+            </Card>
+
+            <Card>
+            <CardHeader>
+              <CardTitle>Electrical & Workforce</CardTitle>
+              <CardDescription>Primary connection details and workforce overview</CardDescription>
+              </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-2">
+              <DetailSection
+                title="Electrical Information"
+                items={[
+                  {
+                    label: "Electrical USC Number",
+                    value: member.electricalUscNumber || "-",
+                  },
+                  { label: "SC Number", value: member.scNumber || "-" },
+                  {
+                    label: "Sanctioned HP",
+                    value: `${member.sanctionedHP} HP`,
+                  },
+                ]}
+              />
+              <DetailSection
+                title="Workforce"
+                items={[
+                  {
+                    label: "Total Workers",
+                    value: totalWorkers || "-",
+                  },
+                  {
+                    label: "Male Workers",
+                    value: member.estimatedMaleWorker || 0,
+                  },
+                  {
+                    label: "Female Workers",
+                    value: member.estimatedFemaleWorker || 0,
+                  },
+                ]}
+              />
+              </CardContent>
+            </Card>
+
+            <Card>
+            <CardHeader>
+              <CardTitle>Branches & Machinery</CardTitle>
+              <CardDescription>Summary of branch locations and equipment</CardDescription>
+              </CardHeader>
+            <CardContent className="space-y-6">
+              
+              {member.branches.length ? (
+                <div className="flex flex-col gap-2">
+                  {member.branches.map((branch) => (
+                    <div
+                      key={branch.id || branch.placeOfBusiness}
+                      className="rounded-lg border bg-muted/40 p-4 space-y-2"
+                    >
+                     
+                      <h4 className="text-sm text-muted-foreground">
+                        Branch Id: {branch.id || ""}
+                      </h4>
+
+                       <h4 className="text-xl font-semibold text-primary">
+                        {branch.placeOfBusiness || ""}
+                      </h4>
+                      
+                     <div className="grid grid-cols-4 gap-3">
+                     <DetailItem
+                        label="Electrical USC Number"
+                        value={branch.electricalUscNumber || "-"}
+                      />
+                      <DetailItem label="SC Number" value={branch.scNumber || "-"} />
+                      <DetailItem
+                        label="Proprietor Type"
+                        value={branch.proprietorType || "-"}
+                      />
+                      <DetailItem
+                        label="Proprietor Status"
+                        value={branch.proprietorStatus || "-"}
+                      />
+                      <DetailItem
+                        label="Sanctioned HP"
+                        value={branch.sanctionedHP || "-"}
+                      />
+                      <DetailItem
+                        label="Machinery Count"
+                        value={branch.machineryInformations?.length || 0}
+                      />
+                     </div>
+                </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No additional branches recorded.
+                </p>
+              )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
-                <CardTitle>Member Information</CardTitle>
+              <CardTitle>Compliance & Legal</CardTitle>
+              <CardDescription>Regulatory registrations and expiries</CardDescription>
+              </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-2">
+              <DetailSection
+                title="GST Details"
+                items={[
+                  {
+                    label: "GST Number",
+                    value: member.complianceDetails?.gstInNumber || "-",
+                  },
+                  {
+                    label: "GST Username",
+                    value: member.complianceDetails?.gstInUsername || "-",
+                  },
+                  {
+                    label: "GST Expiry",
+                    value: member.complianceDetails?.gstExpiredAt
+                      ? prettyDate(member.complianceDetails.gstExpiredAt)
+                      : "-",
+                  },
+                ]}
+              />
+              <DetailSection
+                title="Other Licenses"
+                items={[
+                  {
+                    label: "Factory License",
+                    value: member.complianceDetails?.factoryLicenseNumber || "-",
+                  },
+                  {
+                    label: "Factory License Expiry",
+                    value: member.complianceDetails?.factoryLicenseExpiredAt
+                      ? prettyDate(member.complianceDetails.factoryLicenseExpiredAt)
+                      : "-",
+                  },
+                  {
+                    label: "TSPCB Order",
+                    value: member.complianceDetails?.tspcbOrderNumber || "-",
+                  },
+                  {
+                    label: "TSPCB Expiry",
+                    value: member.complianceDetails?.tspcbExpiredAt
+                      ? prettyDate(member.complianceDetails.tspcbExpiredAt)
+                      : "-",
+                  },
+                  {
+                    label: "MDL Number",
+                    value: member.complianceDetails?.mdlNumber || "-",
+                  },
+                  {
+                    label: "MDL Expiry",
+                    value: member.complianceDetails?.mdlExpiredAt
+                      ? prettyDate(member.complianceDetails.mdlExpiredAt)
+                      : "-",
+                  },
+                  {
+                    label: "Udyam Certificate",
+                    value: member.complianceDetails?.udyamCertificateNumber || "-",
+                  },
+                  {
+                    label: "Udyam Expiry",
+                    value: member.complianceDetails?.udyamCertificateExpiredAt
+                      ? prettyDate(member.complianceDetails.udyamCertificateExpiredAt)
+                      : "-",
+                  },
+                ]}
+              />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+              <CardTitle>Partners & Representatives</CardTitle>
+              <CardDescription>Authorised representatives for this membership</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Applicant Name</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.applicantName}
-                      </p>
+              {member.partnerDetails?.length ? (
+                <div className="grid gap-4 ">
+                  {member.partnerDetails.map((partner) => (
+                    <Card key={partner.id || partner.partnerName} className="border border-dashed">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-muted-foreground">
+                        Partner ID: {displayValue(partner.id?.toString() || "-")}
+                        </CardTitle>
+                        <CardDescription className="text-xl font-semibold text-primary">
+                        
+                          {displayValue(partner.partnerName || "Partner")}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="grid grid-cols-5 gap-3">
+                        <DetailItem
+                          label="Contact Number"
+                          value={partner.contactNumber || "-"}
+                        />
+                        <DetailItem label="Email" value={partner.emailId || "-"} />
+                        <DetailItem
+                          label="Aadhar"
+                          value={partner.partnerAadharNo || "-"}
+                        />
+                        <DetailItem label="PAN" value={partner.partnerPanNo || "-"} />
+                      </CardContent>
+                    </Card>
+                  ))}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Relation</p>
+              ) : (
                       <p className="text-sm text-muted-foreground">
-                        {member.relation} {member.relativeName}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Gender</p>
+                  No partners added yet.
+                </p>
+              )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+              <CardTitle>Membership References</CardTitle>
+              <CardDescription>Similar membership history and proposer details</CardDescription>
+              </CardHeader>
+            <CardContent className="grid gap-6 lg:grid-cols-2">
+              <DetailSection
+                title="Similar Membership Inquiry"
+                columns={1}
+                items={[
+                  {
+                    label: "Member of Similar Organisation",
+                    value: formatBoolean(similarInquiry?.is_member_of_similar_org),
+                  },
+                  {
+                    label: "Organisation Details",
+                  value: similarOrgDetails,
+                  },
+                  {
+                    label: "Applied Earlier",
+                    value: formatBoolean(similarInquiry?.has_applied_earlier),
+                  },
+                  {
+                    label: "Previous Application Details",
+                  value: similarPreviousDetails,
+                  },
+                  {
+                    label: "Valid Member",
+                    value: formatBoolean(similarInquiry?.is_valid_member),
+                  },
+                  {
+                    label: "Executive Member",
+                    value: formatBoolean(similarInquiry?.is_executive_member),
+                  },
+                ]}
+              />
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-primary">Proposers</h4>
+              {proposerError ? (
+                <p className="text-sm text-destructive">{proposerError}</p>
+              ) : null}
+              {isLoadingProposers ? (
                       <p className="text-sm text-muted-foreground">
-                        {member.gender}
-                      </p>
+                  Loading proposer details...
+                </p>
+              ) : (
+                <div className="grid gap-3">
+                  {member.proposer?.proposerID ? (
+                    renderProposerCard(
+                      "Primary Proposer",
+                      member.proposer.proposerID,
+                      primaryProposerMember
+                    )
+                  ) : (
+                    <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                      No primary proposer assigned.
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Membership ID</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.membershipId}
-                      </p>
+                  )}
+                  {member.executiveProposer?.proposerID ? (
+                    renderProposerCard(
+                      "Executive Proposer",
+                      member.executiveProposer.proposerID,
+                      executiveProposerMember
+                    )
+                  ) : (
+                    <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                      No executive proposer assigned.
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">
-                        Electrical USC Number
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.electricalUscNumber}
-                      </p>
+                  )}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">SC Number</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.scNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Membership Type</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.membershipType || "-"}
-                      </p>
-                    </div>
-                  </div>
+              )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Firm Information</CardTitle>
+              <CardTitle>Documents & Declarations</CardTitle>
+              <CardDescription>Uploaded certificates and acknowledgement records</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Firm Name</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.firmName}
-                      </p>
+            <CardContent className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-primary">
+                  Additional Documents
+                </h4>
+                {member.attachments?.length ? (
+                  <div className="flex flex-col gap-3">
+                    {member.attachments.map((doc, index) => (
+                      <div
+                        key={doc.id || `${doc.documentName}-${index}`}
+                        className="flex items-center justify-between gap-4 rounded-md border bg-muted/40 px-3 py-2"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            {doc.documentName || `Document ${index + 1}`}
+                          </span>
+                          <span className="text-sm break-all">
+                            {doc.documentPath || "-"}
+                          </span>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Proprietor Name</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.proprietorName}
-                      </p>
+                        {doc.documentPath ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadAttachment(doc)}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        ) : null}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Proprietor Status</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.proprietorStatus}
-                      </p>
+                    ))}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Proprietor Type</p>
+                ) : (
                       <p className="text-sm text-muted-foreground">
-                        {member.proprietorType}
+                    No additional documents uploaded.
                       </p>
+                )}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Contact 1</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.phoneNumber1}
-                      </p>
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-primary">Declarations</h4>
+                <DetailSection
+                  title=""
+                  columns={1}
+                  items={[
+                    {
+                      label: "Agreed To Terms",
+                      value: formatBoolean(member.declarations?.agreesToTerms),
+                    },
+                  ]}
+                />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {[
+                    {
+                      label: "Membership Form",
+                      path: member.declarations?.membershipFormPath,
+                    },
+                    {
+                      label: "Application Signature",
+                      path: member.declarations?.applicationSignaturePath,
+                    },
+                  ].map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex items-center justify-between gap-4 rounded-md border bg-muted/40 px-3 py-2"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          {item.label}
+                        </span>
+                        <span className="text-sm break-all">
+                          {item.path || "-"}
+                        </span>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Contact 2</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.phoneNumber2 || "N/A"}
-                      </p>
+                      {item.path ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleDownloadDocument(item.path as string)
+                          }
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                        </Button>
+                      ) : null}
                     </div>
+                  ))}
                   </div>
                 </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Location Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Survey Number</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.surveyNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Village</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.village}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Zone</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.zone}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Mandal</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.mandal}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">District</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.district}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">State</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.state}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Pin Code</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.pinCode}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Compliance Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">GST Number</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.complianceDetails.gstInNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Factory License</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.complianceDetails.factoryLicenseNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">TSPCB Order</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.complianceDetails.tspcbOrderNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">MDL Number</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.complianceDetails.mdlNumber}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Udyam Certificate</p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.complianceDetails.udyamCertificateNumber}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="machineries">
