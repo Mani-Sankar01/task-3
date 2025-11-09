@@ -24,6 +24,8 @@ import {
   Trash2,
   PencilIcon,
   EyeIcon,
+  EyeOff,
+  Key,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -978,6 +980,25 @@ export default function MembershipDetailsClient({
   const [addLicenseValidationError, setAddLicenseValidationError] = useState("");
   const [addLicenseValidationSuccess, setAddLicenseValidationSuccess] = useState("");
   const [isValidatingLicense, setIsValidatingLicense] = useState(false);
+  const [showGSTCredentialsDialog, setShowGSTCredentialsDialog] = useState(false);
+  const memberCompliance = member.complianceDetails as typeof member.complianceDetails & {
+    gstInUsername?: string;
+    gstInPassword?: string;
+  };
+  const [gstUsername, setGstUsername] = useState(
+    memberCompliance?.gstInUsername || ""
+  );
+  const [gstPassword, setGstPassword] = useState(
+    memberCompliance?.gstInPassword || ""
+  );
+  const [isSavingGstCredentials, setIsSavingGstCredentials] = useState(false);
+  const [gstCredentialsError, setGstCredentialsError] = useState("");
+  const [showGstPassword, setShowGstPassword] = useState(false);
+
+  useEffect(() => {
+    setGstUsername(memberCompliance?.gstInUsername || "");
+    setGstPassword(memberCompliance?.gstInPassword || "");
+  }, [memberCompliance?.gstInUsername, memberCompliance?.gstInPassword]);
   
   // USC Meter History states
   const [uscMeterHistory, setUscMeterHistory] = useState<USCMeterHistory[]>([]);
@@ -1104,6 +1125,66 @@ export default function MembershipDetailsClient({
       alert(err.message || "Failed to update license");
     } finally {
       setDocLoading(false);
+    }
+  };
+
+  const handleSaveGstCredentials = async () => {
+    if (!session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingGstCredentials(true);
+    setGstCredentialsError("");
+
+    try {
+      const payload: any = {
+        membershipId: member.membershipId,
+        complianceDetails: {
+          gstInUsername: gstUsername.trim(),
+          gstInPassword: gstPassword,
+        },
+      };
+
+      const response = await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error("Failed to update GST credentials");
+      }
+
+      toast({
+        title: "GST Credentials Updated",
+        description: "GST username and password saved successfully.",
+      });
+      setShowGSTCredentialsDialog(false);
+      setShowGstPassword(false);
+      await refetchMember();
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to update GST credentials. Please try again.";
+      setGstCredentialsError(message);
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingGstCredentials(false);
     }
   };
 
@@ -2220,6 +2301,20 @@ export default function MembershipDetailsClient({
                         </Button>
                         <Button variant="destructive" size="sm" onClick={() => handleDeleteLicense(doc.type)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
                         <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
+                        {doc.type === "gst" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setGstCredentialsError("");
+                              setGstUsername(memberCompliance?.gstInUsername || "");
+                              setGstPassword(memberCompliance?.gstInPassword || "");
+                              setShowGSTCredentialsDialog(true);
+                            }}
+                          >
+                            <Key className="h-4 w-4" />
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -2292,6 +2387,89 @@ export default function MembershipDetailsClient({
                 <Button variant="outline" onClick={() => setEditLicenseType(null)} disabled={docLoading}>Cancel</Button>
                 <Button onClick={handleEditLicenseSubmit} disabled={docLoading}>Save Changes</Button>
                 {editLicenseDocError && <div className="text-red-500 text-sm mt-2">{editLicenseDocError}</div>}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* GST Credentials Dialog */}
+          <Dialog
+            open={showGSTCredentialsDialog}
+            onOpenChange={(val) => {
+              if (!val) {
+                setShowGSTCredentialsDialog(false);
+                setGstCredentialsError("");
+                setGstUsername(memberCompliance?.gstInUsername || "");
+                setGstPassword(memberCompliance?.gstInPassword || "");
+                setShowGstPassword(false);
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>GST Credentials</DialogTitle>
+                <DialogDescription>
+                  View or update the GST portal username and password for this member.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>GST Username</Label>
+                  <Input
+                    value={gstUsername}
+                    onChange={(e) => setGstUsername(e.target.value)}
+                    placeholder="Enter GST username"
+                  />
+                </div>
+                <div>
+                  <Label>GST Password</Label>
+                  <div className="relative">
+                    <Input
+                      type={showGstPassword ? "text" : "password"}
+                      value={gstPassword}
+                      onChange={(e) => setGstPassword(e.target.value)}
+                      placeholder="Enter GST password"
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute inset-y-0 right-0 h-full w-10 text-muted-foreground"
+                      onClick={() => setShowGstPassword((prev) => !prev)}
+                      aria-label={showGstPassword ? "Hide password" : "Show password"}
+                    >
+                      {showGstPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <EyeIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                {gstCredentialsError && (
+                  <p className="text-sm text-red-500">{gstCredentialsError}</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowGSTCredentialsDialog(false);
+                    setGstCredentialsError("");
+                    setGstUsername(memberCompliance?.gstInUsername || "");
+                    setGstPassword(memberCompliance?.gstInPassword || "");
+                    setShowGstPassword(false);
+                  }}
+                  disabled={isSavingGstCredentials}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveGstCredentials}
+                  disabled={isSavingGstCredentials}
+                >
+                  {isSavingGstCredentials ? "Saving..." : "Save Credentials"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

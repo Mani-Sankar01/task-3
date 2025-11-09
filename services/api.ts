@@ -274,6 +274,8 @@ export interface ComplianceDetails {
   membershipId: string;
   gstInNumber: string;
   gstInCertificatePath: string;
+  gstInUsername?: string;
+  gstInPassword?: string;
   gstExpiredAt?: string; // <-- Add this
   factoryLicenseNumber: string;
   factoryLicensePath: string;

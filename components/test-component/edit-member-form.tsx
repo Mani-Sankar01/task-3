@@ -1082,14 +1082,22 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       const wasEmpty = (key: keyof typeof data, subkey?: string) => {
         if (!subkey) {
           const value = original[key];
-          return !value || (typeof value === "string" && value === "");
+          if (value === null || value === undefined) {
+            return true;
+          }
+          if (typeof value === "string") {
+            return value.trim().length === 0;
+          }
+          return false;
         }
         const obj = original[key] as any;
-        return (
-          !obj ||
-          !obj[subkey] ||
-          (typeof obj[subkey] === "string" && obj[subkey] === "")
-        );
+        if (!obj || obj[subkey] === null || obj[subkey] === undefined) {
+          return true;
+        }
+        if (typeof obj[subkey] === "string") {
+          return obj[subkey].trim().length === 0;
+        }
+        return false;
       };
 
       // Basic member fields
@@ -1278,7 +1286,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       // partnerDetails diff
       const origPartners = original.representativeDetails.partners || [];
       const newPartners = data.representativeDetails.partners || [];
-      reqData.partnerDetails = {
+      const partnerDetailsPayload = {
         newPartnerDetails: newPartners
           .filter((p) => !p.id)
           .map((p) => ({
@@ -1313,6 +1321,14 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           .filter((op) => op.id && !newPartners.some((p) => p.id === op.id))
           .map((op) => ({ id: op.id })),
       };
+      const hasPartnerChanges =
+        partnerDetailsPayload.newPartnerDetails.length > 0 ||
+        partnerDetailsPayload.updatePartnerDetails.length > 0 ||
+        partnerDetailsPayload.deletePartnerDetails.length > 0;
+
+      if (hasPartnerChanges) {
+        reqData.partnerDetails = partnerDetailsPayload;
+      }
 
       // branchDetails diff
       const origBranches = original.branchDetails.branches || [];
@@ -1320,7 +1336,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
 
       console.log("Original branches:", JSON.stringify(origBranches, null, 2));
       console.log("New branches:", JSON.stringify(newBranches, null, 2));
-      reqData.branchDetails = {
+      const branchDetailsPayload = {
         newBranchSchema: newBranches
           .filter((b) => !b.id)
           .map((b) => ({
@@ -1430,6 +1446,14 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           .filter((ob) => ob.id && !newBranches.some((b) => b.id === ob.id))
           .map((ob) => ({ id: ob.id })),
       };
+      const hasBranchChanges =
+        branchDetailsPayload.newBranchSchema.length > 0 ||
+        branchDetailsPayload.updateBranchSchema.length > 0 ||
+        branchDetailsPayload.deleteBranchSchema.length > 0;
+
+      if (hasBranchChanges) {
+        reqData.branchDetails = branchDetailsPayload;
+      }
 
       // proposer
       if (changed("proposer1", "membershipId")) {
@@ -1463,6 +1487,22 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       }
 
       // Log the payload for debugging
+      const payloadKeys = Object.keys(reqData).filter(
+        (key) => key !== "membershipId"
+      );
+      if (payloadKeys.length === 0) {
+        console.log("No actual changes gathered for payload; aborting submit.");
+        setPopupMessage({
+          isOpen: true,
+          type: "warning",
+          title: "No Changes Detected",
+          message:
+            "No changes have been made to the member data. Please update at least one field before submitting.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       console.log("REQ DATA", JSON.stringify(reqData));
 
       // Send the request

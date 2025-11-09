@@ -32,10 +32,10 @@ import { Calendar } from "@/components/ui/calendar";
 interface Step2OperationDetailsProps {
   isEditMode?: boolean;
   validationErrors?: {
-    [key: string]: string;
+    [key: string]: string | undefined;
   };
   validationSuccess?: {
-    [key: string]: string;
+    [key: string]: string | undefined;
   };
   onFieldChange?: (fieldName: string, value: string) => void;
   isValidating?: boolean;
