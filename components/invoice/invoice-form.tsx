@@ -687,7 +687,7 @@ export default function InvoiceForm({
         });
 
         // Redirect to invoice details page
-        router.push(`/admin/invoices/${invoiceId}`);
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices/${invoiceId}`);
       } else {
         // Add new invoice using API
         if (status !== "authenticated" || !session?.user?.token) {
@@ -738,7 +738,7 @@ export default function InvoiceForm({
           title: "Success",
           description: response.data.message || "Invoice created successfully!"
         });
-        router.push(`/admin/invoices/${response.data.invoice.invoiceId}`);
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices/${response.data.invoice.invoiceId}`);
       }
     } catch (error: any) {
       console.error("Error submitting form:", error);

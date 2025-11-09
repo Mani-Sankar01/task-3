@@ -197,16 +197,18 @@ const formSchema = z.object({
       .default([]),
   }),
   proposer1: z.object({
-    name: z.string(),
-    firmName: z.string(),
-    membershipId: z.string(),
-    address: z.string(),
+    name: z.string().optional(),
+    firmName: z.string().optional(),
+    membershipId: z.string().optional(),
+    address: z.string().optional(),
+    signaturePath: z.string().optional(),
   }),
   proposer2: z.object({
-    name: z.string(),
-    firmName: z.string(),
-    membershipId: z.string(),
-    address: z.string(),
+    name: z.string().optional(),
+    firmName: z.string().optional(),
+    membershipId: z.string().optional(),
+    address: z.string().optional(),
+    signaturePath: z.string().optional(),
   }),
   declaration: z.object({
     agreeToTerms: z.boolean(),
@@ -352,12 +354,14 @@ const AddMemberForm = () => {
         firmName: "",
         membershipId: "",
         address: "",
+        signaturePath: "",
       },
       proposer2: {
         name: "",
         firmName: "",
         membershipId: "",
         address: "",
+        signaturePath: "",
       },
       declaration: {
         agreeToTerms: false,
@@ -557,12 +561,51 @@ const AddMemberForm = () => {
         return undefined;
       };
 
-      const shouldSendCompliance =
-        data.complianceDetails.gstinNo ||
-        data.complianceDetails.gstInUsername ||
-        data.complianceDetails.gstInPassword ||
-        uploadedFiles.gstinDoc ||
-        resolveExistingPath(data.complianceDetails.gstinDoc);
+      const shouldSendCompliance = Boolean(
+        data.communicationDetails.fullAddress?.trim() ||
+          data.complianceDetails.gstinNo?.trim() ||
+          data.complianceDetails.gstInUsername?.trim() ||
+          data.complianceDetails.gstInPassword?.trim() ||
+          data.complianceDetails.factoryLicenseNo?.trim() ||
+          data.complianceDetails.tspcbOrderNo?.trim() ||
+          data.complianceDetails.mdlNo?.trim() ||
+          data.complianceDetails.udyamCertificateNo?.trim() ||
+          data.complianceDetails.gstinExpiredAt ||
+          data.complianceDetails.factoryLicenseExpiredAt ||
+          data.complianceDetails.tspcbExpiredAt ||
+          data.complianceDetails.mdlExpiredAt ||
+          data.complianceDetails.udyamCertificateExpiredAt ||
+          uploadedFiles.gstinDoc ||
+          resolveExistingPath(data.complianceDetails.gstinDoc) ||
+          uploadedFiles.factoryLicenseDoc ||
+          resolveExistingPath(data.complianceDetails.factoryLicenseDoc) ||
+          uploadedFiles.tspcbOrderDoc ||
+          resolveExistingPath(data.complianceDetails.tspcbOrderDoc) ||
+          uploadedFiles.mdlDoc ||
+          resolveExistingPath(data.complianceDetails.mdlDoc) ||
+          uploadedFiles.udyamCertificateDoc ||
+          resolveExistingPath(data.complianceDetails.udyamCertificateDoc)
+      );
+
+      if (data.proposer1.membershipId && !data.proposer1.signaturePath) {
+        setErrorPopup({
+          isOpen: true,
+          message:
+            "Selected proposer (valid member) is missing a signature record. Please choose another member or contact support.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (data.proposer2.membershipId && !data.proposer2.signaturePath) {
+        setErrorPopup({
+          isOpen: true,
+          message:
+            "Selected executive proposer is missing a signature record. Please choose another member or contact support.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       const requestData: any = {
         membershipType: data.membershipType,
@@ -638,15 +681,19 @@ const AddMemberForm = () => {
 
         attachments: [...additionalAttachments],
 
-        proposer: {
-          proposerID: data.proposer1.membershipId || null,
-          signaturePath: "/uploads/proposer-signature.png",
-        },
+        proposer: data.proposer1.membershipId
+          ? {
+              proposerID: data.proposer1.membershipId,
+              signaturePath: data.proposer1.signaturePath,
+            }
+          : null,
 
-        executiveProposer: {
-          proposerID: data.proposer2.membershipId || null,
-          signaturePath: "/uploads/executive-signature.png",
-        },
+        executiveProposer: data.proposer2.membershipId
+          ? {
+              proposerID: data.proposer2.membershipId,
+              signaturePath: data.proposer2.signaturePath,
+            }
+          : null,
 
         declarations: {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
@@ -656,27 +703,55 @@ const AddMemberForm = () => {
       };
 
       if (shouldSendCompliance) {
-        const complianceDetails: Record<string, any> = {
-          gstInNumber: data.complianceDetails.gstinNo.trim(),
-          gstInUsername: data.complianceDetails.gstInUsername?.trim() || "",
-          gstInPassword: data.complianceDetails.gstInPassword?.trim() || "",
-          gstInCertificatePath:
-            uploadedFiles.gstinDoc ||
-            resolveExistingPath(data.complianceDetails.gstinDoc),
-          gstExpiredAt: new Date(
-            data.complianceDetails.gstinExpiredAt
-          ).toISOString(),
-          fullAddress: data.communicationDetails.fullAddress,
-          partnerName: data.representativeDetails.partners[0]?.name || "",
-          contactNumber:
-            data.representativeDetails.partners[0]?.contactNo || "",
-          AadharNumber: data.representativeDetails.partners[0]?.aadharNo || "",
-          emailId: data.representativeDetails.partners[0]?.email,
-          panNumber: data.representativeDetails.partners[0]?.pan,
-        };
+        const complianceDetails: Record<string, any> = {};
 
-        const factoryLicenseNo =
-          data.complianceDetails.factoryLicenseNo?.trim() || "";
+        const fullAddressValue = data.communicationDetails.fullAddress?.trim();
+        if (fullAddressValue) {
+          complianceDetails.fullAddress = fullAddressValue;
+        }
+
+        if (data.complianceDetails.gstinNo?.trim()) {
+          complianceDetails.gstInNumber = data.complianceDetails.gstinNo.trim();
+        }
+        if (data.complianceDetails.gstInUsername?.trim()) {
+          complianceDetails.gstInUsername =
+            data.complianceDetails.gstInUsername.trim();
+        }
+        if (data.complianceDetails.gstInPassword?.trim()) {
+          complianceDetails.gstInPassword =
+            data.complianceDetails.gstInPassword.trim();
+        }
+
+        const gstCertificatePath =
+          uploadedFiles.gstinDoc ||
+          resolveExistingPath(data.complianceDetails.gstinDoc);
+        if (gstCertificatePath) {
+          complianceDetails.gstInCertificatePath = gstCertificatePath;
+        }
+        if (data.complianceDetails.gstinExpiredAt) {
+          complianceDetails.gstExpiredAt = new Date(
+            data.complianceDetails.gstinExpiredAt
+          ).toISOString();
+        }
+
+        const primaryPartner = data.representativeDetails.partners?.[0];
+        if (primaryPartner?.name) {
+          complianceDetails.partnerName = primaryPartner.name;
+        }
+        if (primaryPartner?.contactNo) {
+          complianceDetails.contactNumber = primaryPartner.contactNo;
+        }
+        if (primaryPartner?.aadharNo) {
+          complianceDetails.AadharNumber = primaryPartner.aadharNo;
+        }
+        if (primaryPartner?.email) {
+          complianceDetails.emailId = primaryPartner.email;
+        }
+        if (primaryPartner?.pan) {
+          complianceDetails.panNumber = primaryPartner.pan;
+        }
+
+        const factoryLicenseNo = data.complianceDetails.factoryLicenseNo?.trim();
         if (factoryLicenseNo) {
           complianceDetails.factoryLicenseNumber = factoryLicenseNo;
         }
@@ -692,8 +767,7 @@ const AddMemberForm = () => {
           ).toISOString();
         }
 
-        const tspcbOrderNo =
-          data.complianceDetails.tspcbOrderNo?.trim() || "";
+        const tspcbOrderNo = data.complianceDetails.tspcbOrderNo?.trim();
         if (tspcbOrderNo) {
           complianceDetails.tspcbOrderNumber = tspcbOrderNo;
         }
@@ -709,7 +783,7 @@ const AddMemberForm = () => {
           ).toISOString();
         }
 
-        const mdlNumber = data.complianceDetails.mdlNo?.trim() || "";
+        const mdlNumber = data.complianceDetails.mdlNo?.trim();
         if (mdlNumber) {
           complianceDetails.mdlNumber = mdlNumber;
         }
@@ -726,7 +800,7 @@ const AddMemberForm = () => {
         }
 
         const udyamCertificateNo =
-          data.complianceDetails.udyamCertificateNo?.trim() || "";
+          data.complianceDetails.udyamCertificateNo?.trim();
         if (udyamCertificateNo) {
           complianceDetails.udyamCertificateNumber = udyamCertificateNo;
         }
@@ -742,14 +816,31 @@ const AddMemberForm = () => {
           ).toISOString();
         }
 
-        requestData.complianceDetails = complianceDetails;
+        if (Object.keys(complianceDetails).length > 0) {
+          requestData.complianceDetails = complianceDetails;
+        }
       }
+
+      if (uploadedFiles.factoryLicenseDoc &&
+        typeof uploadedFiles.factoryLicenseDoc === "string"
+      ) {
+        requestData.factoryLicensePath = uploadedFiles.factoryLicenseDoc;
+      }
+
+      if (uploadedFiles.udyamCertificateDoc) {
+        requestData.udyamCertificatePath = uploadedFiles.udyamCertificateDoc;
+      }
+
+      requestData.communicationDetails = {
+        fullAddress: data.communicationDetails.fullAddress,
+      };
 
       console.log(JSON.stringify(requestData));
 
       if (session?.user.token) {
         setIsSubmitting(true);
         console.log(session?.user.token); 
+        console.log(JSON.stringify(requestData));
         const response = await axios.post(
           `${process.env.BACKEND_API_URL}/api/member/add_member`,
           requestData,

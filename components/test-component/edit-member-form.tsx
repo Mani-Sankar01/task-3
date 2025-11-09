@@ -231,12 +231,14 @@ const formSchema = z.object({
     firmName: z.string().optional(),
     membershipId: z.string().optional(),
     address: z.string().optional(),
+    signaturePath: z.string().optional(),
   }),
   proposer2: z.object({
     name: z.string().optional(),
     firmName: z.string().optional(),
     membershipId: z.string().optional(),
     address: z.string().optional(),
+    signaturePath: z.string().optional(),
   }),
   declaration: z.object({
     agreeToTerms: z.boolean(),
@@ -384,12 +386,14 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         firmName: "",
         membershipId: "",
         address: "",
+        signaturePath: "",
       },
       proposer2: {
         name: "",
         firmName: "",
         membershipId: "",
         address: "",
+        signaturePath: "",
       },
       declaration: {
         agreeToTerms: false,
@@ -613,12 +617,14 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             firmName: "",
             membershipId: reponseData.proposer?.proposerID || "",
             address: "",
+            signaturePath: reponseData.proposer?.signaturePath || "",
           },
           proposer2: {
             name: "",
             firmName: "",
             membershipId: reponseData.executiveProposer?.proposerID || "",
             address: "",
+            signaturePath: reponseData.executiveProposer?.signaturePath || "",
           },
           declaration: {
             agreeToTerms:
@@ -1131,7 +1137,9 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         return;
       }
 
-      const reqData: any = { membershipId: memberId };
+      const reqData: any = {
+        membershipId: memberId,
+      };
 
       // Helper to check if a value changed
       const changed = (key: keyof typeof data, subkey?: string) => {
@@ -1160,6 +1168,38 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         }
         return false;
       };
+
+      if (
+        changed("proposer1", "membershipId") &&
+        data.proposer1.membershipId &&
+        !data.proposer1.signaturePath
+      ) {
+        setPopupMessage({
+          isOpen: true,
+          type: "error",
+          title: "Missing Signature",
+          message:
+            "Selected proposer does not have a signature on file. Please choose another member or contact support.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (
+        changed("proposer2", "membershipId") &&
+        data.proposer2.membershipId &&
+        !data.proposer2.signaturePath
+      ) {
+        setPopupMessage({
+          isOpen: true,
+          type: "error",
+          title: "Missing Signature",
+          message:
+            "Selected executive proposer does not have a signature on file. Please choose another member or contact support.",
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       // Basic member fields
       if (changed("membershipType")) {
@@ -1281,21 +1321,139 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       }
 
       // complianceDetails
-      if (
+      const hasComplianceTextChange =
         changed("communicationDetails", "fullAddress") ||
         changed("complianceDetails", "gstinNo") ||
         changed("complianceDetails", "factoryLicenseNo") ||
         changed("complianceDetails", "tspcbOrderNo") ||
         changed("complianceDetails", "mdlNo") ||
-        changed("complianceDetails", "udyamCertificateNo")
-      ) {
-        reqData.complianceDetails = {
-          gstInNumber: data.complianceDetails.gstinNo,
-          gstInCertificatePath: "/uploads/gstin_certificate.pdf",
-          fullAddress: data.communicationDetails.fullAddress,
-          partnerName: data.firmDetails.proprietorName,
-          emailId: data.firmDetails.contact1, // Using contact1 as email for now
-        };
+        changed("complianceDetails", "udyamCertificateNo") ||
+        changed("complianceDetails", "gstinExpiredAt") ||
+        changed("complianceDetails", "factoryLicenseExpiredAt") ||
+        changed("complianceDetails", "tspcbExpiredAt") ||
+        changed("complianceDetails", "mdlExpiredAt") ||
+        changed("complianceDetails", "udyamCertificateExpiredAt");
+
+      const hasComplianceFileUpload = (
+        data.complianceDetails.gstinDoc &&
+        data.complianceDetails.gstinDoc instanceof File
+      ) ||
+      (
+        data.complianceDetails.factoryLicenseDoc &&
+        data.complianceDetails.factoryLicenseDoc instanceof File
+      ) ||
+      (
+        data.complianceDetails.tspcbOrderDoc &&
+        data.complianceDetails.tspcbOrderDoc instanceof File
+      ) ||
+      (
+        data.complianceDetails.mdlDoc &&
+        data.complianceDetails.mdlDoc instanceof File
+      ) ||
+      (
+        data.complianceDetails.udyamCertificateDoc &&
+        data.complianceDetails.udyamCertificateDoc instanceof File
+      );
+
+      if (hasComplianceTextChange || hasComplianceFileUpload) {
+        reqData.complianceDetails = {};
+
+        if (changed("communicationDetails", "fullAddress")) {
+          reqData.complianceDetails.fullAddress =
+            data.communicationDetails.fullAddress;
+        }
+
+        if (changed("complianceDetails", "gstinNo")) {
+          reqData.complianceDetails.gstInNumber = data.complianceDetails.gstinNo;
+        }
+
+        if (changed("complianceDetails", "gstinExpiredAt")) {
+          reqData.complianceDetails.gstExpiredAt =
+            data.complianceDetails.gstinExpiredAt || null;
+        }
+
+        if (
+          data.complianceDetails.gstinDoc &&
+          data.complianceDetails.gstinDoc instanceof File
+        ) {
+          reqData.complianceDetails.gstInCertificate =
+            data.complianceDetails.gstinDoc;
+        }
+
+        if (changed("complianceDetails", "factoryLicenseNo")) {
+          reqData.complianceDetails.factoryLicenseNumber =
+            data.complianceDetails.factoryLicenseNo;
+        }
+
+        if (changed("complianceDetails", "factoryLicenseExpiredAt")) {
+          reqData.complianceDetails.factoryLicenseExpiredAt =
+            data.complianceDetails.factoryLicenseExpiredAt || null;
+        }
+
+        if (
+          data.complianceDetails.factoryLicenseDoc &&
+          data.complianceDetails.factoryLicenseDoc instanceof File
+        ) {
+          reqData.complianceDetails.factoryLicensePath =
+            data.complianceDetails.factoryLicenseDoc;
+        }
+
+        if (changed("complianceDetails", "tspcbOrderNo")) {
+          reqData.complianceDetails.tspcbOrderNumber =
+            data.complianceDetails.tspcbOrderNo;
+        }
+
+        if (changed("complianceDetails", "tspcbExpiredAt")) {
+          reqData.complianceDetails.tspcbExpiredAt =
+            data.complianceDetails.tspcbExpiredAt || null;
+        }
+
+        if (
+          data.complianceDetails.tspcbOrderDoc &&
+          data.complianceDetails.tspcbOrderDoc instanceof File
+        ) {
+          reqData.complianceDetails.tspcbCertificate =
+            data.complianceDetails.tspcbOrderDoc;
+        }
+
+        if (changed("complianceDetails", "mdlNo")) {
+          reqData.complianceDetails.mdlNumber = data.complianceDetails.mdlNo;
+        }
+
+        if (changed("complianceDetails", "mdlExpiredAt")) {
+          reqData.complianceDetails.mdlExpiredAt =
+            data.complianceDetails.mdlExpiredAt || null;
+        }
+
+        if (
+          data.complianceDetails.mdlDoc &&
+          data.complianceDetails.mdlDoc instanceof File
+        ) {
+          reqData.complianceDetails.mdlCertificate =
+            data.complianceDetails.mdlDoc;
+        }
+
+        if (changed("complianceDetails", "udyamCertificateNo")) {
+          reqData.complianceDetails.udyamCertificateNumber =
+            data.complianceDetails.udyamCertificateNo;
+        }
+
+        if (changed("complianceDetails", "udyamCertificateExpiredAt")) {
+          reqData.complianceDetails.udyamCertificateExpiredAt =
+            data.complianceDetails.udyamCertificateExpiredAt || null;
+        }
+
+        if (
+          data.complianceDetails.udyamCertificateDoc &&
+          data.complianceDetails.udyamCertificateDoc instanceof File
+        ) {
+          reqData.complianceDetails.udyamCertificatePath =
+            data.complianceDetails.udyamCertificateDoc;
+        }
+
+        if (Object.keys(reqData.complianceDetails).length === 0) {
+          delete reqData.complianceDetails;
+        }
       }
 
       // similarMembershipInquiry
@@ -1521,7 +1679,10 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         if (data.proposer1.membershipId && data.proposer1.membershipId !== "") {
           reqData.proposer = {
             proposerID: data.proposer1.membershipId,
-            signaturePath: "/uploads/proposer-signature.png",
+            signaturePath:
+              data.proposer1.signaturePath ||
+              original.proposer1.signaturePath ||
+              "",
           };
         } else {
           reqData.proposer = null;
@@ -1532,7 +1693,10 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         if (data.proposer2.membershipId && data.proposer2.membershipId !== "") {
           reqData.executiveProposer = {
             proposerID: data.proposer2.membershipId,
-            signaturePath: "/uploads/executive-signature.png",
+            signaturePath:
+              data.proposer2.signaturePath ||
+              original.proposer2.signaturePath ||
+              "",
           };
         } else {
           reqData.executiveProposer = null;
@@ -1542,8 +1706,6 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       if (changed("declaration", "agreeToTerms")) {
         reqData.declarations = {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
-          membershipFormPath: "/uploads/membership-form.pdf",
-          applicationSignaturePath: "/uploads/app-signature.pdf",
         };
       }
 
@@ -1579,6 +1741,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             },
           }
         );
+        console.log("Req", JSON.stringify(reqData));
 
         if (response.status === 200 || response.status === 201) {
           const updatedMember = response.data;

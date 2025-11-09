@@ -101,6 +101,42 @@ export default function Step5ProposerDeclaration() {
     }
   }, [isLoading, validMembers, executiveMembers, proposer1Id, proposer2Id]);
 
+  const fetchSignatureForMember = async (memberId: string) => {
+    if (!session?.user?.token) return "";
+    try {
+      const response = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/member/get_member_signature/${memberId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      const payload = response.data?.data || response.data || {};
+      return (
+        payload.signaturePath ||
+        payload.signedDocumentPath ||
+        payload.proposerSignaturePath ||
+        ""
+      );
+    } catch (error) {
+      console.error("Failed to fetch signature for member", memberId, error);
+      return "";
+    }
+  };
+
+  const getFallbackSignature = (member: any) =>
+    member?.signaturePath ||
+    member?.signature_path ||
+    member?.proposerSignaturePath ||
+    member?.executiveProposerSignaturePath ||
+    member?.proposer?.signaturePath ||
+    member?.executiveProposer?.signaturePath ||
+    member?.declarations?.applicationSignaturePath ||
+    member?.declarations?.signaturePath ||
+    "";
+
   // Handle proposer 1 selection
   const handleProposer1Select = (memberId: any) => {
     const selectedMember = validMembers.find(
@@ -114,6 +150,15 @@ export default function Step5ProposerDeclaration() {
         "proposer1.address",
         selectedMember.complianceDetails?.fullAddress || ""
       );
+      const fallbackSignature = getFallbackSignature(selectedMember);
+      if (fallbackSignature) {
+        setValue("proposer1.signaturePath", fallbackSignature);
+      }
+      fetchSignatureForMember(memberId).then((signaturePath) => {
+        if (signaturePath) {
+          setValue("proposer1.signaturePath", signaturePath);
+        }
+      });
     }
   };
 
@@ -130,6 +175,15 @@ export default function Step5ProposerDeclaration() {
         selectedMember.complianceDetails?.fullAddress || ""
       );
       setValue("proposer2.membershipId", memberId);
+      const fallbackSignature = getFallbackSignature(selectedMember);
+      if (fallbackSignature) {
+        setValue("proposer2.signaturePath", fallbackSignature);
+      }
+      fetchSignatureForMember(memberId).then((signaturePath) => {
+        if (signaturePath) {
+          setValue("proposer2.signaturePath", signaturePath);
+        }
+      });
     }
   };
 
