@@ -1264,7 +1264,7 @@ export default function DashboardOverview() {
                 <Button
                   variant="default"
                   className="w-full"
-                  onClick={() => navigateToSection("/admin/meetings/add")}
+                  onClick={() => navigateToSection(`/${renderRoleBasedPath(session?.user?.role)}/meetings/add`)}
                 >
                   <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
                 </Button>
