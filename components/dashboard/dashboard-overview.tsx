@@ -615,7 +615,7 @@ export default function DashboardOverview() {
           <p className="text-muted-foreground">Welcome back, {session?.user?.name?.split(" ")[0]}</p>
         </div>
         <div className="flex gap-2 mt-4 md:mt-0">
-          <Button onClick={() => navigateToSection("/admin/analytics")}>
+          <Button onClick={() => navigateToSection(`/${renderRoleBasedPath(session?.user?.role)}/analytics`)}>
             <TrendingUp className="mr-2 h-4 w-4" /> View Analytics
           </Button>
         </div>
@@ -742,7 +742,7 @@ export default function DashboardOverview() {
                             className="text-primary"
                             onClick={() =>
                               navigateToSection(
-                                `/admin/membership-fees/${fee.billingId}/edit`
+                                `/${renderRoleBasedPath(session?.user?.role)}/membership-fees/${fee.billingId}/edit`
                               )
                             }
                           >
@@ -1076,7 +1076,7 @@ export default function DashboardOverview() {
                             className="ml-2"
                             onClick={() =>
                               navigateToSection(
-                                `/admin/vehicle/${payment.vehicleId}`
+                                `/${renderRoleBasedPath(session?.user?.role)}/vehicle/${payment.vehicleId}`
                               )
                             }
                           >
