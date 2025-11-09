@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Save,
   CalendarDays,
+  Loader2,
   Calendar,
   CreditCard,
   FileText,
@@ -28,6 +29,7 @@ import {
   EyeIcon,
   EyeOff,
   Key,
+  Eye,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,10 +65,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateMember, type Member, Attachment } from "@/services/api";
+import { updateMember, type Member, Attachment, type MachineryInformation } from "@/services/api";
 import { useForm } from "react-hook-form";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 import { getAuthToken } from "@/services/api";
@@ -117,8 +120,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
               },
             }
           );
-          // Filter labours by assignedTo (membership ID)
-          const memberLabours = response.data.filter((labour: any) => 
+          const memberLabours = response.data.filter((labour: any) =>
             labour.assignedTo === memberId
           );
           setLabours(memberLabours);
@@ -134,13 +136,19 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
   }, [memberId, status, session?.user?.token]);
 
   const getStatusBadge = (status: string) => {
-    const statusMap: { [key: string]: { label: string; variant: "default" | "secondary" | "destructive" | "outline" } } = {
-      "ACTIVE": { label: "Active", variant: "default" },
-      "INACTIVE": { label: "Inactive", variant: "secondary" },
-      "SUSPENDED": { label: "Suspended", variant: "destructive" },
-      "TERMINATED": { label: "Terminated", variant: "destructive" },
+    const statusMap: {
+      [key: string]: {
+        label: string;
+        variant: "default" | "secondary" | "destructive" | "outline";
+      };
+    } = {
+      ACTIVE: { label: "Active", variant: "default" },
+      INACTIVE: { label: "Inactive", variant: "secondary" },
+      SUSPENDED: { label: "Suspended", variant: "destructive" },
+      TERMINATED: { label: "Terminated", variant: "destructive" },
     };
-    const statusInfo = statusMap[status] || { label: status || "Unknown", variant: "outline" };
+    const statusInfo =
+      statusMap[status] || { label: status || "Unknown", variant: "outline" };
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
@@ -154,7 +162,6 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
     router.push(`/${basePath}/labour/${labourId}/edit`);
   };
 
-  // Delete a labour
   const handleDeleteLabour = async (labourId: string) => {
     if (!session?.user.token) {
       toast({
@@ -182,9 +189,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
         toast({
           title: "Success",
           description: "Labour deleted successfully.",
-          variant: "default",
         });
-        // Refresh the labour list
         const updatedResponse = await axios.get(
           `${
             process.env.BACKEND_API_URL || "https://tsmwa.online"
@@ -195,8 +200,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
             },
           }
         );
-        // Filter labours by assignedTo (membership ID)
-        const memberLabours = updatedResponse.data.filter((labour: any) => 
+        const memberLabours = updatedResponse.data.filter((labour: any) =>
           labour.assignedTo === memberId
         );
         setLabours(memberLabours);
@@ -205,7 +209,8 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
       console.error("Error deleting labour:", err);
       toast({
         title: "Error",
-        description: err.response?.data?.message || "Failed to delete labour.",
+        description:
+          err.response?.data?.message || "Failed to delete labour.",
         variant: "destructive",
       });
     } finally {
@@ -253,7 +258,6 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
 
   return (
     <div className="space-y-4">
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -271,7 +275,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {labours.filter(labour => labour.labourStatus === "ACTIVE").length}
+              {labours.filter((labour) => labour.labourStatus === "ACTIVE").length}
             </div>
           </CardContent>
         </Card>
@@ -282,13 +286,12 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {labours.filter(labour => labour.labourStatus !== "ACTIVE").length}
+              {labours.filter((labour) => labour.labourStatus !== "ACTIVE").length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Labours Table */}
       <Table>
         <TableHeader>
           <TableRow>
@@ -321,13 +324,11 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
                   <span>{labour.phoneNumber || "-"}</span>
                 </div>
               </TableCell>
-              <TableCell>
-                <span className="font-medium">{labour.aadharNumber || "-"}</span>
-              </TableCell>
+              <TableCell>{labour.aadharNumber || "-"}</TableCell>
               <TableCell>{getStatusBadge(labour.labourStatus)}</TableCell>
               <TableCell>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
                       <span className="sr-only">Open menu</span>
                       <MoreHorizontal className="h-4 w-4" />
@@ -335,41 +336,20 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => viewLabourDetails(labour.labourId)}>
+                      <Eye className="mr-2 h-4 w-4" /> View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => editLabour(labour.labourId)}>
+                      <Edit className="mr-2 h-4 w-4" /> Edit
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewLabourDetails(labour.labourId);
-                      }}
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => openDeleteDialog(labour.labourId, labour.fullName)}
+                      disabled={isDeleting === labour.labourId}
                     >
-                      <EyeIcon className="h-4 w-4 mr-2" />
-                      View Details
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
-                    {(session?.user?.role === "ADMIN" ||
-                      session?.user?.role === "TSMWA_EDITOR" ||
-                      session?.user?.role === "TQMA_EDITOR") && (
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editLabour(labour.labourId);
-                        }}
-                      >
-                        <PencilIcon className="h-4 w-4 mr-2" />
-                        Edit Labour
-                      </DropdownMenuItem>
-                    )}
-                    {session?.user?.role === "ADMIN" && (
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteDialog(labour.labourId, labour.fullName);
-                        }}
-                        disabled={isDeleting === labour.labourId}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                        {isDeleting === labour.labourId ? "Deleting..." : "Delete"}
-                      </DropdownMenuItem>
-                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -378,13 +358,13 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
         </TableBody>
       </Table>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Labour</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{labourToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete {labourToDelete?.name}? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -755,11 +735,339 @@ export default function MembershipDetailsClient({
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState("");
   const [filePathForUpload, setFilePathForUpload] = useState<string | null>(null);
+  const [showMachineryDialog, setShowMachineryDialog] = useState(false);
+  const [machineryDialogMode, setMachineryDialogMode] = useState<"add" | "edit">("add");
+  const [machineryForm, setMachineryForm] = useState<{
+    branchId: string;
+    machineType: string;
+    customMachineName: string;
+    quantity: string;
+    machineId: number | null;
+  }>({
+    branchId: "",
+    machineType: "",
+    customMachineName: "",
+    quantity: "1",
+    machineId: null,
+  });
+  const [machineryError, setMachineryError] = useState<string | null>(null);
+  const [isSavingMachinery, setIsSavingMachinery] = useState(false);
+  const [machineToDelete, setMachineToDelete] = useState<{
+    branchId: string;
+    machine: MachineryInformation;
+  } | null>(null);
+  const [showDeleteMachineDialog, setShowDeleteMachineDialog] = useState(false);
+  const [isDeletingMachine, setIsDeletingMachine] = useState(false);
 
   const { data: session } = useSession();
   const { toast } = useToast();
 
-  // Add or Edit Document
+  const toBranchIdString = (value: unknown) =>
+    value === null || value === undefined ? "" : String(value);
+
+  const findBranchById = (branchId: string) =>
+    member.branches.find(
+      (branch) => toBranchIdString(branch.id) === branchId
+    );
+
+  const buildBranchPayloadBase = (branch: Member["branches"][number]) => ({
+    id: branch.id,
+    electricalUscNumber: branch.electricalUscNumber,
+    scNumber: branch.scNumber,
+    proprietorType: branch.proprietorType?.toUpperCase() || "OWNED",
+    proprietorStatus: branch.proprietorStatus?.toUpperCase() || "OWNER",
+    sanctionedHP:
+      parseFloat(
+        String(
+          (branch.sanctionedHP as unknown as string) ??
+            (branch as any).sanctionedHp ??
+            "0"
+        )
+      ) || 0,
+    placeOfBusiness: branch.placeOfBusiness,
+  });
+
+  const determineMachineType = (machine: MachineryInformation): string => {
+    const rawIsOther = (machine as any).isOther;
+    const isOther =
+      rawIsOther === "TRUE" || rawIsOther === "true" || rawIsOther === true;
+    if (isOther) return "Others";
+    const name = machine.machineName || (machine as any).customName || "";
+    if (MACHINE_OPTIONS.includes(name)) return name;
+    return "Others";
+  };
+
+  const getMachineDisplayName = (machine: MachineryInformation) => {
+    if (!machine) return "-";
+    if (
+      (machine as any).isOther === "TRUE" ||
+      (machine as any).isOther === "true" ||
+      (machine as any).isOther === true
+    ) {
+      return machine.machineName || (machine as any).customName || "Custom";
+    }
+    return machine.machineName || (machine as any).customName || "-";
+  };
+
+  const openAddMachineryDialog = (preselectedBranchId?: string) => {
+    if (!member.branches.length) {
+      toast({
+        title: "Add Branch First",
+        description: "Please add a branch before managing machinery.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const defaultBranch =
+      preselectedBranchId !== undefined
+        ? findBranchById(preselectedBranchId)
+        : member.branches[0];
+
+    setMachineryDialogMode("add");
+    setMachineryForm({
+      branchId: toBranchIdString(defaultBranch?.id ?? ""),
+      machineType: "",
+      customMachineName: "",
+      quantity: "1",
+      machineId: null,
+    });
+    setMachineryError(null);
+    setShowMachineryDialog(true);
+  };
+
+  const openEditMachineryDialog = (
+    branchId: string,
+    machine: MachineryInformation
+  ) => {
+    const machineType = determineMachineType(machine);
+    const customName =
+      machineType === "Others"
+        ? machine.machineName || (machine as any).customName || ""
+        : "";
+
+    setMachineryDialogMode("edit");
+    setMachineryForm({
+      branchId,
+      machineType,
+      customMachineName: customName,
+      quantity: machine.machineCount?.toString() || "1",
+      machineId: machine.id ?? null,
+    });
+    setMachineryError(null);
+    setShowMachineryDialog(true);
+  };
+
+  const handleSaveMachinery = async () => {
+    if (!session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to manage machinery.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const branch = findBranchById(machineryForm.branchId);
+    if (!branch) {
+      setMachineryError("Please select a branch.");
+      return;
+    }
+
+    if (!machineryForm.machineType) {
+      setMachineryError("Please select a machine type.");
+      return;
+    }
+
+    const isOther = machineryForm.machineType === "Others";
+    const machineName = isOther
+      ? machineryForm.customMachineName.trim()
+      : machineryForm.machineType;
+
+    if (!machineName) {
+      setMachineryError("Please provide a machine name.");
+      return;
+    }
+
+    const quantityNumber = parseInt(machineryForm.quantity, 10);
+    if (!quantityNumber || quantityNumber <= 0) {
+      setMachineryError("Please enter a valid machine count.");
+      return;
+    }
+
+    if (
+      machineryDialogMode === "edit" &&
+      (machineryForm.machineId === null || machineryForm.machineId === undefined)
+    ) {
+      setMachineryError("Invalid machinery record selected for editing.");
+      return;
+    }
+
+    const branchPayload: any = buildBranchPayloadBase(branch);
+
+    const machinePayload = {
+      machineName,
+      isOther: isOther ? "TRUE" : "FALSE",
+      machineCount: quantityNumber,
+    };
+
+    if (machineryDialogMode === "add") {
+      branchPayload.newMachineryInformations = [machinePayload];
+    } else {
+      branchPayload.updateMachineryInformations = [
+        {
+          id: machineryForm.machineId,
+          ...machinePayload,
+        },
+      ];
+    }
+
+    const payload: any = {
+      membershipId: member.membershipId,
+      branchDetails: {
+        newBranchSchema: [],
+        updateBranchSchema: [branchPayload],
+        deleteBranchSchema: [],
+      },
+    };
+
+    setIsSavingMachinery(true);
+    setMachineryError(null);
+    try {
+      await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast({
+        title:
+          machineryDialogMode === "add"
+            ? "Machinery Added"
+            : "Machinery Updated",
+        description:
+          machineryDialogMode === "add"
+            ? "New machinery has been added successfully."
+            : "Machinery details updated successfully.",
+      });
+
+      setShowMachineryDialog(false);
+      await refetchMember();
+    } catch (error: any) {
+      console.error("Error saving machinery:", error);
+      setMachineryError(
+        error?.response?.data?.message ||
+          "Failed to save machinery. Please try again."
+      );
+    } finally {
+      setIsSavingMachinery(false);
+    }
+  };
+
+  const openDeleteMachineryDialog = (
+    branchId: string,
+    machine: MachineryInformation
+  ) => {
+    setMachineToDelete({ branchId, machine });
+    setShowDeleteMachineDialog(true);
+  };
+
+  const handleConfirmDeleteMachinery = async () => {
+    if (!machineToDelete) return;
+    if (!session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to manage machinery.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const branch = findBranchById(machineToDelete.branchId);
+    if (!branch) {
+      toast({
+        title: "Branch Not Found",
+        description: "Unable to determine branch details for this machine.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!machineToDelete.machine.id) {
+      toast({
+        title: "Invalid Machine",
+        description: "Selected machine has no identifier attached.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const branchPayload: any = {
+      ...buildBranchPayloadBase(branch),
+      deleteMachineryInformations: [
+        {
+          id: machineToDelete.machine.id,
+        },
+      ],
+    };
+
+    const payload: any = {
+      membershipId: member.membershipId,
+      branchDetails: {
+        newBranchSchema: [],
+        updateBranchSchema: [branchPayload],
+        deleteBranchSchema: [],
+      },
+    };
+
+    setIsDeletingMachine(true);
+    try {
+      await axios.post(
+        `${process.env.BACKEND_API_URL}/api/member/update_member`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      toast({
+        title: "Machinery Deleted",
+        description: "Selected machinery has been removed.",
+      });
+
+      setShowDeleteMachineDialog(false);
+      setMachineToDelete(null);
+      await refetchMember();
+    } catch (error: any) {
+      console.error("Error deleting machinery:", error);
+      toast({
+        title: "Delete Failed",
+        description:
+          error?.response?.data?.message ||
+          "Failed to delete machinery. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingMachine(false);
+    }
+  };
+
+  const branchMachinerySections = member.branches.map((branch) => ({
+    branch,
+    branchId: toBranchIdString(branch.id),
+    machines: branch.machineryInformations || [],
+  }));
+
+  const selectedBranchForDialog = findBranchById(machineryForm.branchId);
+
   const handleDocSubmit = async () => {
     setDocLoading(true);
     setDocError("");
@@ -969,6 +1277,7 @@ export default function MembershipDetailsClient({
     (similarInquiry as any)?.previous_application_details ??
     (similarInquiry as any)?.previousApplicationDetails ??
     "-";
+const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
 
   useEffect(() => {
     if (!session?.user?.token) return;
@@ -2399,66 +2708,96 @@ export default function MembershipDetailsClient({
               <div>
                 <CardTitle>Machinery Inventory</CardTitle>
                 <CardDescription>
-                  List of all registered machinery and equipment
+                  Manage machinery details for each branch
                 </CardDescription>
               </div>
-              <Button>
-                <Machinery className="h-4 w-4 mr-2" />
-                Add Machinery
-              </Button>
+              
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Machine Name</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {member.machineryInformations.map((machine) => (
-                    <TableRow key={machine.id}>
-                      <TableCell className="font-medium">
-                        {machine.machineName}
-                      </TableCell>
-                      <TableCell>{machine.machineCount}</TableCell>
-                      <TableCell>Main Facility</TableCell>
-                      <TableCell>
-                        <Badge variant="default">Operational</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {member.branches.flatMap((branch) =>
-                    branch.machineryInformations.map((machine) => (
-                      <TableRow key={`${branch.id}-${machine.id}`}>
-                        <TableCell className="font-medium">
-                          {machine.machineName}
-                        </TableCell>
-                        <TableCell>{machine.machineCount}</TableCell>
-                        <TableCell>{branch.placeOfBusiness}</TableCell>
-                        <TableCell>
-                          <Badge variant="default">Operational</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                  {member.machineryInformations.length === 0 &&
-                    member.branches.every(
-                      (branch) => branch.machineryInformations.length === 0
-                    ) && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={4}
-                          className="text-center py-4 text-muted-foreground"
+              {!branchMachinerySections.length ? (
+                <p className="text-sm text-muted-foreground">
+                  No branches available. Add a branch to start managing machinery.
+                </p>
+              ) : (
+                <div className="space-y-6">
+                  {branchMachinerySections.map(({ branch, branchId, machines }) => (
+                    <div
+                      key={branchId || branch.placeOfBusiness || `branch-${branchId}`}
+                      className="space-y-3 rounded-lg border p-4"
+                    >
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <h4 className="text-base font-semibold text-primary">
+                            {branch.placeOfBusiness || `Branch ${branchId || ""}`}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            USC: {branch.electricalUscNumber || "-"} • SC:{" "}
+                            {branch.scNumber || "-"}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openAddMachineryDialog(branchId)}
                         >
-                          No machinery records found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                </TableBody>
-              </Table>
+                          <Plus className="mr-2 h-4 w-4" /> Add Machine
+                        </Button>
+                      </div>
+
+                      {machines.length ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Machine</TableHead>
+                              <TableHead>Quantity</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {machines.map((machine) => (
+                              <TableRow key={machine.id ?? `${machine.machineName}-${machine.machineCount}`}>
+                                <TableCell className="font-medium">
+                                  {getMachineDisplayName(machine)}
+                                </TableCell>
+                                <TableCell>{machine.machineCount}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        openEditMachineryDialog(branchId, machine)
+                                      }
+                                      aria-label="Edit machinery"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="text-destructive hover:text-destructive"
+                                      onClick={() =>
+                                        openDeleteMachineryDialog(branchId, machine)
+                                      }
+                                      aria-label="Delete machinery"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          No machinery recorded for this branch.
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -3047,6 +3386,190 @@ export default function MembershipDetailsClient({
           </Dialog>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={showMachineryDialog}
+        onOpenChange={(open) => {
+          setShowMachineryDialog(open);
+          if (!open) {
+            setMachineryError(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {machineryDialogMode === "add"
+                ? "Add Machinery"
+                : "Edit Machinery"}
+            </DialogTitle>
+            <DialogDescription>
+              Manage machinery details for the selected branch.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Select Branch</Label>
+              <Select
+                value={machineryForm.branchId}
+                onValueChange={(value) =>
+                  setMachineryForm((prev) => ({ ...prev, branchId: value }))
+                }
+                disabled={machineryDialogMode === "edit"}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {member.branches.map((branch) => (
+                    <SelectItem
+                      key={toBranchIdString(branch.id)}
+                      value={toBranchIdString(branch.id)}
+                    >
+                      {branch.placeOfBusiness || `Branch ${branch.id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Machine Type</Label>
+              <Select
+                value={machineryForm.machineType}
+                onValueChange={(value) =>
+                  setMachineryForm((prev) => ({
+                    ...prev,
+                    machineType: value,
+                    customMachineName:
+                      value === "Others" ? prev.customMachineName : "",
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select machine type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MACHINE_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {machineryForm.machineType === "Others" && (
+              <div className="space-y-2">
+                <Label>Machine Name</Label>
+                <Input
+                  placeholder="Enter machine name"
+                  value={machineryForm.customMachineName}
+                  onChange={(event) =>
+                    setMachineryForm((prev) => ({
+                      ...prev,
+                      customMachineName: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Quantity</Label>
+              <Input
+                type="number"
+                min={1}
+                value={machineryForm.quantity}
+                onChange={(event) =>
+                  setMachineryForm((prev) => ({
+                    ...prev,
+                    quantity: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            {machineryError ? (
+              <p className="text-sm text-destructive">{machineryError}</p>
+            ) : null}
+
+            {selectedBranchForDialog ? (
+              <div className="rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                Managing machinery for{" "}
+                <span className="font-semibold text-primary">
+                  {selectedBranchForDialog.placeOfBusiness ||
+                    `Branch ${selectedBranchForDialog.id}`}
+                </span>
+                .
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleSaveMachinery} disabled={isSavingMachinery}>
+              {isSavingMachinery ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showDeleteMachineDialog}
+        onOpenChange={(open) => {
+          setShowDeleteMachineDialog(open);
+          if (!open) {
+            setMachineToDelete(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" />
+              Delete Machinery
+            </DialogTitle>
+            <DialogDescription>
+              {machineToDelete?.machine
+                ? `Are you sure you want to delete ${getMachineDisplayName(
+                    machineToDelete.machine
+                  )} from ${
+                    findBranchById(machineToDelete.branchId)?.placeOfBusiness ||
+                    "this branch"
+                  }?`
+                : "Selected machinery will be deleted permanently."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDeleteMachinery}
+              disabled={isDeletingMachine}
+            >
+              {isDeletingMachine ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

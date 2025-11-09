@@ -260,6 +260,25 @@ export default function MeetingsList() {
       return;
     }
 
+    const meeting = meetings.find((item) => item.meetId === meetingId);
+    if (!meeting) {
+      toast({
+        title: "Meeting Not Found",
+        description: "Unable to find meeting details. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (meeting.status !== "CANCELLED") {
+      toast({
+        title: "Action Required",
+        description: "Cancel the meeting first in order to delete it.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsDeleting(true);
       await axios.delete(`${process.env.BACKEND_API_URL}/api/meeting/delete_meet/${meetingId}`, {
@@ -713,11 +732,12 @@ export default function MeetingsList() {
                                     Delete Meeting
                                   </DialogTitle>
                                   <DialogDescription>
-                                    Are you sure you want to delete meeting{" "}
+                                  {meeting.status?.toUpperCase() !== "CANCELLED" ? "Cancel the meeting first in order to delete it." : 
+                                   <> Are you sure you want to delete meeting{" "}
                                     <span className="font-semibold">
                                       {meeting.meetId}
                                     </span>
-                                    ? This action cannot be undone.
+                                    ? This action cannot be undone.</>}
                                   </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter className="gap-2">
@@ -732,7 +752,7 @@ export default function MeetingsList() {
                                       onClick={() =>
                                         handleDeleteMeeting(meeting.meetId)
                                       }
-                                      disabled={isDeleting}
+                                      disabled={isDeleting || meeting.status?.toUpperCase() !== "CANCELLED"}
                                     >
                                       Delete
                                     </Button>
