@@ -1049,31 +1049,41 @@ export default function MembershipDetailsClient({
       }
       let payload: any = { membershipId: member.membershipId };
       if (editLicenseType) {
-        payload.complianceDetails = { ...member.complianceDetails };
+        payload.complianceDetails = {};
         if (editLicenseType === "gst") {
-          payload.complianceDetails.gstInCertificatePath = filePath;
-          if (editLicenseExpiry) payload.complianceDetails.gstExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber) payload.complianceDetails.gstInNumber = editLicenseNumber;
+          if (filePath) payload.complianceDetails.gstInCertificatePath = filePath;
+          if (editLicenseExpiry)
+            payload.complianceDetails.gstExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber)
+            payload.complianceDetails.gstInNumber = editLicenseNumber;
         } else if (editLicenseType === "factory") {
-          payload.complianceDetails.factoryLicensePath = filePath;
-          if (editLicenseExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber) payload.complianceDetails.factoryLicenseNumber = editLicenseNumber;
+          if (filePath) payload.complianceDetails.factoryLicensePath = filePath;
+          if (editLicenseExpiry)
+            payload.complianceDetails.factoryLicenseExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber)
+            payload.complianceDetails.factoryLicenseNumber = editLicenseNumber;
         } else if (editLicenseType === "tspcb") {
-          payload.complianceDetails.tspcbCertificatePath = filePath;
-          if (editLicenseExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber) payload.complianceDetails.tspcbOrderNumber = editLicenseNumber;
+          if (filePath) payload.complianceDetails.tspcbCertificatePath = filePath;
+          if (editLicenseExpiry)
+            payload.complianceDetails.tspcbExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber)
+            payload.complianceDetails.tspcbOrderNumber = editLicenseNumber;
         } else if (editLicenseType === "mdl") {
-          payload.complianceDetails.mdlCertificatePath = filePath;
-          if (editLicenseExpiry) payload.complianceDetails.mdlExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber) payload.complianceDetails.mdlNumber = editLicenseNumber;
+          if (filePath) payload.complianceDetails.mdlCertificatePath = filePath;
+          if (editLicenseExpiry)
+            payload.complianceDetails.mdlExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber)
+            payload.complianceDetails.mdlNumber = editLicenseNumber;
         } else if (editLicenseType === "udyam") {
-          payload.complianceDetails.udyamCertificatePath = filePath;
-          if (editLicenseExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber) payload.complianceDetails.udyamCertificateNumber = editLicenseNumber;
+          if (filePath) payload.complianceDetails.udyamCertificatePath = filePath;
+          if (editLicenseExpiry)
+            payload.complianceDetails.udyamCertificateExpiredAt = new Date(editLicenseExpiry).toISOString();
+          if (editLicenseNumber)
+            payload.complianceDetails.udyamCertificateNumber = editLicenseNumber;
         }
       }
       if (!session?.user.token) throw new Error("No auth token");
-      console.log("Update payload:", payload);
+      console.log("Update payload:", JSON.stringify(payload));
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/update_member`,
         payload,

@@ -636,7 +636,7 @@ export default function Step3ComplianceLegal({
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium border-b pb-2 w-full">
-            Representative Details
+            Representative/Partner Details
           </h3>
           <Button
             type="button"
@@ -652,7 +652,7 @@ export default function Step3ComplianceLegal({
               })
             }
           >
-            <Plus className="h-4 w-4 mr-2" /> Add Partner
+            <Plus className="h-4 w-4 mr-2" /> Add More
           </Button>
         </div>
 
@@ -666,7 +666,7 @@ export default function Step3ComplianceLegal({
                     name={`representativeDetails.partners.${index}.name`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Partner Name</FormLabel>
+                        <FormLabel>Representative/Partner Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter partner name" {...field} />
                         </FormControl>
