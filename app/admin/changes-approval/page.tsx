@@ -4,12 +4,12 @@ import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { format } from "date-fns";
-import { 
-  CheckCircle, 
-  XCircle, 
-  Eye, 
-  Clock, 
-  User, 
+import {
+  CheckCircle,
+  XCircle,
+  Eye,
+  Clock,
+  User,
   Calendar,
   AlertCircle,
   Check,
@@ -19,7 +19,8 @@ import {
   Filter,
   Users,
   Receipt,
-  Search
+  Search,
+  UserCog,
 } from "lucide-react";
 
 import Header from "@/components/header";
@@ -110,6 +111,17 @@ interface InvoiceChangeRequest {
   userId: number | null;
 }
 
+interface LabourChangeRequest {
+  id: string;
+  labourId: string;
+  approvalStatus: string;
+  approvedOrDeclinedBy: number | null;
+  note: string | null;
+  updatedData: any;
+  modifiedBy: number;
+  modifiedAt: string;
+}
+
 interface ChangeDetails {
   type: "added" | "updated" | "deleted";
   field: string;
@@ -142,6 +154,7 @@ interface SummaryStats {
   memberChanges: number;
   membershipFeesChanges: number;
   invoiceChanges: number;
+  labourChanges: number;
 }
 
 const ChangesApprovalPage = () => {
@@ -152,6 +165,7 @@ const ChangesApprovalPage = () => {
   const [memberChanges, setMemberChanges] = useState<PendingChange[]>([]);
   const [membershipFeesChanges, setMembershipFeesChanges] = useState<PendingBillRequest[]>([]);
   const [invoiceChanges, setInvoiceChanges] = useState<InvoiceChangeRequest[]>([]);
+  const [labourChanges, setLabourChanges] = useState<LabourChangeRequest[]>([]);
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({
     totalChanges: 0,
     pendingCount: 0,
@@ -159,7 +173,8 @@ const ChangesApprovalPage = () => {
     declinedCount: 0,
     memberChanges: 0,
     membershipFeesChanges: 0,
-    invoiceChanges: 0
+    invoiceChanges: 0,
+    labourChanges: 0,
   });
   
   // UI State
@@ -208,16 +223,25 @@ const ChangesApprovalPage = () => {
           }
         );
 
+        const labourResponse = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/labour/get_labour_change`,
+          {
+            headers: { Authorization: `Bearer ${session.user.token}` },
+          }
+        );
+
         const memberData = memberResponse.data || [];
         const membershipFeesData = membershipFeesResponse.data.pendingRequest || [];
         const invoiceData = invoiceResponse.data.invoiceChangeRequests || [];
+        const labourData = labourResponse.data?.LabourChanges || [];
 
         setMemberChanges(memberData);
         setMembershipFeesChanges(membershipFeesData);
         setInvoiceChanges(invoiceData);
+        setLabourChanges(labourData);
 
         // Calculate summary stats
-        const allChanges = [...memberData, ...membershipFeesData, ...invoiceData];
+        const allChanges = [...memberData, ...membershipFeesData, ...invoiceData, ...labourData];
         const pendingCount = allChanges.filter(c => c.approvalStatus === "PENDING").length;
         const approvedCount = allChanges.filter(c => c.approvalStatus === "APPROVED").length;
         const declinedCount = allChanges.filter(c => c.approvalStatus === "DECLINED").length;
@@ -229,7 +253,8 @@ const ChangesApprovalPage = () => {
           declinedCount,
           memberChanges: memberData.length,
           membershipFeesChanges: membershipFeesData.length,
-          invoiceChanges: invoiceData.length
+          invoiceChanges: invoiceData.length,
+          labourChanges: labourData.length,
         });
 
         console.log(memberData);
@@ -265,6 +290,8 @@ const ChangesApprovalPage = () => {
         if (change.billingId?.toLowerCase().includes(searchTerm)) return true;
         // Search in invoiceId
         if (change.invoiceId?.toLowerCase().includes(searchTerm)) return true;
+        // Search in labourId
+        if (change.labourId?.toLowerCase().includes(searchTerm)) return true;
         // Search in editor/admin names
         if (change.modifiedByEditor?.fullName?.toLowerCase().includes(searchTerm)) return true;
         if (change.approvedByAdmin?.fullName?.toLowerCase().includes(searchTerm)) return true;
@@ -353,6 +380,7 @@ const ChangesApprovalPage = () => {
   const filteredMemberChanges = filterChanges(memberChanges);
   const filteredMembershipFeesChanges = filterChanges(membershipFeesChanges);
   const filteredInvoiceChanges = filterChanges(invoiceChanges);
+  const filteredLabourChanges = filterChanges(labourChanges);
 
     // Generic recursive function to extract all changes from updatedData
   const extractAllChanges = (updatedData: any, prefix: string = ""): any[] => {
@@ -394,7 +422,7 @@ const ChangesApprovalPage = () => {
       const fullFieldName = getFullFieldName(key, prefix);
 
       // Skip metadata fields that shouldn't be shown as changes
-      if (['id', 'membershipId', 'billingId', 'invoiceId', 'createdAt', 'updatedAt', 'modifiedAt', 'modifiedBy'].includes(key)) {
+      if (['id', 'membershipId', 'billingId', 'invoiceId', 'labourId', 'createdAt', 'updatedAt', 'modifiedAt', 'modifiedBy'].includes(key)) {
         continue;
       }
 
@@ -515,8 +543,115 @@ const ChangesApprovalPage = () => {
     return extractAllChanges(updatedData);
   };
 
+  const formatFieldLabel = (label: string) =>
+    label
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (char) => char.toUpperCase())
+      .replace(/_/g, " ")
+      .trim();
+
+  const hasDisplayableValue = (value: any): boolean => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim().length > 0;
+    if (Array.isArray(value)) return value.some((item) => hasDisplayableValue(item));
+    if (typeof value === "object")
+      return Object.values(value).some((item) => hasDisplayableValue(item));
+    return true;
+  };
+
+  const renderChangeValue = (value: any, depth = 0): React.ReactNode => {
+    if (!hasDisplayableValue(value)) {
+      return <span className="italic text-muted-foreground">No additional details</span>;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="italic text-muted-foreground">No items</span>;
+      }
+
+      const allPrimitive = value.every(
+        (item) => typeof item !== "object" || item === null
+      );
+
+      if (allPrimitive) {
+        return (
+          <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+            {value.map((item, index) => (
+              <li key={index}>{renderChangeValue(item, depth + 1)}</li>
+            ))}
+          </ul>
+        );
+      }
+
+      return (
+        <div className="space-y-3">
+          {value.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-md border border-dashed bg-muted/40 p-3"
+            >
+              <p className="text-xs font-semibold uppercase text-muted-foreground">
+                Item {index + 1}
+              </p>
+              <div className="mt-2 text-sm text-muted-foreground">
+                {renderChangeValue(item, depth + 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === "object" && value !== null) {
+      const entries = Object.entries(value).filter(([, val]) =>
+        hasDisplayableValue(val)
+      );
+
+      if (entries.length === 0) {
+        return <span className="italic text-muted-foreground">No details</span>;
+      }
+
+      return (
+        <div className="space-y-2">
+          {entries.map(([key, val]) => (
+            <div key={key} className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">
+                {formatFieldLabel(key)}
+              </p>
+              <div className="text-sm text-muted-foreground">
+                {renderChangeValue(val, depth + 1)}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      const isoDatePattern = /^\d{4}-\d{2}-\d{2}/;
+      if (isoDatePattern.test(trimmed)) {
+        const date = new Date(trimmed);
+        if (!isNaN(date.getTime())) {
+          return format(date, "MMM dd, yyyy");
+        }
+      }
+      return trimmed;
+    }
+
+    if (typeof value === "number") {
+      return value.toLocaleString();
+    }
+
+    if (typeof value === "boolean") {
+      return value ? "Yes" : "No";
+    }
+
+    return String(value);
+  };
+
   // Generic approval/decline handlers
-  const handleApprove = async (change: any, type: 'member' | 'membershipFees' | 'invoice') => {
+  const handleApprove = async (change: any, type: 'member' | 'membershipFees' | 'invoice' | 'labour') => {
     if (!session?.user?.token) return;
 
     setIsProcessing(true);
@@ -567,6 +702,24 @@ const ChangesApprovalPage = () => {
             c.id === change.id ? { ...c, approvalStatus: "APPROVED" } : c
           ));
           break;
+
+        case 'labour':
+          response = await axios.post(
+            `${process.env.BACKEND_API_URL}/api/labour/approved_labour_change`,
+            {
+              id: change.id,
+              action: "APPROVED",
+              note: "Approved by admin",
+            },
+            { headers: { Authorization: `Bearer ${session.user.token}` } }
+          );
+          updateFunction = () =>
+            setLabourChanges(prev =>
+              prev.map(c =>
+                c.id === change.id ? { ...c, approvalStatus: "APPROVED" } : c
+              )
+            );
+          break;
       }
 
       if (response?.status === 200) {
@@ -594,7 +747,7 @@ const ChangesApprovalPage = () => {
     }
   };
 
-  const handleDecline = async (change: any, type: 'member' | 'membershipFees' | 'invoice') => {
+  const handleDecline = async (change: any, type: 'member' | 'membershipFees' | 'invoice' | 'labour') => {
     if (!session?.user?.token) return;
 
     if (!declineNote.trim()) {
@@ -656,6 +809,24 @@ const ChangesApprovalPage = () => {
             c.id === change.id ? { ...c, approvalStatus: "DECLINED" } : c
           ));
           break;
+
+        case 'labour':
+          response = await axios.post(
+            `${process.env.BACKEND_API_URL}/api/labour/approved_labour_change`,
+            {
+              id: change.id,
+              action: "DECLINED",
+              note: declineNote.trim(),
+            },
+            { headers: { Authorization: `Bearer ${session.user.token}` } }
+          );
+          updateFunction = () =>
+            setLabourChanges(prev =>
+              prev.map(c =>
+                c.id === change.id ? { ...c, approvalStatus: "DECLINED" } : c
+              )
+            );
+          break;
       }
 
       if (response?.status === 200) {
@@ -688,11 +859,15 @@ const ChangesApprovalPage = () => {
     if (!selectedChange || !declineNote.trim()) return;
     
     // Determine the type based on the selected change
-    let type: 'member' | 'membershipFees' | 'invoice';
-    if (selectedChange.membershipId) {
+    let type: 'member' | 'membershipFees' | 'invoice' | 'labour';
+    if (selectedChange.type) {
+      type = selectedChange.type;
+    } else if (selectedChange.membershipId) {
       type = 'member';
     } else if (selectedChange.billingId) {
       type = 'membershipFees';
+    } else if (selectedChange.labourId) {
+      type = 'labour';
     } else {
       type = 'invoice';
     }
@@ -781,7 +956,7 @@ const ChangesApprovalPage = () => {
         </div>
 
         {/* Category Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -813,6 +988,18 @@ const ChangesApprovalPage = () => {
                 <div>
                   <p className="text-sm font-medium">Invoice Changes</p>
                   <p className="text-lg font-bold">{summaryStats.invoiceChanges}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <UserCog className="h-6 w-6 text-amber-500" />
+                <div>
+                  <p className="text-sm font-medium">Labour Changes</p>
+                  <p className="text-lg font-bold">{summaryStats.labourChanges}</p>
                 </div>
               </div>
             </CardContent>
@@ -887,7 +1074,7 @@ const ChangesApprovalPage = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="members" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Members ({filteredMemberChanges.length})
@@ -900,6 +1087,10 @@ const ChangesApprovalPage = () => {
                <Receipt className="h-4 w-4" />
                Invoices ({filteredInvoiceChanges.length})
              </TabsTrigger>
+            <TabsTrigger value="labour" className="flex items-center gap-2">
+              <UserCog className="h-4 w-4" />
+              Labour ({filteredLabourChanges.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="space-y-4">
@@ -1156,6 +1347,117 @@ const ChangesApprovalPage = () => {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="labour" className="space-y-4">
+            {filteredLabourChanges.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Labour Changes</h3>
+                  <p className="text-muted-foreground text-center">
+                    All labour changes have been processed.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {filteredLabourChanges.map((change) => (
+                  <Card key={change.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <UserCog className="h-5 w-5 text-amber-500" />
+                            <span className="font-semibold">{change.labourId}</span>
+                          </div>
+                          <Badge variant="secondary">Updated</Badge>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            {format(new Date(change.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
+                          </div>
+                          <Badge
+                            variant={
+                              change.approvalStatus === "PENDING"
+                                ? "destructive"
+                                : change.approvalStatus === "APPROVED"
+                                ? "default"
+                                : "destructive"
+                            }
+                          >
+                            {change.approvalStatus}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="mb-4 text-sm text-muted-foreground space-y-1">
+                        {change.updatedData?.fullName && (
+                          <div>
+                            <span className="font-medium">Full Name:</span> {change.updatedData.fullName}
+                          </div>
+                        )}
+                        {change.updatedData?.phoneNumber && (
+                          <div>
+                            <span className="font-medium">Phone:</span> {change.updatedData.phoneNumber}
+                          </div>
+                        )}
+                        {change.updatedData?.labourStatus && (
+                          <div>
+                            <span className="font-medium">Status:</span> {change.updatedData.labourStatus}
+                          </div>
+                        )}
+                        {change.updatedData?.assignedTo && (
+                          <div>
+                            <span className="font-medium">Assigned To:</span> {change.updatedData.assignedTo}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedChange({ ...change, type: 'labour' });
+                            setShowDetailsDialog(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Show Changes
+                        </Button>
+
+                        {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleApprove(change, 'labour')}
+                            disabled={isProcessing}
+                            className="bg-primary hover:bg-primary/90"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Approve
+                          </Button>
+                        )}
+
+                        {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDecline(change, 'labour')}
+                            disabled={isProcessing}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Decline
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {/* Details Dialog */}
@@ -1164,7 +1466,12 @@ const ChangesApprovalPage = () => {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Change Details - {selectedChange?.membershipId || selectedChange?.billingId || selectedChange?.invoiceId}
+                Change Details -
+                {" "}
+                {selectedChange?.membershipId ||
+                  selectedChange?.billingId ||
+                  selectedChange?.invoiceId ||
+                  selectedChange?.labourId}
               </DialogTitle>
               <DialogDescription>
                 Review the changes made on{" "}
@@ -1186,6 +1493,9 @@ const ChangesApprovalPage = () => {
                     case 'invoice':
                       changes = extractInvoiceChanges(selectedChange.updatedData);
                       break;
+                    case 'labour':
+                      changes = extractAllChanges(selectedChange.updatedData);
+                      break;
                   }
 
                   return changes.map((change, index) => (
@@ -1203,11 +1513,9 @@ const ChangesApprovalPage = () => {
                       </CardHeader>
                       <CardContent>
                         <p className="text-sm text-muted-foreground mb-2">{change.description}</p>
-                        {change.newValue && (
-                          <div className="bg-muted p-3 rounded-md">
-                            <pre className="text-xs overflow-x-auto">
-                              {JSON.stringify(change.newValue, null, 2)}
-                            </pre>
+                        {hasDisplayableValue(change.newValue) && (
+                          <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                            {renderChangeValue(change.newValue)}
                           </div>
                         )}
                       </CardContent>

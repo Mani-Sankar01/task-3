@@ -945,6 +945,8 @@ export default function MembershipDetailsClient({
         }
       );
 
+      console.log("Payload:", payload);
+
       toast({
         title:
           machineryDialogMode === "add"
