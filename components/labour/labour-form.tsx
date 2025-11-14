@@ -43,6 +43,14 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import { FileUpload } from "@/components/ui/file-upload";
 import PopupMessage from "@/components/ui/popup-message";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
 import { renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -125,6 +133,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     title: "",
     message: "",
   });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const originalDataRef = useRef<FormValues | null>(null);
 
   const form = useForm<FormValues>({
@@ -652,13 +661,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
   };
 
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   const handlePopupClose = () => {
@@ -1302,6 +1310,26 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         }}
         showCloseButton={false}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

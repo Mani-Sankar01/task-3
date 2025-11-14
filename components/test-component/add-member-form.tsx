@@ -27,6 +27,14 @@ import { uploadFile } from "@/lib/client-file-upload";
 import { useToast } from "@/hooks/use-toast";
 import { renderRoleBasedPath } from "@/lib/utils";
 import PopupMessage from "@/components/ui/popup-message";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 // import { addMemberAction } from "@/app/actions/member-actions";
 
 // Define the form schema
@@ -909,14 +917,15 @@ const AddMemberForm = () => {
     }
   };
 
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All unsaved changes will be lost."
-      )
-    ) {
-      router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.push(`/${renderRoleBasedPath(session?.user.role)}/memberships`);
   };
 
   const handleBack = () => {
@@ -1534,6 +1543,26 @@ const AddMemberForm = () => {
           variant: "default",
         }}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

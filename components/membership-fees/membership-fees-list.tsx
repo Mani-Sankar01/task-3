@@ -45,6 +45,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 
@@ -81,6 +89,9 @@ export default function MembershipFeesList() {
   const [memberOptions, setMemberOptions] = useState<any[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [feeToDelete, setFeeToDelete] = useState<{ id: string; billingId?: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   // Remove: const statistics = getMembershipFeeStatistics();
   // Add dynamic statistics calculation from fees:
   const totalFees = fees.length;
@@ -330,43 +341,45 @@ export default function MembershipFeesList() {
   };
 
   // Delete a fee
-  const handleDeleteFee = async (feeId: string) => {
-    console.log("Delete requested for:", feeId);
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this membership fee? This action cannot be undone."
-    );
-    console.log("Delete confirmation result:", confirmDelete);
-    if (!confirmDelete) return;
+  const openDeleteDialog = (feeId: string, billingId?: string) => {
+    setFeeToDelete({ id: feeId, billingId });
+    setShowDeleteDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setFeeToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!feeToDelete) return;
 
     if (sessionStatus !== "authenticated" || !session?.user?.token) {
-      console.warn("Delete aborted: missing authentication token");
       toast({
         title: "Error",
         description: "Authentication required to delete membership fee.",
         variant: "destructive",
       });
+      closeDeleteDialog();
       return;
     }
 
+    setIsDeleting(true);
     try {
-      console.log("Deleting membership fee:", feeId);
-      console.log("Calling delete API with token...");
       const response = await axios.delete(
         `${
           process.env.BACKEND_API_URL || "https://tsmwa.online"
-        }/api/bill/delete_bill/${feeId}`,
+        }/api/bill/delete_bill/${feeToDelete.id}`,
         {
           headers: {
             Authorization: `Bearer ${session.user.token}`,
           },
         }
       );
-      console.log("Delete API response status:", response.status);
-      console.log("Delete successful for:", feeId);
 
       setFees((prevFees) => {
         const updatedFees = prevFees.filter(
-          (fee) => fee.billingId !== feeId
+          (fee) => fee.billingId !== feeToDelete.id
         );
         if (
           currentPage > 1 &&
@@ -378,9 +391,10 @@ export default function MembershipFeesList() {
       });
 
       toast({
-        title: "Deleted",
+        title: "Success",
         description: "Membership fee deleted successfully.",
       });
+      closeDeleteDialog();
     } catch (error: any) {
       console.error("Failed to delete membership fee:", error);
       toast({
@@ -390,6 +404,8 @@ export default function MembershipFeesList() {
           "Failed to delete membership fee. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -802,15 +818,16 @@ export default function MembershipFeesList() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (fee.billingId) {
-                                    handleDeleteFee(fee.billingId);
+                                    openDeleteDialog(fee.billingId, fee.billingId);
                                   } else {
                                     console.warn("Missing billingId for fee:", fee);
                                   }
                                 }}
+                                className="text-red-600"
                               >
-                                  <Trash2 className="h-4 w-4 text-red-600" />   
-                                  Delete
-                                </DropdownMenuItem>
+                                <Trash2 className="h-4 w-4" />   
+                                Delete
+                              </DropdownMenuItem>
                               )}
                               {/* You may want to disable delete if not supported by API */}
                             </DropdownMenuContent>
@@ -885,6 +902,38 @@ export default function MembershipFeesList() {
           </div>
         </>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Membership Fee</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this membership fee? This action cannot be
+              undone and will permanently remove the fee record.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Fee"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

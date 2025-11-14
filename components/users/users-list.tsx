@@ -40,11 +40,20 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { UserRole, UserStatus } from "@/data/users";
 import { formatDate, renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "next-auth/react";
 import axios from "axios";
+import { Loader2 } from "lucide-react";
 
 // User interface
 interface User {
@@ -81,6 +90,9 @@ export default function UsersList() {
     key: keyof User;
     direction: "ascending" | "descending";
   } | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load users data
   useEffect(() => {
@@ -248,8 +260,18 @@ export default function UsersList() {
     }
   };
 
-  const handleDeleteUser = (id: number) => {
-    if (status !== "authenticated" || !session?.user?.token) {
+  const openDeleteDialog = (id: number, name: string) => {
+    setUserToDelete({ id, name });
+    setShowDeleteDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setUserToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!userToDelete || status !== "authenticated" || !session?.user?.token) {
       toast({
         title: "Error",
         description: "Authentication required",
@@ -258,35 +280,33 @@ export default function UsersList() {
       return;
     }
 
-    if (window.confirm("Are you sure you want to delete this user?")) {
-      const deleteUser = async () => {
-        try {
-          await axios.delete(
-            `${process.env.BACKEND_API_URL}/api/user/delete_user/${id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${session.user.token}`,
-              },
-            }
-          );
-
-          const updatedUsers = users.filter((user) => user.id !== id);
-          setUsers(updatedUsers);
-          toast({
-            title: "Success",
-            description: "User deleted successfully",
-          });
-        } catch (error: any) {
-          console.error("Error deleting user:", error);
-          toast({
-            title: "Error",
-            description: "Failed to delete user",
-            variant: "destructive",
-          });
+    setIsDeleting(true);
+    try {
+      await axios.delete(
+        `${process.env.BACKEND_API_URL}/api/user/delete_user/${userToDelete.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
         }
-      };
+      );
 
-      deleteUser();
+      const updatedUsers = users.filter((user) => user.id !== userToDelete.id);
+      setUsers(updatedUsers);
+      toast({
+        title: "Success",
+        description: "User deleted successfully",
+      });
+      closeDeleteDialog();
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -534,7 +554,7 @@ export default function UsersList() {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
-                            onClick={() => handleDeleteUser(user.id)}
+                            onClick={() => openDeleteDialog(user.id, user.fullName)}
                             className="text-red-600"
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
@@ -603,6 +623,38 @@ export default function UsersList() {
             </div>
           </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete <strong>{userToDelete?.name}</strong>? This action cannot be
+                undone and will permanently remove the user record.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete User"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

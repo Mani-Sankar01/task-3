@@ -693,7 +693,11 @@ export default function MembershipDetailsClient({
       await refetchMember();
     } catch (error) {
       console.error("Error updating status:", error);
-      alert("Failed to update status. Please try again.");
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -713,7 +717,11 @@ export default function MembershipDetailsClient({
         await refetchMember();
       } catch (error) {
         console.error("Error updating status:", error);
-        alert("Failed to update status. Please try again.");
+        toast({
+          title: "Error",
+          description: "Failed to update status. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -758,6 +766,12 @@ export default function MembershipDetailsClient({
   } | null>(null);
   const [showDeleteMachineDialog, setShowDeleteMachineDialog] = useState(false);
   const [isDeletingMachine, setIsDeletingMachine] = useState(false);
+  const [showDeleteDocDialog, setShowDeleteDocDialog] = useState(false);
+  const [docToDelete, setDocToDelete] = useState<Attachment | null>(null);
+  const [isDeletingDoc, setIsDeletingDoc] = useState(false);
+  const [showDeleteLicenseDialog, setShowDeleteLicenseDialog] = useState(false);
+  const [licenseTypeToDelete, setLicenseTypeToDelete] = useState<string | null>(null);
+  const [isDeletingLicense, setIsDeletingLicense] = useState(false);
 
   const { data: session } = useSession();
   const { toast } = useToast();
@@ -1136,28 +1150,43 @@ export default function MembershipDetailsClient({
       await refetchMember();
     } catch (err: any) {
       setDocError(err.message || "Failed to update document");
-      alert(err.message || "Failed to update document");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update document",
+        variant: "destructive",
+      });
     } finally {
       setDocLoading(false);
     }
   };
 
   // Delete Document
-  const handleDeleteDoc = async (doc: Attachment) => {
-    if (!window.confirm("Are you sure you want to delete this document?")) return;
-    setDocLoading(true);
-    setDocError("");
+  const openDeleteDocDialog = (doc: Attachment) => {
+    setDocToDelete(doc);
+    setShowDeleteDocDialog(true);
+  };
+
+  const confirmDeleteDoc = async () => {
+    if (!docToDelete) return;
+    
     if (!session?.user.token) {
-      alert("No auth token found. Please login again.");
-      setDocLoading(false);
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
+      });
+      setShowDeleteDocDialog(false);
+      setDocToDelete(null);
       return;
     }
+
+    setIsDeletingDoc(true);
+    setDocError("");
     try {
       const payload = {
         membershipId: member.membershipId,
-        attachments: { deleteAttachments: [{ id: doc.id }] },
+        attachments: { deleteAttachments: [{ id: docToDelete.id }] },
       };
-      console.log("Delete payload:", JSON.stringify(payload));
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/update_member`,
         payload,
@@ -1168,15 +1197,20 @@ export default function MembershipDetailsClient({
           },
         }
       );
-      console.log("Delete response:", response);
       if (response.status !== 200 && response.status !== 201) throw new Error("Failed to delete document");
       await refetchMember();
-      toast({ title: "Document deleted", description: "The document was successfully deleted.", variant: "sucess" });
+      toast({ title: "Success", description: "The document was successfully deleted.", variant: "default" });
+      setShowDeleteDocDialog(false);
+      setDocToDelete(null);
     } catch (err: any) {
       setDocError(err.message || "Failed to delete document");
-      alert(err.message || "Failed to delete document");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete document",
+        variant: "destructive",
+      });
     } finally {
-      setDocLoading(false);
+      setIsDeletingDoc(false);
     }
   };
 
@@ -1641,7 +1675,11 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       await refetchMember();
     } catch (err: any) {
       setEditLicenseDocError(err.message || "Failed to update license");
-      alert(err.message || "Failed to update license");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update license",
+        variant: "destructive",
+      });
     } finally {
       setDocLoading(false);
     }
@@ -1707,44 +1745,53 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
     }
   };
 
-  const handleDeleteLicense = async (type: string) => {
-    if (!window.confirm("Are you sure you want to delete this license?")) return;
-    setDocLoading(true);
-    setDocError("");
-    if (!session?.user.token) {
-      alert("No auth token found. Please login again.");
-      setDocLoading(false);
+  const openDeleteLicenseDialog = (type: string) => {
+    setLicenseTypeToDelete(type);
+    setShowDeleteLicenseDialog(true);
+  };
+
+  const confirmDeleteLicense = async () => {
+    if (!licenseTypeToDelete || !session?.user.token) {
+      toast({
+        title: "Error",
+        description: "No auth token found. Please login again.",
+        variant: "destructive",
+      });
+      setShowDeleteLicenseDialog(false);
+      setLicenseTypeToDelete(null);
       return;
     }
+
+    setIsDeletingLicense(true);
+    setDocError("");
     try {
       let payload: any = { membershipId: member.membershipId };
       
       // Create complianceDetails object with only the fields being deleted
       payload.complianceDetails = {};
       
-      if (type === "gst") {
+      if (licenseTypeToDelete === "gst") {
         payload.complianceDetails.gstInNumber = "";
         payload.complianceDetails.gstInCertificatePath = "";
         payload.complianceDetails.gstExpiredAt = null;
-      } else if (type === "factory") {
+      } else if (licenseTypeToDelete === "factory") {
         payload.complianceDetails.factoryLicenseNumber = "";
         payload.complianceDetails.factoryLicensePath = "";
         payload.complianceDetails.factoryLicenseExpiredAt = null;
-      } else if (type === "tspcb") {
+      } else if (licenseTypeToDelete === "tspcb") {
         payload.complianceDetails.tspcbOrderNumber = "";
         payload.complianceDetails.tspcbCertificatePath = "";
         payload.complianceDetails.tspcbExpiredAt = null;
-      } else if (type === "mdl") {
+      } else if (licenseTypeToDelete === "mdl") {
         payload.complianceDetails.mdlNumber = "";
         payload.complianceDetails.mdlCertificatePath = "";
         payload.complianceDetails.mdlExpiredAt = null;
-      } else if (type === "udyam") {
+      } else if (licenseTypeToDelete === "udyam") {
         payload.complianceDetails.udyamCertificateNumber = "";
         payload.complianceDetails.udyamCertificatePath = "";
         payload.complianceDetails.udyamCertificateExpiredAt = null;
       }
       
-      console.log("Delete payload:", JSON.stringify(payload));
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/update_member`,
         payload,
@@ -1755,16 +1802,21 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
           },
         }
       );
-      console.log("Delete response:", response);
       if (response.status !== 200 && response.status !== 201) throw new Error("Failed to delete license");
       setEditLicenseType(null);
-      toast({ title: "License deleted", description: "The license was successfully deleted.", variant: "default" });
+      toast({ title: "Success", description: "The license was successfully deleted.", variant: "default" });
       await refetchMember();
+      setShowDeleteLicenseDialog(false);
+      setLicenseTypeToDelete(null);
     } catch (err: any) {
       setDocError(err.message || "Failed to delete license");
-      alert(err.message || "Failed to delete license");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to delete license",
+        variant: "destructive",
+      });
     } finally {
-      setDocLoading(false);
+      setIsDeletingLicense(false);
     }
   };
 
@@ -1926,7 +1978,11 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       await refetchMember();
     } catch (err: any) {
       setDocError(err.message || "Failed to add license");
-      alert(err.message || "Failed to add license");
+      toast({
+        title: "Error",
+        description: err.message || "Failed to add license",
+        variant: "destructive",
+      });
     } finally {
       setDocLoading(false);
     }
@@ -2833,7 +2889,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                       <TableCell>{attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
                       <TableCell className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteDoc(attachment)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
                         <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
                       </TableCell>
                     </TableRow>
@@ -3097,7 +3153,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         >
                           <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeleteLicense(doc.type)} disabled={docLoading}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
                         <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
                         {doc.type === "gst" && (
                           <Button
@@ -3544,6 +3600,60 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
               disabled={isDeletingMachine}
             >
               {isDeletingMachine ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Document Confirmation Dialog */}
+      <Dialog open={showDeleteDocDialog} onOpenChange={setShowDeleteDocDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDocDialog(false)} disabled={isDeletingDoc}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteDoc} disabled={isDeletingDoc}>
+              {isDeletingDoc ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete License Confirmation Dialog */}
+      <Dialog open={showDeleteLicenseDialog} onOpenChange={setShowDeleteLicenseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete License</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this license? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteLicenseDialog(false)} disabled={isDeletingLicense}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteLicense} disabled={isDeletingLicense}>
+              {isDeletingLicense ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...

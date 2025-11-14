@@ -110,6 +110,9 @@ export default function LeaseQueryList() {
     dateOfLease: "",
     expiryOfLease: "",
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [leaseToDelete, setLeaseToDelete] = useState<{ id: string; leaseQueryId: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load lease queries from API on component mount
   useEffect(() => {
@@ -266,49 +269,71 @@ export default function LeaseQueryList() {
   };
 
   // Delete a query
-  const handleDeleteQuery = async (queryId: string) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this lease query? This action cannot be undone."
-      )
-    ) {
-      try {
-        if (status !== "authenticated" || !session?.user?.token) {
-          alert("Authentication required");
-          return;
+  const openDeleteDialog = (queryId: string, leaseQueryId: string) => {
+    setLeaseToDelete({ id: queryId, leaseQueryId });
+    setShowDeleteDialog(true);
+  };
+
+  const closeDeleteDialog = () => {
+    setShowDeleteDialog(false);
+    setLeaseToDelete(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!leaseToDelete) return;
+
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Error",
+        description: "Authentication required",
+        variant: "destructive",
+      });
+      closeDeleteDialog();
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const response = await axios.delete(
+        `${apiUrl}/api/lease_query/delete_lease_query/${leaseToDelete.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
         }
+      );
 
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const response = await axios.delete(
-          `${apiUrl}/api/lease_query/delete_lease_query/${queryId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
+      console.log("Delete response:", response.data);
+      toast({
+        title: "Success",
+        description: "Lease query deleted successfully!",
+      });
 
-        console.log("Delete response:", response.data);
-        alert("Lease query deleted successfully!");
-
-        // Refresh the list
-        const refreshResponse = await axios.get(
-          `${apiUrl}/api/lease_query/get_all_lease_queries`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.user.token}`,
-            },
-          }
-        );
-
-        if (refreshResponse.data && refreshResponse.data.data) {
-          setQueries(refreshResponse.data.data);
-          setFilteredQueries(refreshResponse.data.data);
+      // Refresh the list
+      const refreshResponse = await axios.get(
+        `${apiUrl}/api/lease_query/get_all_lease_queries`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
         }
-      } catch (error: any) {
-        console.error("Error deleting lease query:", error);
-        alert("Failed to delete lease query. Please try again.");
+      );
+
+      if (refreshResponse.data && refreshResponse.data.data) {
+        setQueries(refreshResponse.data.data);
+        setFilteredQueries(refreshResponse.data.data);
       }
+      closeDeleteDialog();
+    } catch (error: any) {
+      console.error("Error deleting lease query:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete lease query. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -750,7 +775,7 @@ export default function LeaseQueryList() {
                                     className="text-red-600"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleDeleteQuery(query.leaseQueryId);
+                                      openDeleteDialog(query.leaseQueryId, query.leaseQueryId);
                                     }}
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Query
@@ -902,6 +927,38 @@ export default function LeaseQueryList() {
             </Button>
             <Button onClick={handleTransferSubmit} disabled={isSubmittingTransfer}>
               {isSubmittingTransfer ? "Transferring..." : "Transfer"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Lease Query</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{leaseToDelete?.leaseQueryId}</strong>? This action cannot be
+              undone and will permanently remove the lease query record.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDeleteDialog} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Query"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

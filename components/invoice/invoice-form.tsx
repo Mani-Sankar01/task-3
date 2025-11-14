@@ -44,6 +44,14 @@ import {
   Form,
 } from "@/components/ui/form";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import {
   updateInvoice,
@@ -162,6 +170,7 @@ export default function InvoiceForm({
   const [apiInvoice, setApiInvoice] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [showIGST, setShowIGST] = useState(true);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Initialize form with default values or invoice data if editing
   const form = useForm<InvoiceFormValues>({
@@ -763,13 +772,12 @@ export default function InvoiceForm({
 
   // Handle cancel
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All unsaved changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   if (isLoading) {
@@ -1537,6 +1545,26 @@ export default function InvoiceForm({
       </Form>
     </div> 
      </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
    </SidebarInset>
   );
 }

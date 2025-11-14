@@ -24,6 +24,14 @@ import Step4MembershipDocs from "@/components/add-member/step-4-membership-docs"
 import Step5ProposerDeclaration from "@/components/add-member/step-5-proposer-declaration";
 import { uploadFile } from "@/lib/client-file-upload";
 import PopupMessage from "@/components/ui/popup-message";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { renderRoleBasedPath } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -275,6 +283,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
 
   const { data: session, status } = useSession();
   const originalDataRef = useRef<FormValues | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [popupMessage, setPopupMessage] = useState<{
     isOpen: boolean;
     type: "success" | "error" | "warning" | "info";
@@ -904,13 +913,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   };
 
   const handleBack = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All unsaved changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   const nextStep = async () => {
@@ -1915,6 +1923,26 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           message={popupMessage.message}
         />
       )}
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
