@@ -341,6 +341,37 @@ export default function LabourList() {
   const closeDeleteDialog = () => {
     setShowDeleteDialog(false);
     setLabourToDelete(null);
+    // Clean up body styles after dialog closes
+    setTimeout(() => {
+      const body = document.body;
+      if (body) {
+        if (body.style.pointerEvents === "none") {
+          body.style.pointerEvents = "";
+        }
+        if (body.hasAttribute("data-scroll-locked")) {
+          body.removeAttribute("data-scroll-locked");
+        }
+      }
+    }, 100);
+  };
+
+  const handleDeleteDialogChange = (open: boolean) => {
+    setShowDeleteDialog(open);
+    if (!open) {
+      setLabourToDelete(null);
+      // Clean up body styles after dialog closes
+      setTimeout(() => {
+        const body = document.body;
+        if (body) {
+          if (body.style.pointerEvents === "none") {
+            body.style.pointerEvents = "";
+          }
+          if (body.hasAttribute("data-scroll-locked")) {
+            body.removeAttribute("data-scroll-locked");
+          }
+        }
+      }, 100);
+    }
   };
 
   const confirmDelete = async () => {
@@ -784,7 +815,7 @@ export default function LabourList() {
         )}
 
         {/* Delete Confirmation Dialog */}
-        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <Dialog open={showDeleteDialog} onOpenChange={handleDeleteDialogChange}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Delete Labour</DialogTitle>
