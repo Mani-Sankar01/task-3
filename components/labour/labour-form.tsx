@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -125,6 +125,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     title: "",
     message: "",
   });
+  const originalDataRef = useRef<FormValues | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -189,7 +190,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       setAadharPath(labour.aadharPath || "");
 
       // Reset form with labour data including additional documents
-      form.reset({
+      const formData = {
         fullName: labour.fullName || "",
         phoneNumber: labour.phoneNumber || "",
         emailId: labour.emailId || "",
@@ -212,7 +213,11 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
             docName: doc.documentName || doc.docName || "",
             docFilePath: doc.documentPath || doc.docFilePath || "",
           })) || [],
-      });
+      };
+      
+      form.reset(formData);
+      // Store original data for change detection
+      originalDataRef.current = formData;
 
       console.log("Form values after reset:", form.getValues());
     }
@@ -358,7 +363,208 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         return;
       }
 
-      // Prepare API payload
+      // For edit mode, check for changes and only send updated fields
+      if (isEditMode) {
+        const original = originalDataRef.current;
+        if (!original) {
+          setPopupMessage({
+            isOpen: true,
+            type: "error",
+            title: "Error",
+            message: "Original data not loaded. Please refresh the page.",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Helper function to check if a value changed
+        const changed = (key: keyof FormValues) => {
+          const currentValue = data[key];
+          const originalValue = original[key];
+
+          // Handle date comparison
+          if (key === "dob") {
+            const currentDate = currentValue ? format(currentValue as Date, "yyyy-MM-dd") : "";
+            const originalDate = originalValue ? format(originalValue as Date, "yyyy-MM-dd") : "";
+            return currentDate !== originalDate;
+          }
+
+          // Handle array comparison (additionalDocs)
+          if (key === "additionalDocs") {
+            const current = currentValue as any[] || [];
+            const orig = originalValue as any[] || [];
+            if (current.length !== orig.length) return true;
+            return JSON.stringify(current) !== JSON.stringify(orig);
+          }
+
+          // Handle string comparison (normalize empty strings)
+          if (typeof currentValue === "string" && typeof originalValue === "string") {
+            return (currentValue || "") !== (originalValue || "");
+          }
+
+          return currentValue !== originalValue;
+        };
+
+        // Check if photo or aadhar files were uploaded
+        const photoChanged = photoFile !== null || uploadedPhotoPath !== original.photoPath;
+        const aadharChanged = aadharFile !== null || uploadedAadharPath !== original.aadharPath;
+
+        // Build payload with only changed fields
+        const payload: any = {
+          labourId: labour?.labourId || "",
+        };
+
+        // Check each field and add to payload if changed
+        if (changed("fullName")) payload.fullName = data.fullName;
+        if (changed("fatherName")) payload.fatherName = data.fatherName;
+        if (changed("dob")) payload.dob = format(data.dob, "yyyy-MM-dd");
+        if (changed("phoneNumber")) payload.phoneNumber = data.phoneNumber;
+        if (changed("aadharNumber")) payload.aadharNumber = data.aadharNumber;
+        if (changed("permanentAddress")) payload.permanentAddress = data.permanentAddress;
+        if (changed("presentAddress")) payload.presentAddress = data.presentAddress;
+        if (photoChanged) payload.photoPath = uploadedPhotoPath;
+        if (aadharChanged) payload.aadharPath = uploadedAadharPath;
+        
+        // Handle optional fields - only include if they have values and changed
+        if (changed("emailId")) {
+          if (data.emailId && data.emailId.trim() !== "") {
+            payload.emailId = data.emailId;
+          }
+          // If changed to empty, we can optionally exclude it or set it explicitly
+          // For now, we'll exclude it when empty
+        }
+        if (changed("panNumber")) {
+          if (data.panNumber && data.panNumber.trim() !== "") {
+            payload.panNumber = data.panNumber;
+          }
+        }
+        if (changed("esiNumber")) {
+          if (data.esiNumber && data.esiNumber.trim() !== "") {
+            payload.esiNumber = data.esiNumber;
+          }
+        }
+        if (changed("eShramId")) {
+          if (data.eShramId && data.eShramId.trim() !== "") {
+            payload.eShramId = data.eShramId;
+          }
+        }
+        
+        // Handle assignedTo and branchId with special logic
+        const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
+        const newAssignedTo = shouldClearAssignment ? null : (data.assignedTo || "");
+        const originalAssignedTo = original.assignedTo || "";
+        // Compare normalized values (empty string and null are treated as equivalent for comparison)
+        const originalAssignedToNormalized = originalAssignedTo === "" ? null : originalAssignedTo;
+        if (newAssignedTo !== originalAssignedToNormalized) {
+          // Only include assignedTo if it has a value or if we're explicitly clearing it
+          if (shouldClearAssignment || (newAssignedTo && newAssignedTo.trim() !== "")) {
+            payload.assignedTo = newAssignedTo;
+          }
+        }
+        if (changed("branchId")) {
+          if (data.branchId && data.branchId.trim() !== "") {
+            payload.branchId = data.branchId;
+          }
+        }
+        if (changed("labourStatus")) payload.labourStatus = data.labourStatus;
+
+        // Handle additional documents - only if they changed
+        if (changed("additionalDocs")) {
+          const originalDocs = original.additionalDocs || [];
+          const currentDocs = data.additionalDocs || [];
+          
+          // Find new documents (no id) and updated documents (has id but changed)
+          const newDocs: Array<{ docName: string; docFilePath: string }> = [];
+          const updateDocs: Array<{
+            id: number;
+            docName: string;
+            docFilePath: string;
+          }> = [];
+
+          currentDocs.forEach((doc) => {
+            if (doc.id) {
+              // Check if this document actually changed
+              const originalDoc = originalDocs.find((od: any) => od.id === doc.id);
+              if (originalDoc && (
+                originalDoc.docName !== doc.docName ||
+                originalDoc.docFilePath !== doc.docFilePath
+              )) {
+                updateDocs.push({
+                  id: doc.id,
+                  docName: doc.docName,
+                  docFilePath: doc.docFilePath,
+                });
+              }
+            } else {
+              // New document
+              newDocs.push({
+                docName: doc.docName,
+                docFilePath: doc.docFilePath,
+              });
+            }
+          });
+
+          // Check for deleted documents (documents in original but not in current)
+          const deletedDocIds: number[] = [];
+          originalDocs.forEach((origDoc: any) => {
+            if (origDoc.id && !currentDocs.find((cd: any) => cd.id === origDoc.id)) {
+              deletedDocIds.push(origDoc.id);
+            }
+          });
+
+          if (newDocs.length > 0) {
+            payload.newAdditionalDocs = newDocs;
+          }
+          if (updateDocs.length > 0) {
+            payload.updateAdditionalDocs = updateDocs;
+          }
+          if (deletedDocIds.length > 0) {
+            payload.deleteAdditionalDocs = deletedDocIds;
+          }
+        }
+
+        // Check if there are any changes (after processing all fields including additional docs)
+        const hasChanges = Object.keys(payload).length > 1; // More than just labourId
+
+        if (!hasChanges) {
+          toast({
+            title: "No Changes Detected",
+            description: "No changes have been made to the labour data. Please make some changes before submitting.",
+            variant: "default",
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        console.log("API payload (edit mode - only changes):", JSON.stringify(payload));
+
+        // Call API
+        const apiEndpoint = `${
+          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        }/api/labour/update_labour`;
+
+        console.log("Making API call to:", apiEndpoint);
+        const response = await axios.post(apiEndpoint, payload, {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        console.log("API response:", JSON.stringify(response.data));
+
+        toast({
+          title: "Success",
+          description: "Labour updated successfully!",
+        });
+        
+        // Redirect to labour list
+        router.push(`/${renderRoleBasedPath(session?.user?.role)}/labour`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // For add mode, send all required fields and only optional fields that have values
       // If status is ON_BENCH or INACTIVE, set assignedTo to null
       const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
       
@@ -368,75 +574,49 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         fatherName: data.fatherName,
         dob: format(data.dob, "yyyy-MM-dd"),
         phoneNumber: data.phoneNumber,
-        emailId: data.emailId || "",
         aadharNumber: data.aadharNumber,
         permanentAddress: data.permanentAddress,
         presentAddress: data.presentAddress,
         photoPath: uploadedPhotoPath,
         aadharPath: uploadedAadharPath,
-        panNumber: data.panNumber || "",
-        esiNumber: data.esiNumber || "",
-        eShramId: data.eShramId || "",
-        assignedTo: shouldClearAssignment ? null : (data.assignedTo || ""),
-        branchId: data.branchId || "",
         labourStatus: data.labourStatus,
       };
 
-      // Handle additional documents
-      if (data.additionalDocs && data.additionalDocs.length > 0) {
-        if (isEditMode) {
-          // For edit mode: separate new and existing documents
-          const newDocs: Array<{ docName: string; docFilePath: string }> = [];
-          const updateDocs: Array<{
-            id: number;
-            docName: string;
-            docFilePath: string;
-          }> = [];
-
-          data.additionalDocs.forEach((doc) => {
-            // Check if this is an existing document (has an ID)
-            if (doc.id) {
-              // This is an existing document being updated
-              updateDocs.push({
-                id: doc.id,
-                docName: doc.docName,
-                docFilePath: doc.docFilePath,
-              });
-            } else {
-              // This is a new document
-              newDocs.push({
-                docName: doc.docName,
-                docFilePath: doc.docFilePath,
-              });
-            }
-          });
-
-          if (newDocs.length > 0) {
-            payload.newAdditionalDocs = newDocs;
-          }
-
-          if (updateDocs.length > 0) {
-            payload.updateAdditionalDocs = updateDocs;
-          }
-        } else {
-          // For add mode: put all documents directly in additionalDocs
-          payload.additionalDocs = data.additionalDocs.map((doc) => ({
-            docName: doc.docName,
-            docFilePath: doc.docFilePath,
-          }));
-        }
+      // Add optional fields only if they have values
+      if (data.emailId && data.emailId.trim() !== "") {
+        payload.emailId = data.emailId;
+      }
+      if (data.panNumber && data.panNumber.trim() !== "") {
+        payload.panNumber = data.panNumber;
+      }
+      if (data.esiNumber && data.esiNumber.trim() !== "") {
+        payload.esiNumber = data.esiNumber;
+      }
+      if (data.eShramId && data.eShramId.trim() !== "") {
+        payload.eShramId = data.eShramId;
+      }
+      if (!shouldClearAssignment && data.assignedTo && data.assignedTo.trim() !== "") {
+        payload.assignedTo = data.assignedTo;
+      }
+      if (data.branchId && data.branchId.trim() !== "") {
+        payload.branchId = data.branchId;
       }
 
-      console.log("API payload:", JSON.stringify(payload));
+      // Handle additional documents for add mode
+      if (data.additionalDocs && data.additionalDocs.length > 0) {
+        // For add mode: put all documents directly in additionalDocs
+        payload.additionalDocs = data.additionalDocs.map((doc) => ({
+          docName: doc.docName,
+          docFilePath: doc.docFilePath,
+        }));
+      }
 
-      // Call API
-      const apiEndpoint = isEditMode
-        ? `${
-            process.env.BACKEND_API_URL || "https://tsmwa.online"
-          }/api/labour/update_labour`
-        : `${
-            process.env.BACKEND_API_URL || "https://tsmwa.online"
-          }/api/labour/add_labour`;
+      console.log("API payload (add mode):", JSON.stringify(payload));
+
+      // Call API for add mode
+      const apiEndpoint = `${
+        process.env.BACKEND_API_URL || "https://tsmwa.online"
+      }/api/labour/add_labour`;
 
       console.log("Making API call to:", apiEndpoint);
       const response = await axios.post(apiEndpoint, payload, {
@@ -450,9 +630,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
 
       toast({
         title: "Success",
-        description: isEditMode
-          ? "Labour updated successfully!"
-          : "Labour added successfully!",
+        description: "Labour added successfully!",
       });
       
       // Redirect to labour list

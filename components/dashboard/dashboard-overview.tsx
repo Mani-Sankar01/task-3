@@ -201,6 +201,8 @@ export default function DashboardOverview() {
       return;
     }
 
+    console.log("Session token:", session.user.token);
+
     setIsLoading(true);
     setError("");
 

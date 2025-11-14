@@ -1008,6 +1008,12 @@ const ChangesApprovalPage = () => {
     );
   }
 
+  const selectedStatus = selectedChange?.approvalStatus;
+  const canApprove =
+    selectedStatus === "PENDING" || selectedStatus === "DECLINED";
+  const canDecline =
+    selectedStatus === "PENDING" || selectedStatus === "APPROVED";
+
   return (
     <SidebarInset>
       <Header breadcrumbs={[{ label: "Changes Approval" }]} />
@@ -1608,12 +1614,6 @@ const ChangesApprovalPage = () => {
                 })()}
               </div>
             )}
-
-            const selectedStatus = selectedChange?.approvalStatus;
-            const canApprove =
-              selectedStatus === "PENDING" || selectedStatus === "DECLINED";
-            const canDecline =
-              selectedStatus === "PENDING" || selectedStatus === "APPROVED";
 
             <DialogFooter className="flex gap-2">
               <Button
