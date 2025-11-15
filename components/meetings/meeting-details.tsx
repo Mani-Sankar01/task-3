@@ -276,10 +276,14 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
             <h1 className="text-3xl font-bold">{meeting.title}</h1>
             <p className="text-muted-foreground mt-2">{meeting.agenda}</p>
           </div>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
           <Button onClick={handleEdit}>
             <Edit className="mr-2 h-4 w-4" />
             Edit Meeting
           </Button>
+          }
         </div>
       </div>
 
@@ -287,7 +291,23 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         {/* Meeting Information */}
         <Card>
           <CardHeader>
+            <div className="flex items-center justify-between"> 
             <CardTitle>Meeting Information</CardTitle>
+            <Badge
+                variant={
+                  meeting.status === "COMPLETED"
+                    ? "default"
+                    : meeting.status === "SCHEDULED"
+                    ? "secondary"
+                    : "destructive"
+                }
+              >
+                {meeting.status ? 
+                  meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1).toLowerCase() 
+                  : "Unknown"
+                }
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center space-x-3">
@@ -311,22 +331,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
-              <Badge
-                variant={
-                  meeting.status === "COMPLETED"
-                    ? "default"
-                    : meeting.status === "SCHEDULED"
-                    ? "secondary"
-                    : "destructive"
-                }
-              >
-                {meeting.status ? 
-                  meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1).toLowerCase() 
-                  : "Unknown"
-                }
-              </Badge>
-            </div>
+          
           </CardContent>
         </Card>
 

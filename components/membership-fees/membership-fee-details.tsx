@@ -85,9 +85,13 @@ export default function MembershipFeeDetails({
           </Button>
           <h1 className="text-2xl font-bold">Membership Fee Details</h1>
         </div>
-        <Button onClick={handleEdit}>
+        {(session?.data?.user?.role === "ADMIN" ||
+          session?.data?.user?.role === "TQMA_EDITOR" ||
+          session?.data?.user?.role === "TSMWA_EDITOR") &&
+          <Button onClick={handleEdit}>
           <Edit className="mr-2 h-4 w-4" /> Edit
         </Button>
+        }
       </div>
 
       <div className="grid gap-6">

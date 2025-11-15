@@ -1261,15 +1261,18 @@ export default function DashboardOverview() {
                     No upcoming meetings
                   </p>
                 </div>
-              </CardContent>
+              </CardContent> 
               <CardFooter>
+                {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TSMWA_EDITOR" ||
+                session?.user?.role === "TQMA_EDITOR") && (
                 <Button
                   variant="default"
                   className="w-full"
                   onClick={() => navigateToSection(`/${renderRoleBasedPath(session?.user?.role)}/meetings/add`)}
                 >
                   <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
-                </Button>
+                </Button>)}
               </CardFooter>
             </Card>
           </div>

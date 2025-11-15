@@ -292,9 +292,13 @@ export default function VehiclesList() {
               Manage all vehicles and their details
             </CardDescription>
           </div>
-          <Button onClick={addNewVehicle}>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={addNewVehicle}>
             <Plus className="mr-2 h-4 w-4" /> Add Vehicle
           </Button>
+          }
         </CardHeader>
         <CardContent>
           <div className="mb-4">

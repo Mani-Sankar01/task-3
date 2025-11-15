@@ -460,11 +460,15 @@ export default function LabourList() {
             Manage all labour personnel records
           </p>
         </div>
+        {(session?.user?.role === "ADMIN" ||
+          session?.user?.role === "TQMA_EDITOR" ||
+          session?.user?.role === "TSMWA_EDITOR") &&
         <Link href={`/${renderRoleBasedPath(session?.user?.role)}/labour/add`}>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Add Labour
-          </Button>
-        </Link>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Labour
+            </Button>
+          </Link>
+        }
       </div>
 
       <div className="space-y-4">

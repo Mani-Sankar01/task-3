@@ -363,9 +363,13 @@ export default function AllTripsList() {
             <CardTitle className="text-2xl">All Trips</CardTitle>
             <CardDescription>Manage all trips across vehicles</CardDescription>
           </div>
-          <Button onClick={addNewTrip}>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={addNewTrip}>
             <Plus className="mr-2 h-4 w-4" /> Add Trip
           </Button>
+          }
         </CardHeader>
         <CardContent>
           {isLoading || status === "loading" ? (

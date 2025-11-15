@@ -568,11 +568,15 @@ export default function LeaseQueryList() {
               Manage all lease agreements and queries
             </CardDescription>
           </div>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&  
           <div className="flex items-center gap-4">
-            <Button onClick={addNewQuery}>
-              <Plus className="mr-2 h-4 w-4" /> Add Query
-            </Button>
-          </div>
+              <Button onClick={addNewQuery}>
+                <Plus className="mr-2 h-4 w-4" /> Add Query
+              </Button>
+            
+          </div>}
         </CardHeader>
         <CardContent>
           <div className="mb-4">

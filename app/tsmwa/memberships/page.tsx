@@ -391,11 +391,14 @@ const page = () => {
                 Manage all organization memberships
               </CardDescription>
             </div>
+            {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TQMA_EDITOR" ||
+                session?.user?.role === "TSMWA_EDITOR") &&
             <Link href={"/tsmwa/memberships/add"}>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Add Member
               </Button>
-            </Link>
+            </Link>}
           </CardHeader>
           <CardContent>
             <div className="mb-4">

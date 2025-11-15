@@ -218,9 +218,13 @@ export default function VehicleDetailsWithID({ id }: any) {
             </Button>
             <h1 className="text-2xl font-bold">Vehicle Details</h1>
           </div>
-          <Button onClick={handleEdit}>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={handleEdit}>
             <Edit className="mr-2 h-4 w-4" /> Edit Vehicle
           </Button>
+          }
         </div>
         <Card>
           <CardHeader>
@@ -384,9 +388,13 @@ export default function VehicleDetailsWithID({ id }: any) {
                       }
                     }}
                   />
-                  <Button onClick={handleAddTrip}>
+                  {(session?.user?.role === "ADMIN" ||
+                    session?.user?.role === "TQMA_EDITOR" ||
+                    session?.user?.role === "TSMWA_EDITOR") &&  
+                    <Button onClick={handleAddTrip}>
                     <Plus className="mr-2 h-4 w-4" /> Add Trip
                   </Button>
+                  }
                 </div>
               </CardHeader>
               <CardContent>
@@ -400,7 +408,11 @@ export default function VehicleDetailsWithID({ id }: any) {
                         <TableHead>Total Amount</TableHead>
                         <TableHead>Amount Paid</TableHead>
                         <TableHead>Payment Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                        {(session?.user?.role === "ADMIN" ||
+                          session?.user?.role === "TQMA_EDITOR" ||
+                          session?.user?.role === "TSMWA_EDITOR") &&
+                          <TableHead>Actions</TableHead>
+                        }
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -429,7 +441,10 @@ export default function VehicleDetailsWithID({ id }: any) {
                                 trip.paymentStatus.slice(1)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TQMA_EDITOR" ||
+                            session?.user?.role === "TSMWA_EDITOR") &&
+                            <TableCell>
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
@@ -448,7 +463,8 @@ export default function VehicleDetailsWithID({ id }: any) {
                                 Delete
                               </Button>
                             </div>
-                          </TableCell>
+                            </TableCell>
+                          }
                         </TableRow>
                       ))}
                     </TableBody>
@@ -458,9 +474,13 @@ export default function VehicleDetailsWithID({ id }: any) {
                     <p className="text-muted-foreground">
                       No trips found for the selected date range.
                     </p>
-                    <Button onClick={handleAddTrip} className="mt-4">
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TQMA_EDITOR" ||
+                      session?.user?.role === "TSMWA_EDITOR") &&
+                      <Button onClick={handleAddTrip} className="mt-4">
                       <Plus className="mr-2 h-4 w-4" /> Add Trip
                     </Button>
+                    }
                   </div>
                 )}
               </CardContent>

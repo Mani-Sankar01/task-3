@@ -671,9 +671,13 @@ export default function InvoiceList() {
             <CardTitle className="text-2xl">Invoices</CardTitle>
             <CardDescription>Manage all invoices</CardDescription>
           </div>
-          <Button onClick={handleCreateInvoice}>
-            <Plus className="mr-2 h-4 w-4" /> Create Invoice
-          </Button>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={handleCreateInvoice}>
+              <Plus className="mr-2 h-4 w-4" /> Create Invoice
+            </Button>
+          }
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-col sm:flex-row gap-4">

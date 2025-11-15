@@ -111,8 +111,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
         setIsLoading(true);
         try {
           const response = await axios.get(
-            `${
-              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"
             }/api/labour/get_all_labours`,
             {
               headers: {
@@ -175,8 +174,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
     setIsDeleting(labourId);
     try {
       const response = await axios.delete(
-        `${
-          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"
         }/api/labour/delete_labour/${labourId}`,
         {
           headers: {
@@ -191,8 +189,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
           description: "Labour deleted successfully.",
         });
         const updatedResponse = await axios.get(
-          `${
-            process.env.BACKEND_API_URL || "https://tsmwa.online"
+          `${process.env.BACKEND_API_URL || "https://tsmwa.online"
           }/api/labour/get_all_labours`,
           {
             headers: {
@@ -300,7 +297,11 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
             <TableHead>Phone</TableHead>
             <TableHead>Aadhar Number</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "TQMA_EDITOR" ||
+              session?.user?.role === "TSMWA_EDITOR") &&
+              <TableHead>Actions</TableHead>
+            }
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -326,7 +327,10 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
               </TableCell>
               <TableCell>{labour.aadharNumber || "-"}</TableCell>
               <TableCell>{getStatusBadge(labour.labourStatus)}</TableCell>
-              <TableCell>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TQMA_EDITOR" ||
+                session?.user?.role === "TSMWA_EDITOR") &&
+                <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="h-8 w-8 p-0">
@@ -350,9 +354,10 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
                     >
                       <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              }
             </TableRow>
           ))}
         </TableBody>
@@ -398,8 +403,7 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
         setIsLoading(true);
         try {
           const response = await axios.get(
-            `${
-              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"
             }/api/bill/filterBills/null/null/null`,
             {
               headers: {
@@ -515,7 +519,11 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
             <TableHead>Amount</TableHead>
             <TableHead>Paid Amount</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "TQMA_EDITOR" ||
+              session?.user?.role === "TSMWA_EDITOR") &&
+              <TableHead>Actions</TableHead>
+            }
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -527,19 +535,19 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
                   <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
                   <span>
                     {fee.fromDate
-                      ? new Date(fee.fromDate).toLocaleDateString('en-GB', { 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })
+                      ? new Date(fee.fromDate).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })
                       : "-"}{" "}
                     -{" "}
                     {fee.toDate
-                      ? new Date(fee.toDate).toLocaleDateString('en-GB', { 
-                          day: 'numeric', 
-                          month: 'short', 
-                          year: 'numeric' 
-                        })
+                      ? new Date(fee.toDate).toLocaleDateString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric'
+                      })
                       : "-"}
                   </span>
                 </div>
@@ -559,7 +567,10 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
                 </span>
               </TableCell>
               <TableCell>{getStatusBadge(fee.paymentStatus)}</TableCell>
-              <TableCell>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TQMA_EDITOR" ||
+                session?.user?.role === "TSMWA_EDITOR") &&
+                <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     asChild
@@ -585,16 +596,16 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
                     {(session?.user?.role === "ADMIN" ||
                       session?.user?.role === "TSMWA_EDITOR" ||
                       session?.user?.role === "TQMA_EDITOR") && (
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          editFee(fee.billingId);
-                        }}
-                      >
-                        <PencilIcon className="h-4 w-4 mr-2" />
-                        Edit Fee
-                      </DropdownMenuItem>
-                    )}
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            editFee(fee.billingId);
+                          }}
+                        >
+                          <PencilIcon className="h-4 w-4 mr-2" />
+                          Edit Fee
+                        </DropdownMenuItem>
+                      )}
                     {session?.user?.role === "ADMIN" && (
                       <DropdownMenuItem
                         onClick={(e) => {
@@ -607,7 +618,8 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </TableCell>
+                </TableCell>
+              }
             </TableRow>
           ))}
         </TableBody>
@@ -963,7 +975,7 @@ export default function MembershipDetailsClient({
       console.error("Error saving machinery:", error);
       setMachineryError(
         error?.response?.data?.message ||
-          "Failed to save machinery. Please try again."
+        "Failed to save machinery. Please try again."
       );
     } finally {
       setIsSavingMachinery(false);
@@ -1168,7 +1180,7 @@ export default function MembershipDetailsClient({
 
   const confirmDeleteDoc = async () => {
     if (!docToDelete) return;
-    
+
     if (!session?.user.token) {
       toast({
         title: "Error",
@@ -1265,15 +1277,14 @@ export default function MembershipDetailsClient({
     "-";
   const branchSummary = member.branches.length
     ? member.branches
-        .map(
-          (branch) =>
-            `${branch.placeOfBusiness || "Branch"}${
-              branch.electricalUscNumber
-                ? ` (${branch.electricalUscNumber})`
-                : ""
-            }`
-        )
-        .join(", ")
+      .map(
+        (branch) =>
+          `${branch.placeOfBusiness || "Branch"}${branch.electricalUscNumber
+            ? ` (${branch.electricalUscNumber})`
+            : ""
+          }`
+      )
+      .join(", ")
     : "No additional branches";
   const partnerSummary = member.partnerDetails?.length
     ? `${member.partnerDetails.length} partner(s)`
@@ -1296,7 +1307,7 @@ export default function MembershipDetailsClient({
     (similarInquiry as any)?.previous_application_details ??
     (similarInquiry as any)?.previousApplicationDetails ??
     "-";
-const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
+  const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
 
   useEffect(() => {
     if (!session?.user?.token) return;
@@ -1343,7 +1354,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
         console.error("Failed to fetch proposer details:", error);
         setProposerError(
           error?.response?.data?.message ||
-            "Unable to fetch proposer details right now."
+          "Unable to fetch proposer details right now."
         );
         setPrimaryProposerMember(null);
         setExecutiveProposerMember(null);
@@ -1436,31 +1447,31 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
     memberData?: Member | null
   ) => {
     return (
-     <div className="rounded-md border bg-muted/40 px-4 py-3"> 
-       <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+      <div className="rounded-md border bg-muted/40 px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
           {title}
         </p>
-       <div className="py-3 grid grid-cols-5 gap-3">
-        <DetailItem label="Membership ID" value={membershipId || "-"} />
-        <DetailItem
-          label="Applicant Name"
-          value={memberData?.applicantName || "-"}
-        />
-        <DetailItem label="Firm Name" value={memberData?.firmName || "-"} />
-        <DetailItem
-          label="Phone"
-          value={memberData?.phoneNumber1 || memberData?.phoneNumber2 || "-"}
-        />
-        <DetailItem
-          label="Email"
-          value={
-            memberData?.complianceDetails?.emailId ||
-            memberData?.partnerDetails?.[0]?.emailId ||
-            "-"
-          }
-        />
+        <div className="py-3 grid grid-cols-5 gap-3">
+          <DetailItem label="Membership ID" value={membershipId || "-"} />
+          <DetailItem
+            label="Applicant Name"
+            value={memberData?.applicantName || "-"}
+          />
+          <DetailItem label="Firm Name" value={memberData?.firmName || "-"} />
+          <DetailItem
+            label="Phone"
+            value={memberData?.phoneNumber1 || memberData?.phoneNumber2 || "-"}
+          />
+          <DetailItem
+            label="Email"
+            value={
+              memberData?.complianceDetails?.emailId ||
+              memberData?.partnerDetails?.[0]?.emailId ||
+              "-"
+            }
+          />
+        </div>
       </div>
-     </div>
     );
   };
 
@@ -1470,7 +1481,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       // Extract filename from path
       const filename = filePath.split('/').pop() || 'document';
       console.log('Downloading file:', filename, 'from path:', filePath);
-      
+
       const blob = await downloadFile(filename);
       if (blob) {
         // Create download link
@@ -1482,7 +1493,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         toast({
           title: "Download Successful",
           description: `File ${filename} downloaded successfully.`,
@@ -1552,7 +1563,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
     setGstUsername(memberCompliance?.gstInUsername || "");
     setGstPassword(memberCompliance?.gstInPassword || "");
   }, [memberCompliance?.gstInUsername, memberCompliance?.gstInPassword]);
-  
+
   // USC Meter History states
   const [uscMeterHistory, setUscMeterHistory] = useState<USCMeterHistory[]>([]);
   const [isLoadingMeterHistory, setIsLoadingMeterHistory] = useState(false);
@@ -1561,10 +1572,10 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
   // Fetch USC Meter History
   const fetchUSCMeterHistory = async () => {
     if (!session?.user?.token) return;
-    
+
     setIsLoadingMeterHistory(true);
     setMeterHistoryError("");
-    
+
     try {
       const response = await fetch(
         `${process.env.BACKEND_API_URL}/api/member/get_usc_history`,
@@ -1582,12 +1593,12 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       }
 
       const data: USCMeterHistory[] = await response.json();
-      
+
       // Filter history for the current member
       const memberHistory = data.filter(
         (entry) => entry.membershipId === member.membershipId
       );
-      
+
       setUscMeterHistory(data); // store all
     } catch (error) {
       console.error("Error fetching USC meter history:", error);
@@ -1766,10 +1777,10 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
     setDocError("");
     try {
       let payload: any = { membershipId: member.membershipId };
-      
+
       // Create complianceDetails object with only the fields being deleted
       payload.complianceDetails = {};
-      
+
       if (licenseTypeToDelete === "gst") {
         payload.complianceDetails.gstInNumber = "";
         payload.complianceDetails.gstInCertificatePath = "";
@@ -1791,7 +1802,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
         payload.complianceDetails.udyamCertificatePath = "";
         payload.complianceDetails.udyamCertificateExpiredAt = null;
       }
-      
+
       const response = await axios.post(
         `${process.env.BACKEND_API_URL}/api/member/update_member`,
         payload,
@@ -1856,7 +1867,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
     setIsValidatingLicense(true);
     try {
       console.log(`Validating single license field: ${fieldName} with value: ${value}`);
-      
+
       // Build payload with only the specific field
       const payload: any = {};
       const fieldMappings: { [key: string]: string } = {
@@ -1866,7 +1877,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
         mdl: 'mdlNumber',
         udyam: 'udyamCertificateNumber'
       };
-      
+
       const apiFieldName = fieldMappings[fieldName];
       if (apiFieldName) {
         payload[apiFieldName] = value.trim();
@@ -1915,10 +1926,10 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
 
   const handleAddLicenseSubmit = async () => {
     if (!addLicenseType || !session?.user.token) return;
-    
+
     setDocLoading(true);
     setDocError("");
-    
+
     try {
       let filePath = addLicenseFilePath || "";
       if (addLicenseFile) {
@@ -1932,7 +1943,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       }
 
       let payload: any = { membershipId: member.membershipId };
-      
+
       if (addLicenseType === "gst") {
         payload.complianceDetails = { ...member.complianceDetails };
         if (addLicenseExpiry) payload.complianceDetails.gstExpiredAt = new Date(addLicenseExpiry).toISOString();
@@ -1972,7 +1983,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
       );
 
       if (response.status !== 200 && response.status !== 201) throw new Error("Failed to add license");
-      
+
       setShowAddLicenseDialog(false);
       toast({ title: "License added", description: "The license was successfully added.", variant: "default" });
       await refetchMember();
@@ -2033,39 +2044,15 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
             <div className="flex items-center gap-2">
               <CardTitle className="text-2xl">{member.applicantName}</CardTitle>
 
-              {/* Status badge or dropdown based on editing state */}
-              {isStatusEditing ? (
-                <div className="flex items-center gap-2">
-                  <Select value={status} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ACTIVE">Active</SelectItem>
-                      <SelectItem value="INACTIVE">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="sm"
-                    onClick={handleStatusSave}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              ) : (
+            
                 <div className="flex items-center gap-2">
                   <Badge
                     variant={
                       member.membershipStatus === "ACTIVE"
                         ? "default"
                         : member.membershipStatus === "INACTIVE"
-                        ? "secondary"
-                        : "outline"
+                          ? "secondary"
+                          : "outline"
                     }
                   >
                     {member.membershipStatus}
@@ -2082,7 +2069,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                     </Button>
                   )}
                 </div>
-              )}
+        
             </div>
             <CardDescription>
               Member since {new Date(member.createdAt).toLocaleDateString()}
@@ -2094,9 +2081,13 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
             </CardDescription>
           </div>
 
-          <Button onClick={handleEdit}>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={handleEdit}>
             <Edit className="mr-2 h-4 w-4" /> Edit Profile
           </Button>
+          }
         </CardHeader>
       </Card>
 
@@ -2180,67 +2171,67 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
               <LayoutDashboard className="h-4 w-4" />
               Overview
             </div>
-            
+
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            
+
           > <div className="flex items-center gap-2">
               <Activity className="h-4 w-4" />
               Meter History
             </div>
-            
+
           </TabsTrigger>
           <TabsTrigger
             value="transactions"
-           
+
           >
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Transactions
             </div>
-            
+
           </TabsTrigger>
-         
+
           <TabsTrigger
             value="licenses"
-           
+
           >
             <div className="flex items-center gap-2">
               <License className="h-4 w-4" />
               Licenses
             </div>
-            
+
           </TabsTrigger>
           <TabsTrigger
             value="machineries"
-          
+
           >
             <div className="flex items-center gap-2">
               <Machinery className="h-4 w-4" />
               Machineries
             </div>
-            
+
           </TabsTrigger>
           <TabsTrigger
             value="documents"
-           
+
           >
-           <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-           Documents
-           </div>
-           
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Documents
+            </div>
+
           </TabsTrigger>
           <TabsTrigger
             value="labour"
-           
+
           >
-           <div className="flex items-center gap-2">
-            <User2 className="h-4 w-4" />
-           Labours
-           </div>
-           
+            <div className="flex items-center gap-2">
+              <User2 className="h-4 w-4" />
+              Labours
+            </div>
+
           </TabsTrigger>
         </TabsList>
 
@@ -2264,7 +2255,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
               value={totalWorkers}
               subtitle={`${member.estimatedMaleWorker} male • ${member.estimatedFemaleWorker} female`}
             />
-            
+
             <SummaryCard
               title="Primary Contact"
               icon={<Phone className="h-4 w-4 text-muted-foreground" />}
@@ -2291,11 +2282,11 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
             />
           </div>
 
-            <Card>
+          <Card>
             <CardHeader>
               <CardTitle>Profile Summary</CardTitle>
               <CardDescription>Complete member and firm information</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-2">
               <DetailSection
                 title="Application Information"
@@ -2355,14 +2346,14 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                 ]}
               />
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <Card>
+          <Card>
             <CardHeader>
               <CardTitle>Electrical & Workforce</CardTitle>
               <CardDescription>Primary connection details and workforce overview</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-2">
               <DetailSection
                 title="Electrical Information"
@@ -2395,16 +2386,16 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                 ]}
               />
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <Card>
+          <Card>
             <CardHeader>
               <CardTitle>Branches & Machinery</CardTitle>
               <CardDescription>Summary of branch locations and equipment</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="space-y-6">
-              
+
               {member.branches.length ? (
                 <div className="flex flex-col gap-2">
                   {member.branches.map((branch) => (
@@ -2412,39 +2403,39 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                       key={branch.id || branch.placeOfBusiness}
                       className="rounded-lg border bg-muted/40 p-4 space-y-2"
                     >
-                     
+
                       <h4 className="text-sm text-muted-foreground">
                         Branch Id: {branch.id || ""}
                       </h4>
 
-                       <h4 className="text-xl font-semibold text-primary">
+                      <h4 className="text-xl font-semibold text-primary">
                         {branch.placeOfBusiness || ""}
                       </h4>
-                      
-                     <div className="grid grid-cols-4 gap-3">
-                     <DetailItem
-                        label="Electrical USC Number"
-                        value={branch.electricalUscNumber || "-"}
-                      />
-                      <DetailItem label="SC Number" value={branch.scNumber || "-"} />
-                      <DetailItem
-                        label="Proprietor Type"
-                        value={branch.proprietorType || "-"}
-                      />
-                      <DetailItem
-                        label="Proprietor Status"
-                        value={branch.proprietorStatus || "-"}
-                      />
-                      <DetailItem
-                        label="Sanctioned HP"
-                        value={branch.sanctionedHP || "-"}
-                      />
-                      <DetailItem
-                        label="Machinery Count"
-                        value={branch.machineryInformations?.length || 0}
-                      />
-                     </div>
-                </div>
+
+                      <div className="grid grid-cols-4 gap-3">
+                        <DetailItem
+                          label="Electrical USC Number"
+                          value={branch.electricalUscNumber || "-"}
+                        />
+                        <DetailItem label="SC Number" value={branch.scNumber || "-"} />
+                        <DetailItem
+                          label="Proprietor Type"
+                          value={branch.proprietorType || "-"}
+                        />
+                        <DetailItem
+                          label="Proprietor Status"
+                          value={branch.proprietorStatus || "-"}
+                        />
+                        <DetailItem
+                          label="Sanctioned HP"
+                          value={branch.sanctionedHP || "-"}
+                        />
+                        <DetailItem
+                          label="Machinery Count"
+                          value={branch.machineryInformations?.length || 0}
+                        />
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -2452,14 +2443,14 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   No additional branches recorded.
                 </p>
               )}
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
               <CardTitle>Compliance & Legal</CardTitle>
               <CardDescription>Regulatory registrations and expiries</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-2">
               <DetailSection
                 title="GST Details"
@@ -2525,25 +2516,25 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                 ]}
               />
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
               <CardTitle>Partners & Representatives</CardTitle>
               <CardDescription>Authorised representatives for this membership</CardDescription>
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent>
               {member.partnerDetails?.length ? (
                 <div className="grid gap-4 ">
                   {member.partnerDetails.map((partner) => (
                     <Card key={partner.id || partner.partnerName} className="border border-dashed">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm text-muted-foreground">
-                        Partner ID: {displayValue(partner.id?.toString() || "-")}
+                          Partner ID: {displayValue(partner.id?.toString() || "-")}
                         </CardTitle>
                         <CardDescription className="text-xl font-semibold text-primary">
-                        
+
                           {displayValue(partner.partnerName || "Partner")}
                         </CardDescription>
                       </CardHeader>
@@ -2561,20 +2552,20 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                       </CardContent>
                     </Card>
                   ))}
-                    </div>
+                </div>
               ) : (
-                      <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   No partners added yet.
                 </p>
               )}
-              </CardContent>
-            </Card>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
               <CardTitle>Membership References</CardTitle>
               <CardDescription>Similar membership history and proposer details</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-2">
               <DetailSection
                 title="Similar Membership Inquiry"
@@ -2586,7 +2577,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                   {
                     label: "Organisation Details",
-                  value: similarOrgDetails,
+                    value: similarOrgDetails,
                   },
                   {
                     label: "Applied Earlier",
@@ -2594,7 +2585,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                   {
                     label: "Previous Application Details",
-                  value: similarPreviousDetails,
+                    value: similarPreviousDetails,
                   },
                   {
                     label: "Valid Member",
@@ -2606,50 +2597,50 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   },
                 ]}
               />
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-primary">Proposers</h4>
-              {proposerError ? (
-                <p className="text-sm text-destructive">{proposerError}</p>
-              ) : null}
-              {isLoadingProposers ? (
-                      <p className="text-sm text-muted-foreground">
-                  Loading proposer details...
-                </p>
-              ) : (
-                <div className="grid gap-3">
-                  {member.proposer?.proposerID ? (
-                    renderProposerCard(
-                      "Primary Proposer",
-                      member.proposer.proposerID,
-                      primaryProposerMember
-                    )
-                  ) : (
-                    <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                      No primary proposer assigned.
-                    </div>
-                  )}
-                  {member.executiveProposer?.proposerID ? (
-                    renderProposerCard(
-                      "Executive Proposer",
-                      member.executiveProposer.proposerID,
-                      executiveProposerMember
-                    )
-                  ) : (
-                    <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                      No executive proposer assigned.
-                    </div>
-                  )}
-                    </div>
-              )}
-                </div>
-              </CardContent>
-            </Card>
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-primary">Proposers</h4>
+                {proposerError ? (
+                  <p className="text-sm text-destructive">{proposerError}</p>
+                ) : null}
+                {isLoadingProposers ? (
+                  <p className="text-sm text-muted-foreground">
+                    Loading proposer details...
+                  </p>
+                ) : (
+                  <div className="grid gap-3">
+                    {member.proposer?.proposerID ? (
+                      renderProposerCard(
+                        "Primary Proposer",
+                        member.proposer.proposerID,
+                        primaryProposerMember
+                      )
+                    ) : (
+                      <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                        No primary proposer assigned.
+                      </div>
+                    )}
+                    {member.executiveProposer?.proposerID ? (
+                      renderProposerCard(
+                        "Executive Proposer",
+                        member.executiveProposer.proposerID,
+                        executiveProposerMember
+                      )
+                    ) : (
+                      <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                        No executive proposer assigned.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
+          <Card>
+            <CardHeader>
               <CardTitle>Documents & Declarations</CardTitle>
               <CardDescription>Uploaded certificates and acknowledgement records</CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-primary">
@@ -2669,7 +2660,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                           <span className="text-sm break-all">
                             {doc.documentPath || "-"}
                           </span>
-                    </div>
+                        </div>
                         {doc.documentPath ? (
                           <Button
                             variant="outline"
@@ -2680,15 +2671,15 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                             Download
                           </Button>
                         ) : null}
-                    </div>
+                      </div>
                     ))}
-                    </div>
+                  </div>
                 ) : (
-                      <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     No additional documents uploaded.
-                      </p>
+                  </p>
                 )}
-                    </div>
+              </div>
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-primary">Declarations</h4>
                 <DetailSection
@@ -2723,7 +2714,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         <span className="text-sm break-all">
                           {item.path || "-"}
                         </span>
-                    </div>
+                      </div>
                       {item.path ? (
                         <Button
                           variant="outline"
@@ -2737,10 +2728,10 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                       ) : null}
                     </div>
                   ))}
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="machineries">
@@ -2752,7 +2743,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   Manage machinery details for each branch
                 </CardDescription>
               </div>
-              
+
             </CardHeader>
             <CardContent>
               {!branchMachinerySections.length ? (
@@ -2776,13 +2767,17 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                             {branch.scNumber || "-"}
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openAddMachineryDialog(branchId)}
-                        >
-                          <Plus className="mr-2 h-4 w-4" /> Add Machine
-                        </Button>
+                        {(session?.user?.role === "ADMIN" ||
+                          session?.user?.role === "TQMA_EDITOR" ||
+                          session?.user?.role === "TSMWA_EDITOR") &&
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAddMachineryDialog(branchId)}
+                          >
+                            <Plus className="mr-2 h-4 w-4" /> Add Machine
+                          </Button>
+                        }
                       </div>
 
                       {machines.length ? (
@@ -2791,7 +2786,11 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                             <TableRow>
                               <TableHead>Machine</TableHead>
                               <TableHead>Quantity</TableHead>
-                              <TableHead>Actions</TableHead>
+                              {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TQMA_EDITOR" ||
+                                session?.user?.role === "TSMWA_EDITOR") &&
+                                <TableHead>Actions</TableHead>
+                              }
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -2801,31 +2800,35 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                                   {getMachineDisplayName(machine)}
                                 </TableCell>
                                 <TableCell>{machine.machineCount}</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() =>
-                                        openEditMachineryDialog(branchId, machine)
-                                      }
-                                      aria-label="Edit machinery"
-                                    >
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="text-destructive hover:text-destructive"
-                                      onClick={() =>
-                                        openDeleteMachineryDialog(branchId, machine)
-                                      }
-                                      aria-label="Delete machinery"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
+                                {(session?.user?.role === "ADMIN" ||
+                                  session?.user?.role === "TQMA_EDITOR" ||
+                                  session?.user?.role === "TSMWA_EDITOR") &&
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                          openEditMachineryDialog(branchId, machine)
+                                        }
+                                        aria-label="Edit machinery"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-destructive hover:text-destructive"
+                                        onClick={() =>
+                                          openDeleteMachineryDialog(branchId, machine)
+                                        }
+                                        aria-label="Delete machinery"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                }
                               </TableRow>
                             ))}
                           </TableBody>
@@ -2852,10 +2855,14 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   All uploaded documents and certificates
                 </CardDescription>
               </div>
-              <Button onClick={openAddDoc}>
-                <FileText className="h-4 w-4 mr-2" />
-                Add Document
-              </Button>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TQMA_EDITOR" ||
+                session?.user?.role === "TSMWA_EDITOR") &&
+                <Button onClick={openAddDoc}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Add Document
+                </Button>
+              }
             </CardHeader>
             <CardContent>
               <Table>
@@ -2863,13 +2870,17 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   <TableRow>
                     <TableHead>Document Name</TableHead>
                     <TableHead>File Path</TableHead>
-                     <TableHead>Status</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TQMA_EDITOR" ||
+                      session?.user?.role === "TSMWA_EDITOR") &&
+                      <TableHead>Actions</TableHead>
+                    }
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                 
+
                   {/* Additional attachments */}
                   {attachmentsWithExpiry.map((attachment) => (
                     <TableRow key={attachment.id}>
@@ -2885,13 +2896,17 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         ) : (
                           <Badge variant="secondary">No Expiry</Badge>
                         )}
-                        </TableCell>
-                      <TableCell>{attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
-                      <TableCell className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
                       </TableCell>
+                      <TableCell>{attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "TQMA_EDITOR" ||
+                        session?.user?.role === "TSMWA_EDITOR") &&
+                        <TableCell className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
+                        </TableCell>
+                      }
                     </TableRow>
                   ))}
                 </TableBody>
@@ -2925,7 +2940,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                 <Label>File</Label>
                 <FileUpload
                   onFileSelect={setDocFile}
-                  onUploadComplete={() => {}}
+                  onUploadComplete={() => { }}
                   onUploadError={setDocError}
                   subfolder="documents"
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -2958,8 +2973,8 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                     Full assignment history for meter: <span className="font-mono text-primary">{member.electricalUscNumber || "-"}</span>
                   </CardDescription>
                 </div>
-                <Button 
-                  onClick={fetchUSCMeterHistory} 
+                <Button
+                  onClick={fetchUSCMeterHistory}
                   disabled={isLoadingMeterHistory}
                   variant="outline"
                   size="sm"
@@ -3073,10 +3088,14 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   <CardTitle>Licenses & Certificates</CardTitle>
                   <CardDescription>View and manage member licenses</CardDescription>
                 </div>
-                <Button onClick={openAddLicenseDialog} disabled={getAvailableLicenseTypes().length === 0}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add License
-                </Button>
+                {(session?.user?.role === "ADMIN" ||
+                  session?.user?.role === "TQMA_EDITOR" ||
+                  session?.user?.role === "TSMWA_EDITOR") &&
+                  <Button onClick={openAddLicenseDialog} disabled={getAvailableLicenseTypes().length === 0}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add License
+                  </Button>
+                }
               </div>
             </CardHeader>
             <CardContent>
@@ -3088,7 +3107,11 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                     <TableHead>File Path</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TQMA_EDITOR" ||
+                      session?.user?.role === "TSMWA_EDITOR") &&
+                      <TableHead>Actions</TableHead>
+                    }
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -3145,31 +3168,35 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         )}
                       </TableCell>
                       <TableCell>{doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
-                      <TableCell className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEditLicenseDialog(doc.type)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
-                        {doc.type === "gst" && (
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "TQMA_EDITOR" ||
+                        session?.user?.role === "TSMWA_EDITOR") &&
+                        <TableCell className="flex gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setGstCredentialsError("");
-                              setGstUsername(memberCompliance?.gstInUsername || "");
-                              setGstPassword(memberCompliance?.gstInPassword || "");
-                              setShowGSTCredentialsDialog(true);
-                            }}
+                            onClick={() => openEditLicenseDialog(doc.type)}
                           >
-                            <Key className="h-4 w-4" />
+                            <Edit2 className="h-4 w-4" />
                           </Button>
-                        )}
-                      </TableCell>
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
+                          {doc.type === "gst" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setGstCredentialsError("");
+                                setGstUsername(memberCompliance?.gstInUsername || "");
+                                setGstPassword(memberCompliance?.gstInPassword || "");
+                                setShowGSTCredentialsDialog(true);
+                              }}
+                            >
+                              <Key className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      }
                     </TableRow>
                   ))}
                 </TableBody>
@@ -3206,12 +3233,12 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                   path: member.complianceDetails.udyamCertificatePath,
                 },
               ].filter(doc => !doc.number && !doc.path).length === 5 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No licenses or certificates found.</p>
-                  <p className="text-sm">Click "Add License" to add a new certificate.</p>
-                </div>
-              )}
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No licenses or certificates found.</p>
+                    <p className="text-sm">Click "Add License" to add a new certificate.</p>
+                  </div>
+                )}
             </CardContent>
           </Card>
           {/* Edit License Dialog */}
@@ -3226,7 +3253,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                 <Label>File</Label>
                 <FileUpload
                   onFileSelect={setEditLicenseFile}
-                  onUploadComplete={() => {}}
+                  onUploadComplete={() => { }}
                   onUploadError={setEditLicenseDocError}
                   subfolder="documents"
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -3351,26 +3378,26 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {addLicenseType && (
                   <>
                     <div>
                       <Label>Number</Label>
-                      <Input 
-                        value={addLicenseNumber} 
+                      <Input
+                        value={addLicenseNumber}
                         onChange={e => {
                           setAddLicenseNumber(e.target.value);
                           // Clear validation messages when user starts typing
                           setAddLicenseValidationError("");
                           setAddLicenseValidationSuccess("");
-                          
+
                           // Validate after 3 characters
                           if (e.target.value.length >= 3) {
                             setTimeout(() => {
                               validateSingleLicenseField(addLicenseType, e.target.value);
                             }, 500);
                           }
-                        }} 
+                        }}
                         placeholder="Enter license number"
                       />
                       {isValidatingLicense && (
@@ -3389,7 +3416,7 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         </div>
                       )}
                     </div>
-                    
+
                     <div>
                       <Label>File</Label>
                       <FileUpload
@@ -3401,13 +3428,13 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
                         onDownload={filePath => handleDownloadDocument(filePath)}
                       />
                     </div>
-                    
+
                     <div>
                       <Label>Expiry Date</Label>
-                      <Input 
-                        type="date" 
-                        value={addLicenseExpiry} 
-                        onChange={e => setAddLicenseExpiry(e.target.value)} 
+                      <Input
+                        type="date"
+                        value={addLicenseExpiry}
+                        onChange={e => setAddLicenseExpiry(e.target.value)}
                       />
                     </div>
                   </>
@@ -3415,8 +3442,8 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAddLicenseDialog(false)} disabled={docLoading}>Cancel</Button>
-                <Button 
-                  onClick={handleAddLicenseSubmit} 
+                <Button
+                  onClick={handleAddLicenseSubmit}
                   disabled={docLoading || !addLicenseType || !!addLicenseValidationError || isValidatingLicense}
                 >
                   Add License
@@ -3582,11 +3609,10 @@ const MACHINE_OPTIONS = ["High Polish", "Slice", "Cutting", "Others"];
             <DialogDescription>
               {machineToDelete?.machine
                 ? `Are you sure you want to delete ${getMachineDisplayName(
-                    machineToDelete.machine
-                  )} from ${
-                    findBranchById(machineToDelete.branchId)?.placeOfBusiness ||
-                    "this branch"
-                  }?`
+                  machineToDelete.machine
+                )} from ${findBranchById(machineToDelete.branchId)?.placeOfBusiness ||
+                "this branch"
+                }?`
                 : "Selected machinery will be deleted permanently."}
             </DialogDescription>
           </DialogHeader>

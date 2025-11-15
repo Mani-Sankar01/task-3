@@ -97,8 +97,7 @@ export default function LabourDetails({
 
   const handleEdit = () => {
     router.push(
-      `/${renderRoleBasedPath(session?.user?.role)}/labour/${
-        labour.labourId
+      `/${renderRoleBasedPath(session?.user?.role)}/labour/${labour.labourId
       }/edit`
     );
   };
@@ -154,8 +153,7 @@ export default function LabourDetails({
       if (!session?.user.token) throw new Error("No auth token");
 
       const response = await axios.post(
-        `${
-          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"
         }/api/labour/update_labour`,
         payload,
         {
@@ -175,9 +173,8 @@ export default function LabourDetails({
       toast({
         title:
           editDoc || editPrimaryDoc ? "Document updated" : "Document added",
-        description: `The document was successfully ${
-          editDoc || editPrimaryDoc ? "updated" : "added"
-        }.`,
+        description: `The document was successfully ${editDoc || editPrimaryDoc ? "updated" : "added"
+          }.`,
         variant: "default",
       });
 
@@ -221,8 +218,7 @@ export default function LabourDetails({
       };
 
       const response = await axios.post(
-        `${
-          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"
         }/api/labour/update_labour`,
         payload,
         {
@@ -357,11 +353,15 @@ export default function LabourDetails({
           </Button>
           <h1 className="text-2xl font-bold">Labour Details</h1>
         </div>
-        <Link href={`/${renderRoleBasedPath(session?.user?.role)}/labour/${labour.labourId}/edit`}>
-          <Button>
-            <Edit className="mr-2 h-4 w-4" /> Edit
-          </Button>
-        </Link>
+        {(session?.user?.role === "ADMIN" ||
+          session?.user?.role === "TQMA_EDITOR" ||
+          session?.user?.role === "TSMWA_EDITOR") &&
+          <Link href={`/${renderRoleBasedPath(session?.user?.role)}/labour/${labour.labourId}/edit`}>
+            <Button>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          </Link>
+        }
       </div>
 
       <div className="grid gap-6">
@@ -369,9 +369,8 @@ export default function LabourDetails({
           <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="h-16 w-16">
               <AvatarImage
-                src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${
-                  labour.photoPath
-                }`}
+                src={`${process.env.BACKEND_API_URL || "https://tsmwa.online"}${labour.photoPath
+                  }`}
                 alt={labour.fullName}
               />
               <AvatarFallback>{labour.fullName?.charAt(0)}</AvatarFallback>
@@ -385,8 +384,8 @@ export default function LabourDetails({
                       labour.labourStatus === "ACTIVE"
                         ? "default"
                         : labour.labourStatus === "BENCH"
-                        ? "secondary"
-                        : "destructive"
+                          ? "secondary"
+                          : "destructive"
                     }
                   >
                     {labour.labourStatus?.charAt(0).toUpperCase() +
@@ -503,8 +502,8 @@ export default function LabourDetails({
                                 employment.labourStatus === "ACTIVE"
                                   ? "default"
                                   : employment.labourStatus === "BENCH"
-                                  ? "secondary"
-                                  : "destructive"
+                                    ? "secondary"
+                                    : "destructive"
                               }
                             >
                               {employment.labourStatus
@@ -574,10 +573,14 @@ export default function LabourDetails({
                     All uploaded documents and identification
                   </CardDescription>
                 </div>
-                <Button onClick={openAddDoc}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Document
-                </Button>
+                {(session?.user?.role === "ADMIN" ||
+                  session?.user?.role === "TQMA_EDITOR" ||
+                  session?.user?.role === "TSMWA_EDITOR") &&
+                  <Button onClick={openAddDoc}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Document
+                  </Button>
+                }
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
@@ -590,7 +593,11 @@ export default function LabourDetails({
                           <TableHead>Document Name</TableHead>
                           <TableHead>File Path</TableHead>
                           <TableHead>Upload Date</TableHead>
-                          <TableHead>Actions</TableHead>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TQMA_EDITOR" ||
+                            session?.user?.role === "TSMWA_EDITOR") &&
+                            <TableHead>Actions</TableHead>
+                          }
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -603,26 +610,30 @@ export default function LabourDetails({
                               ? prettyDate(labour.createdAt)
                               : "-"}
                           </TableCell>
-                          <TableCell className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                openEditPrimaryDoc("photo", labour.photoPath)
-                              }
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleDownloadFile(labour.photoPath)
-                              }
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TQMA_EDITOR" ||
+                            session?.user?.role === "TSMWA_EDITOR") &&
+                            <TableCell className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  openEditPrimaryDoc("photo", labour.photoPath)
+                                }
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDownloadFile(labour.photoPath)
+                                }
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          }
                         </TableRow>
                         {/* Aadhar Card */}
                         <TableRow>
@@ -635,26 +646,30 @@ export default function LabourDetails({
                               ? prettyDate(labour.createdAt)
                               : "-"}
                           </TableCell>
-                          <TableCell className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                openEditPrimaryDoc("aadhar", labour.aadharPath)
-                              }
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleDownloadFile(labour.aadharPath)
-                              }
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TQMA_EDITOR" ||
+                            session?.user?.role === "TSMWA_EDITOR") &&
+                            <TableCell className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  openEditPrimaryDoc("aadhar", labour.aadharPath)
+                                }
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  handleDownloadFile(labour.aadharPath)
+                                }
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          }
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -664,14 +679,18 @@ export default function LabourDetails({
                   <div>
                     <h3 className="font-medium mb-4">Additional Documents</h3>
                     {labour.laboursAdditionalDocs &&
-                    labour.laboursAdditionalDocs.length > 0 ? (
+                      labour.laboursAdditionalDocs.length > 0 ? (
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Document Name</TableHead>
                             <TableHead>File Path</TableHead>
                             <TableHead>Upload Date</TableHead>
-                            <TableHead>Actions</TableHead>
+                            {(session?.user?.role === "ADMIN" ||
+                              session?.user?.role === "TQMA_EDITOR" ||
+                              session?.user?.role === "TSMWA_EDITOR") &&
+                              <TableHead>Actions</TableHead>
+                            }
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -701,30 +720,34 @@ export default function LabourDetails({
                                     ? prettyDate(doc.createdAt)
                                     : "-"}
                                 </TableCell>
-                                <TableCell className="flex gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => openEditDoc(doc)}
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDeleteDoc(doc)}
-                                    disabled={docLoading}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleDownloadFile(docPath)}
-                                  >
-                                    <Download className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
+                                {(session?.user?.role === "ADMIN" ||
+                                  session?.user?.role === "TQMA_EDITOR" ||
+                                  session?.user?.role === "TSMWA_EDITOR") &&
+                                  <TableCell className="flex gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => openEditDoc(doc)}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => handleDeleteDoc(doc)}
+                                      disabled={docLoading}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleDownloadFile(docPath)}
+                                    >
+                                      <Download className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                }
                               </TableRow>
                             );
                           })}
@@ -775,7 +798,7 @@ export default function LabourDetails({
                     <Label>File</Label>
                     <FileUpload
                       onFileSelect={setDocFile}
-                      onUploadComplete={() => {}}
+                      onUploadComplete={() => { }}
                       onUploadError={setDocError}
                       subfolder={
                         editPrimaryDoc?.type === "photo"

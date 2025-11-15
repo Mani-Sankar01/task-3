@@ -557,9 +557,13 @@ export default function MeetingsList() {
             <CardTitle className="text-2xl">Meetings</CardTitle>
             <CardDescription>Schedule and manage all meetings</CardDescription>
           </div>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
           <Button onClick={addNewMeeting}>
             <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
           </Button>
+          }
         </CardHeader>
         <CardContent>
           <div className="mb-4">

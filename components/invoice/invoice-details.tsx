@@ -301,12 +301,14 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
           <h1 className="text-2xl font-bold">Invoice Details</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" /> Edit
-          </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="mr-2 h-4 w-4" /> Print
-          </Button>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button variant="outline" onClick={handleEdit}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          }
+          
           <Button onClick={handleDownload}>
             <Download className="mr-2 h-4 w-4" /> Download
           </Button>
@@ -383,13 +385,13 @@ export default function InvoiceDetails({ invoiceId }: InvoiceDetailsProps) {
                   </div>
                 )}
                 {invoice.billingAddress && (
-                  <div className="md:col-span-2">
+                  <div className="">
                     <span className="font-medium">Billing Address:</span>{" "}
                     {invoice.billingAddress}
                   </div>
                 )}
                 {invoice.shippingAddress && (
-                  <div className="md:col-span-2">
+                  <div className="">
                     <span className="font-medium">Shipping Address:</span>{" "}
                     {invoice.shippingAddress}
                   </div>

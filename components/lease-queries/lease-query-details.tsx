@@ -63,8 +63,8 @@ import {
   // getMemberById, // Removed
 } from "@/data/lease-queries";
 import // getMemberById, // Removed
-// getMemberNameByMembershipId, // Removed
-"@/data/members";
+  // getMemberNameByMembershipId, // Removed
+  "@/data/members";
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import { renderRoleBasedPath } from "@/lib/utils";
@@ -77,7 +77,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   const [query, setQuery] = useState<LeaseQuery | null>(null);
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
-  
+
   // Document management state
   const [showDocDialog, setShowDocDialog] = useState(false);
   const [editingDoc, setEditingDoc] = useState<any>(null);
@@ -85,11 +85,11 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docError, setDocError] = useState<string | null>(null);
   const [isSubmittingDoc, setIsSubmittingDoc] = useState(false);
-  
+
   // Confirmation dialog state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [docToDelete, setDocToDelete] = useState<any>(null);
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -120,8 +120,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   const handleEdit = () => {
     if (query) {
       router.push(
-        `/${renderRoleBasedPath(session?.user?.role)}/lease-queries/${
-          query.leaseQueryId
+        `/${renderRoleBasedPath(session?.user?.role)}/lease-queries/${query.leaseQueryId
         }/edit`
       );
     }
@@ -161,7 +160,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
       // Extract filename from path
       const filename = filePath.split('/').pop() || 'document';
       console.log('Downloading file:', filename, 'from path:', filePath);
-      
+
       const blob = await downloadFile(filename);
       if (blob) {
         // Create download link
@@ -173,7 +172,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
         link.click();
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
-        
+
         toast({
           title: "Download Successful",
           description: `File ${filename} downloaded successfully.`,
@@ -202,7 +201,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
 
   const confirmDeleteDocument = async () => {
     if (!docToDelete) return;
-    
+
     try {
       if (status !== "authenticated" || !session?.user?.token) {
         toast({
@@ -226,7 +225,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           },
         }
       );
-      
+
       console.log('Delete response:', response.data);
 
       // Check for success - API returns message on success, not success field
@@ -242,7 +241,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
         );
         console.log('Refresh response after delete:', updatedResponse.data);
         setQuery(updatedResponse.data.data || null);
-        
+
         // Show success toast
         toast({
           title: "Document Deleted",
@@ -294,7 +293,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
         // Upload new file
         const formData = new FormData();
         formData.append('file', docFile);
-        
+
         const uploadResponse = await fetch(`${process.env.NEXT_PUBLIC_FILE_UPLOAD_API_URL || 'https://documents.tsmwa.online'}/upload`, {
           method: 'POST',
           headers: {
@@ -350,13 +349,13 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
           }
         );
         setQuery(updatedResponse.data.data || null);
-        
+
         // Show success toast
         toast({
           title: editingDoc ? "Document Updated" : "Document Added",
           description: `The document was successfully ${editingDoc ? "updated" : "added"}.`,
         });
-        
+
         // Close dialog
         handleCloseDialog();
       } else {
@@ -505,12 +504,12 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                   query.status === "RESOLVED"
                     ? "default"
                     : query.status === "PENDING"
-                    ? "secondary"
-                    : query.status === "PROCESSING"
-                    ? "default"
-                    : query.status === "REJECTED"
-                    ? "destructive"
-                    : "outline"
+                      ? "secondary"
+                      : query.status === "PROCESSING"
+                        ? "default"
+                        : query.status === "REJECTED"
+                          ? "destructive"
+                          : "outline"
                 }
               >
                 {query.status?.charAt(0).toUpperCase() +
@@ -521,10 +520,13 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
               Membership ID: {query.membershipId} | Member: {memberName}
             </CardDescription>
           </div>
-
-          <Button onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" /> Edit Query
-          </Button>
+          {(session?.user?.role === "ADMIN" ||
+            session?.user?.role === "TQMA_EDITOR" ||
+            session?.user?.role === "TSMWA_EDITOR") &&
+            <Button onClick={handleEdit}>
+              <Edit className="mr-2 h-4 w-4" /> Edit Query
+            </Button>
+          }
         </CardHeader>
       </Card>
 
@@ -604,10 +606,10 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                 <p className="text-xs text-muted-foreground">
                   {query.dateOfRenewal
                     ? `Next Renewal in ${Math.round(
-                        (new Date().getTime() -
-                          new Date(query.dateOfRenewal).getTime()) /
-                          (1000 * 60 * 60 * 24)
-                      )} days ago`
+                      (new Date().getTime() -
+                        new Date(query.dateOfRenewal).getTime()) /
+                      (1000 * 60 * 60 * 24)
+                    )} days ago`
                     : "No renewal recorded"}
                 </p>
               </CardContent>
@@ -669,12 +671,12 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                         query.status === "RESOLVED"
                           ? "default"
                           : query.status === "PENDING"
-                          ? "secondary"
-                          : query.status === "PROCESSING"
-                          ? "default"
-                          : query.status === "REJECTED"
-                          ? "destructive"
-                          : "outline"
+                            ? "secondary"
+                            : query.status === "PROCESSING"
+                              ? "default"
+                              : query.status === "REJECTED"
+                                ? "destructive"
+                                : "outline"
                       }
                     >
                       {query.status?.charAt(0).toUpperCase() +
@@ -732,9 +734,9 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                       history[0].leaseHolderName === query.presentLeaseHolder &&
                       history[0].membershipId === query.membershipId &&
                       formatDate(history[0].fromDate) ===
-                        formatDate(query.dateOfLease) &&
+                      formatDate(query.dateOfLease) &&
                       formatDate(history[0].toDate) ===
-                        formatDate(query.expiryOfLease)
+                      formatDate(query.expiryOfLease)
                     ) {
                       // Only show history rows
                       return history.map((h: any, idx: number) => (
@@ -773,11 +775,11 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
               </Table>
               {(!Array.isArray(query.leaseQueryHistory) ||
                 query.leaseQueryHistory.length === 0) && (
-                <div className="text-center py-6 text-muted-foreground">
-                  No previous lease holders recorded. {query.presentLeaseHolder}{" "}
-                  is the first lease holder.
-                </div>
-              )}
+                  <div className="text-center py-6 text-muted-foreground">
+                    No previous lease holders recorded. {query.presentLeaseHolder}{" "}
+                    is the first lease holder.
+                  </div>
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -792,21 +794,29 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                     All documents related to this lease agreement
                   </CardDescription>
                 </div>
-                <Button onClick={handleAddDocument} size="sm">
+                {(session?.user?.role === "ADMIN" ||
+                  session?.user?.role === "TQMA_EDITOR" ||
+                  session?.user?.role === "TSMWA_EDITOR") &&
+                  <Button onClick={handleAddDocument} size="sm">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Document
                 </Button>
+                }
               </div>
             </CardHeader>
             <CardContent>
               {Array.isArray(query.leaseQueryAttachments) &&
-              query.leaseQueryAttachments.length > 0 ? (
+                query.leaseQueryAttachments.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Document Name</TableHead>
                       <TableHead>File Path</TableHead>
-                      <TableHead>Actions</TableHead>
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "TQMA_EDITOR" ||
+                        session?.user?.role === "TSMWA_EDITOR") &&
+                        <TableHead>Actions</TableHead>
+                      }
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -817,34 +827,38 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
                             {doc.documentName}
                           </TableCell>
                           <TableCell>{doc.documentPath || "N/A"}</TableCell>
-                          <TableCell>
+                          {(session?.user?.role === "ADMIN" ||
+                            session?.user?.role === "TQMA_EDITOR" ||
+                            session?.user?.role === "TSMWA_EDITOR") &&
+                            <TableCell>
                             <div className="flex items-center gap-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 px-2"
                                 onClick={() => handleDownloadDocument(doc.documentPath)}
                               >
-                                <Download className="h-4 w-4 mr-2" /> Download
+                                <Download className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 px-2"
                                 onClick={() => handleEditDocument(doc)}
                               >
-                                <Edit className="h-4 w-4 mr-2" /> Edit
+                                <Edit className="h-4 w-4 " />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="h-8 px-2 text-destructive hover:text-destructive"
                                 onClick={() => handleDeleteDocument(doc)}
                               >
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
-                          </TableCell>
+                            </TableCell>
+                          }
                         </TableRow>
                       )
                     )}
@@ -886,7 +900,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
               <Label>File</Label>
               <FileUpload
                 onFileSelect={setDocFile}
-                onUploadComplete={() => {}}
+                onUploadComplete={() => { }}
                 onUploadError={setDocError}
                 subfolder="documents"
                 accept=".pdf,.jpg,.jpeg,.png"

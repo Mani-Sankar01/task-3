@@ -124,8 +124,7 @@ export default function MembershipFeesList() {
         setIsLoading(true);
         try {
           const response = await axios.get(
-            `${
-              process.env.BACKEND_API_URL || "https://tsmwa.online"
+            `${process.env.BACKEND_API_URL || "https://tsmwa.online"
             }/api/bill/filterBills/null/null/null`,
             {
               headers: {
@@ -184,8 +183,7 @@ export default function MembershipFeesList() {
           uniqueIds.map(async (id) => {
             try {
               const response = await axios.get(
-                `${
-                  process.env.BACKEND_API_URL || "https://tsmwa.online"
+                `${process.env.BACKEND_API_URL || "https://tsmwa.online"
                 }/api/member/get_member/${id}`,
                 {
                   headers: {
@@ -367,8 +365,7 @@ export default function MembershipFeesList() {
     setIsDeleting(true);
     try {
       const response = await axios.delete(
-        `${
-          process.env.BACKEND_API_URL || "https://tsmwa.online"
+        `${process.env.BACKEND_API_URL || "https://tsmwa.online"
         }/api/bill/delete_bill/${feeToDelete.id}`,
         {
           headers: {
@@ -414,7 +411,7 @@ export default function MembershipFeesList() {
     console.log("=== SEND REMINDER DEBUG ===");
     console.log("Billing ID:", billingId);
     console.log("Due Date:", dueDate);
-    
+
     if (!session?.user?.token) {
       toast({
         title: "Error",
@@ -429,10 +426,10 @@ export default function MembershipFeesList() {
       // Format the date as YYYY-MM-DD
       const formattedDate = dueDate ? format(new Date(dueDate), "yyyy-MM-dd") : "";
       const apiUrl = `${process.env.BACKEND_API_URL}/api/bill/payment_reminder?billingId=${billingId}&dueDate=${formattedDate}`;
-      
+
       console.log("API URL:", apiUrl);
       console.log("Formatted Date:", formattedDate);
-      
+
       const response = await axios.get(
         apiUrl,
         {
@@ -441,7 +438,7 @@ export default function MembershipFeesList() {
           },
         }
       );
-      
+
       console.log("URL Response:", apiUrl);
 
       if (response.data.Success) {
@@ -495,9 +492,13 @@ export default function MembershipFeesList() {
                 Manage all membership fee payments
               </p>
             </div>
-            <Button onClick={addNewFee}>
-              <Plus className="mr-2 h-4 w-4" /> Add Fee
-            </Button>
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "TQMA_EDITOR" ||
+              session?.user?.role === "TSMWA_EDITOR") &&
+              <Button onClick={addNewFee}>
+                <Plus className="mr-2 h-4 w-4" /> Add Fee
+              </Button>
+            }
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -602,9 +603,8 @@ export default function MembershipFeesList() {
                       value={option.membershipId}
                     >
                       {memberNames[option.membershipId]
-                        ? `${option.membershipId} - ${
-                            memberNames[option.membershipId]
-                          }`
+                        ? `${option.membershipId} - ${memberNames[option.membershipId]
+                        }`
                         : option.membershipId}
                     </SelectItem>
                   ))}
@@ -752,13 +752,13 @@ export default function MembershipFeesList() {
                               fee.paymentStatus === "PAID"
                                 ? "default"
                                 : fee.paymentStatus === "PARTIAL"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {fee.paymentStatus
                               ? fee.paymentStatus.charAt(0).toUpperCase() +
-                                fee.paymentStatus.slice(1).toLowerCase()
+                              fee.paymentStatus.slice(1).toLowerCase()
                               : "-"}
                           </Badge>
                         </TableCell>
@@ -785,19 +785,19 @@ export default function MembershipFeesList() {
                                 <EyeIcon className=" h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                                                            {(session?.user?.role === "ADMIN" ||
-                                session?.user?.role === "TSMWA_EDITOR" ||       
-                                session?.user?.role === "TQMA_EDITOR") && (     
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    editFee(fee.billingId);
-                                  }}
-                                >
-                                  <PencilIcon className="h-4 w-4" />
-                                  Edit Fee
-                                </DropdownMenuItem>
-                              )}
+                              {(session?.user?.role === "ADMIN" ||
+                                session?.user?.role === "TSMWA_EDITOR" ||
+                                session?.user?.role === "TQMA_EDITOR") && (
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      editFee(fee.billingId);
+                                    }}
+                                  >
+                                    <PencilIcon className="h-4 w-4" />
+                                    Edit Fee
+                                  </DropdownMenuItem>
+                                )}
                               {fee.paymentStatus && fee.paymentStatus.toUpperCase() !== "PAID" && (
                                 <DropdownMenuItem
                                   onClick={(e) => {
@@ -814,20 +814,20 @@ export default function MembershipFeesList() {
                                 </DropdownMenuItem>
                               )}
                               {session?.user.role === "ADMIN" && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (fee.billingId) {
-                                    openDeleteDialog(fee.billingId, fee.billingId);
-                                  } else {
-                                    console.warn("Missing billingId for fee:", fee);
-                                  }
-                                }}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4" />   
-                                Delete
-                              </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (fee.billingId) {
+                                      openDeleteDialog(fee.billingId, fee.billingId);
+                                    } else {
+                                      console.warn("Missing billingId for fee:", fee);
+                                    }
+                                  }}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
                               )}
                               {/* You may want to disable delete if not supported by API */}
                             </DropdownMenuContent>
