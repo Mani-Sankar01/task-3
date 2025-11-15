@@ -138,9 +138,9 @@ export default function UsersList() {
       const lowerCaseQuery = searchQuery.toLowerCase();
       result = result.filter(
         (user) =>
-          user.fullName.toLowerCase().includes(lowerCaseQuery) ||
-          user.email.toLowerCase().includes(lowerCaseQuery) ||
-          user.phone.includes(searchQuery)
+          (user.fullName?.toLowerCase() || "").includes(lowerCaseQuery) ||
+          (user.email?.toLowerCase() || "").includes(lowerCaseQuery) ||
+          (user.phone || "").includes(searchQuery)
       );
     }
 
