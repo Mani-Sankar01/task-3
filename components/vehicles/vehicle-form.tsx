@@ -31,6 +31,14 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { addVehicle, updateVehicle, type Vehicle } from "@/data/vehicles";
 import { getAllRoutes } from "@/data/routes";
 import { renderRoleBasedPath } from "@/lib/utils";
@@ -61,6 +69,7 @@ interface VehicleFormProps {
 export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const routes = getAllRoutes();
   const session = useSession();
 
@@ -113,13 +122,12 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
   };
 
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All changes will be lost."
-      )
-    ) {
-      router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicle`);
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicle`);
   };
 
   return (
@@ -272,6 +280,26 @@ export default function VehicleForm({ vehicle, isEditMode }: VehicleFormProps) {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

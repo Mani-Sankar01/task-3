@@ -27,9 +27,10 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Card,
@@ -111,6 +112,7 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
     isOpen: false,
     message: "",
   });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const router = useRouter();
   const { toast } = useToast();
@@ -557,13 +559,12 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
   };
 
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   return (
@@ -949,6 +950,26 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
           variant: "default",
         }}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1243,7 +1243,7 @@ export default function DashboardOverview() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  onClick={() => navigateToSection(`/${renderRoleBasedPath(session?.user?.role)}/licenses`)}
+                  onClick={() => setShowLicensesDialog(true)}
                 >
                   View All Licenses
                 </Button>

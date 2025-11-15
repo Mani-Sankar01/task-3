@@ -41,6 +41,14 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   addMembershipFee,
   updateMembershipFee,
   getMemberOptions,
@@ -102,6 +110,7 @@ export default function MembershipFeeForm({
     isOpen: false,
     message: "",
   });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   // Fetch members from API
   React.useEffect(() => {
@@ -349,13 +358,12 @@ export default function MembershipFeeForm({
   };
 
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   return (
@@ -782,6 +790,26 @@ export default function MembershipFeeForm({
           variant: "default",
         }}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

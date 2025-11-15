@@ -42,6 +42,14 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   addTrip,
   updateTrip,
   getVehicleById,
@@ -102,6 +110,7 @@ export default function AddEditTripForm({
     title: "",
     message: "",
   });
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -301,13 +310,12 @@ export default function AddEditTripForm({
   const amountPaidValue = Number(form.watch("amountPaid")) || 0;
 
   const handleCancel = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to cancel? All changes will be lost."
-      )
-    ) {
-      router.back();
-    }
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    setShowCancelDialog(false);
+    router.back();
   };
 
   const handlePopupClose = () => {
@@ -711,6 +719,26 @@ export default function AddEditTripForm({
         }
         showCloseButton={false}
       />
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Changes</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel? All unsaved changes will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Continue Editing
+            </Button>
+            <Button variant="destructive" onClick={confirmCancel}>
+              Discard Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
