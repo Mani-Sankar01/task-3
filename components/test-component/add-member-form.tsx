@@ -169,10 +169,10 @@ const formSchema = z.object({
     partners: z
       .array(
         z.object({
-          name: z.string().min(6, "Name is required"),
+          name: z.string().min(2, "Name is required"),
           contactNo: z.string().min(10, "Contact is required"),
-          aadharNo: z.string().min(10, "Aadhar No is required"),
-          pan: z.string().min(10, "Pan No is required"),
+          aadharNo: z.string().min(12, "Aadhar No is required"),
+          pan: z.string().min(16, "Pan No is required"),
           email: z.string().min(4, "Email No is required"),
         })
       )

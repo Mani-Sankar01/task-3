@@ -173,10 +173,10 @@ const formSchema = z.object({
       .array(
         z.object({
           id: z.number().optional(),
-          name: z.string().min(6, "Name is required"),
+          name: z.string().min(2, "Name is required"),
           contactNo: z.string().min(10, "Contact is required"),
-          aadharNo: z.string().min(10, "Aadhar No is required"),
-          pan: z.string().min(10, "PAN No is required"), // Replace with actual PAN from form
+          aadharNo: z.string().min(12, "Aadhar No is required"),
+          pan: z.string().min(16, "PAN No is required"), // Replace with actual PAN from form
           email: z.string().min(4, "Emailis required"), // Replace with actual email
         })
       )
