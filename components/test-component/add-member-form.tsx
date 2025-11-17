@@ -172,7 +172,7 @@ const formSchema = z.object({
           name: z.string().min(2, "Name is required"),
           contactNo: z.string().min(10, "Contact is required"),
           aadharNo: z.string().min(12, "Aadhar No is required"),
-          pan: z.string().min(16, "Pan No is required"),
+          pan: z.string().min(12, "Pan No is required"),
           email: z.string().min(4, "Email No is required"),
         })
       )
@@ -220,8 +220,24 @@ const formSchema = z.object({
   }),
   declaration: z.object({
     agreeToTerms: z.boolean(),
-    photoUpload: z.any().optional(),
-    signatureUpload: z.any().optional(),
+    photoUpload: z.any().refine((val) => {
+      // Check if it's a File object or has existingPath
+      if (!val) return false;
+      if (val instanceof File) return true;
+      if (typeof val === 'object' && val?.existingPath) return true;
+      return false;
+    }, {
+      message: "Membership form copy upload is required",
+    }),
+    signatureUpload: z.any().refine((val) => {
+      // Check if it's a File object or has existingPath
+      if (!val) return false;
+      if (val instanceof File) return true;
+      if (typeof val === 'object' && val?.existingPath) return true;
+      return false;
+    }, {
+      message: "Signature upload is required",
+    }),
   }),
 });
 
@@ -381,6 +397,36 @@ const AddMemberForm = () => {
   const totalSteps = 5;
 
   const nextStep = async () => {
+    // Special validation for step 5 (declaration step)
+    if (currentStep === 5) {
+      const formValues = methods.getValues();
+      const photoUpload = formValues.declaration?.photoUpload;
+      const signatureUpload = formValues.declaration?.signatureUpload;
+      
+      // Check if files are uploaded
+      const hasPhotoUpload = photoUpload && (
+        photoUpload instanceof File || 
+        (typeof photoUpload === 'object' && photoUpload?.existingPath)
+      );
+      const hasSignatureUpload = signatureUpload && (
+        signatureUpload instanceof File || 
+        (typeof signatureUpload === 'object' && signatureUpload?.existingPath)
+      );
+      
+      if (!hasPhotoUpload || !hasSignatureUpload) {
+        const missingFields = [];
+        if (!hasPhotoUpload) missingFields.push("Membership form copy");
+        if (!hasSignatureUpload) missingFields.push("Signature");
+        
+        toast({
+          title: "Required Fields Missing",
+          description: `Please upload: ${missingFields.join(" and ")} before proceeding.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     const isValid = await methods.trigger(
       getFieldsToValidateForStep(currentStep)
     );
@@ -1509,7 +1555,11 @@ const AddMemberForm = () => {
           </Button>
 
           {currentStep < totalSteps ? (
-            <Button type="button" onClick={nextStep} disabled={isSubmitting}>
+            <Button 
+              type="button" 
+              onClick={nextStep} 
+              disabled={isSubmitting}
+            >
               Next <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
