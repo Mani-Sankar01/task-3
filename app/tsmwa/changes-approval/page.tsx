@@ -1439,15 +1439,17 @@ const ChangesApprovalPage = () => {
                               Approve
                             </Button>
 
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDecline(change, 'member')}
-                              disabled={isProcessing}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Decline
-                            </Button>
+                            {change.approvalStatus === "PENDING" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDecline(change, 'member')}
+                                disabled={isProcessing}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Decline
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1524,15 +1526,17 @@ const ChangesApprovalPage = () => {
                               Approve
                             </Button>
 
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDecline(change, 'membershipFees')}
-                              disabled={isProcessing}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Decline
-                            </Button>
+                            {change.approvalStatus === "PENDING" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDecline(change, 'membershipFees')}
+                                disabled={isProcessing}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Decline
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1609,15 +1613,17 @@ const ChangesApprovalPage = () => {
                               Approve
                             </Button>
 
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDecline(change, 'invoice')}
-                              disabled={isProcessing}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Decline
-                            </Button>
+                            {change.approvalStatus === "PENDING" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDecline(change, 'invoice')}
+                                disabled={isProcessing}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Decline
+                              </Button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1708,7 +1714,7 @@ const ChangesApprovalPage = () => {
                               </Button>
                             )}
 
-                            {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                            {change.approvalStatus === "PENDING" && (
                               <Button
                                 variant="destructive"
                                 size="sm"

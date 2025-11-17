@@ -1199,7 +1199,7 @@ const ChangesApprovalPage = () => {
                            </Button>
                          )}
                          
-                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                         {change.approvalStatus === "PENDING" && (
                            <Button
                              variant="destructive"
                              size="sm"
@@ -1284,7 +1284,7 @@ const ChangesApprovalPage = () => {
                            </Button>
                          )}
                          
-                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                         {change.approvalStatus === "PENDING" && (
                            <Button
                              variant="destructive"
                              size="sm"
@@ -1369,7 +1369,7 @@ const ChangesApprovalPage = () => {
                            </Button>
                          )}
                          
-                         {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                         {change.approvalStatus === "PENDING" && (
                            <Button
                              variant="destructive"
                              size="sm"
@@ -1468,7 +1468,7 @@ const ChangesApprovalPage = () => {
                               </Button>
                             )}
 
-                            {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                            {change.approvalStatus === "PENDING" && (
                               <Button
                                 variant="destructive"
                                 size="sm"
