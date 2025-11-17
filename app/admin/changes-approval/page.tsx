@@ -260,6 +260,7 @@ const ChangesApprovalPage = () => {
         console.log(memberData);
         console.log(membershipFeesData);
         console.log(invoiceData);
+        console.log(labourData);
 
       } catch (error) {
         console.error("Error fetching changes:", error);
@@ -1433,29 +1434,33 @@ const ChangesApprovalPage = () => {
                           Show Changes
                         </Button>
 
-                        {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleApprove(change, 'labour')}
-                            disabled={isProcessing}
-                            className="bg-primary hover:bg-primary/90"
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            Approve
-                          </Button>
-                        )}
+                        {status === "authenticated" && session?.user?.role === "ADMIN" && (
+                          <>
+                            {(change.approvalStatus === "PENDING" || change.approvalStatus === "DECLINED") && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handleApprove(change, 'labour')}
+                                disabled={isProcessing}
+                                className="bg-primary hover:bg-primary/90"
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Approve
+                              </Button>
+                            )}
 
-                        {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDecline(change, 'labour')}
-                            disabled={isProcessing}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Decline
-                          </Button>
+                            {(change.approvalStatus === "PENDING" || change.approvalStatus === "APPROVED") && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDecline(change, 'labour')}
+                                disabled={isProcessing}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Decline
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </CardContent>
@@ -1538,7 +1543,7 @@ const ChangesApprovalPage = () => {
               >
                 Close
               </Button>
-              {selectedChange && canApprove && (
+              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canApprove && (
                 <Button
                   variant="default"
                   onClick={() => handleApprove(selectedChange, selectedChange.type)}
@@ -1549,7 +1554,7 @@ const ChangesApprovalPage = () => {
                   Approve
                 </Button>
               )}
-              {selectedChange && canDecline && (
+              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canDecline && (
                 <Button
                   variant="destructive"
                   onClick={() => {
