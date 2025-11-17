@@ -172,7 +172,7 @@ const formSchema = z.object({
           name: z.string().min(2, "Name is required"),
           contactNo: z.string().min(10, "Contact is required"),
           aadharNo: z.string().min(12, "Aadhar No is required"),
-          pan: z.string().min(12, "Pan No is required"),
+          pan: z.string().min(10, "Pan No is required"),
           email: z.string().min(4, "Email No is required"),
         })
       )
@@ -735,26 +735,27 @@ const AddMemberForm = () => {
 
         attachments: [...additionalAttachments],
 
-        proposer: data.proposer1.membershipId
-          ? {
-              proposerID: data.proposer1.membershipId,
-              signaturePath: data.proposer1.signaturePath,
-            }
-          : null,
-
-        executiveProposer: data.proposer2.membershipId
-          ? {
-              proposerID: data.proposer2.membershipId,
-              signaturePath: data.proposer2.signaturePath,
-            }
-          : null,
-
         declarations: {
           agreesToTerms: data.declaration.agreeToTerms ? "TRUE" : "FALSE",
           membershipFormPath: uploadedFiles.photoUpload || null,
           applicationSignaturePath: uploadedFiles.signatureUpload || null,
         },
       };
+
+      // Conditionally add proposer fields only if they have values
+      if (data.proposer1.membershipId) {
+        requestData.proposer = {
+          proposerID: data.proposer1.membershipId,
+          signaturePath: data.proposer1.signaturePath,
+        };
+      }
+
+      if (data.proposer2.membershipId) {
+        requestData.executiveProposer = {
+          proposerID: data.proposer2.membershipId,
+          signaturePath: data.proposer2.signaturePath,
+        };
+      }
 
       if (shouldSendCompliance) {
         const complianceDetails: Record<string, any> = {};
