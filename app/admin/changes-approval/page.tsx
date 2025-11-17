@@ -166,6 +166,8 @@ const ChangesApprovalPage = () => {
   const [membershipFeesChanges, setMembershipFeesChanges] = useState<PendingBillRequest[]>([]);
   const [invoiceChanges, setInvoiceChanges] = useState<InvoiceChangeRequest[]>([]);
   const [labourChanges, setLabourChanges] = useState<LabourChangeRequest[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [userNamesMap, setUserNamesMap] = useState<Record<number, string>>({});
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({
     totalChanges: 0,
     pendingCount: 0,
@@ -190,6 +192,37 @@ const ChangesApprovalPage = () => {
   const [dateFilter, setDateFilter] = useState("all");
   const [selectedDate, setSelectedDate] = useState("");
   const [activeTab, setActiveTab] = useState("members");
+
+  // Fetch users
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/user/get_all_user`,
+          {
+            headers: { Authorization: `Bearer ${session.user.token}` },
+          }
+        );
+        const usersData = response.data || [];
+        setUsers(usersData);
+        
+        // Create a map of user IDs to user names
+        const namesMap: Record<number, string> = {};
+        usersData.forEach((user: any) => {
+          if (user.id && user.fullName) {
+            namesMap[user.id] = user.fullName;
+          }
+        });
+        setUserNamesMap(namesMap);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, [status, session?.user?.token]);
 
   // Fetch all changes
   useEffect(() => {
@@ -1221,7 +1254,7 @@ const ChangesApprovalPage = () => {
                       <div className="mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <User className="h-4 w-4" />
-                          Modified by: User ID {change.modifiedBy}
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
                         </div>
                       </div>
 
@@ -1306,7 +1339,7 @@ const ChangesApprovalPage = () => {
                       <div className="mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <User className="h-4 w-4" />
-                          Modified by: User ID {change.modifiedBy}
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
                         </div>
                       </div>
 
@@ -1379,7 +1412,7 @@ const ChangesApprovalPage = () => {
                           </div>
                           <Badge variant="secondary">Updated</Badge>
                         </div>
-                        <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
                             {format(new Date(change.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
@@ -1398,28 +1431,14 @@ const ChangesApprovalPage = () => {
                         </div>
                       </div>
 
-                      <div className="mb-4 text-sm text-muted-foreground space-y-1">
-                        {change.updatedData?.fullName && (
-                          <div>
-                            <span className="font-medium">Full Name:</span> {change.updatedData.fullName}
-                          </div>
-                        )}
-                        {change.updatedData?.phoneNumber && (
-                          <div>
-                            <span className="font-medium">Phone:</span> {change.updatedData.phoneNumber}
-                          </div>
-                        )}
-                        {change.updatedData?.labourStatus && (
-                          <div>
-                            <span className="font-medium">Status:</span> {change.updatedData.labourStatus}
-                          </div>
-                        )}
-                        {change.updatedData?.assignedTo && (
-                          <div>
-                            <span className="font-medium">Assigned To:</span> {change.updatedData.assignedTo}
-                          </div>
-                        )}
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <User className="h-4 w-4" />
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
+                        </div>
                       </div>
+
+
 
                       <div className="flex items-center gap-2">
                         <Button
@@ -1536,37 +1555,13 @@ const ChangesApprovalPage = () => {
               </div>
             )}
 
-            <DialogFooter className="flex gap-2">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setShowDetailsDialog(false)}
               >
                 Close
               </Button>
-              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canApprove && (
-                <Button
-                  variant="default"
-                  onClick={() => handleApprove(selectedChange, selectedChange.type)}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-              )}
-              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canDecline && (
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setShowDetailsDialog(false);
-                    setShowDeclineDialog(true);
-                  }}
-                  disabled={isProcessing}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Decline
-                </Button>
-              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>

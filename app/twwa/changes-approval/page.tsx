@@ -159,12 +159,14 @@ interface SummaryStats {
 const ChangesApprovalPage = () => {
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  
+
   // State for all data
   const [memberChanges, setMemberChanges] = useState<PendingChange[]>([]);
   const [membershipFeesChanges, setMembershipFeesChanges] = useState<PendingBillRequest[]>([]);
   const [invoiceChanges, setInvoiceChanges] = useState<InvoiceChangeRequest[]>([]);
   const [labourChanges, setLabourChanges] = useState<LabourChangeRequest[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [userNamesMap, setUserNamesMap] = useState<Record<number, string>>({});
   const [summaryStats, setSummaryStats] = useState<SummaryStats>({
     totalChanges: 0,
     pendingCount: 0,
@@ -175,7 +177,7 @@ const ChangesApprovalPage = () => {
     invoiceChanges: 0,
     labourChanges: 0,
   });
-  
+
   // UI State
   const [isLoading, setIsLoading] = useState(true);
   const [selectedChange, setSelectedChange] = useState<any>(null);
@@ -189,6 +191,37 @@ const ChangesApprovalPage = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [activeTab, setActiveTab] = useState("members");
 
+  // Fetch users
+  useEffect(() => {
+    if (status !== "authenticated" || !session?.user?.token) return;
+
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.BACKEND_API_URL}/api/user/get_all_user`,
+          {
+            headers: { Authorization: `Bearer ${session.user.token}` },
+          }
+        );
+        const usersData = response.data || [];
+        setUsers(usersData);
+
+        // Create a map of user IDs to user names
+        const namesMap: Record<number, string> = {};
+        usersData.forEach((user: any) => {
+          if (user.id && user.fullName) {
+            namesMap[user.id] = user.fullName;
+          }
+        });
+        setUserNamesMap(namesMap);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, [status, session?.user?.token]);
+
   // Fetch all changes
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
@@ -196,7 +229,7 @@ const ChangesApprovalPage = () => {
     const fetchAllChanges = async () => {
       try {
         setIsLoading(true);
-        
+
         // Fetch member changes
         const memberResponse = await axios.get(
           `${process.env.BACKEND_API_URL}/api/member/get_member_changes/ALL`,
@@ -273,17 +306,17 @@ const ChangesApprovalPage = () => {
   // Filter functions
   const filterChanges = (changes: any[]) => {
     let filtered = changes;
-    
+
     // Filter by approval status
     if (approvalStatusFilter !== "all") {
       filtered = filtered.filter(change => change.approvalStatus === approvalStatusFilter);
     }
-    
+
     // Filter by date
     if (dateFilter !== "all") {
       const today = new Date();
       let startDate, endDate;
-      
+
       switch (dateFilter) {
         case "today":
           startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -325,7 +358,7 @@ const ChangesApprovalPage = () => {
           }
           break;
       }
-      
+
       if (startDate && endDate) {
         filtered = filtered.filter(change => {
           const changeDate = new Date(change.modifiedAt);
@@ -333,7 +366,7 @@ const ChangesApprovalPage = () => {
         });
       }
     }
-    
+
     return filtered;
   };
 
@@ -359,8 +392,8 @@ const ChangesApprovalPage = () => {
 
     // Check basic field changes
     const basicFields = [
-      'relativeName', 'applicantName', 'firmName', 'proprietorName', 
-      'phoneNumber1', 'phoneNumber2', 'surveyNumber', 'village', 'zone', 
+      'relativeName', 'applicantName', 'firmName', 'proprietorName',
+      'phoneNumber1', 'phoneNumber2', 'surveyNumber', 'village', 'zone',
       'mandal', 'district', 'state', 'pinCode', 'sanctionedHP',
       'estimatedMaleWorker', 'estimatedFemaleWorker', 'fullAddress'
     ];
@@ -396,7 +429,7 @@ const ChangesApprovalPage = () => {
 
     if (updatedData.branchDetails && hasData(updatedData.branchDetails)) {
       const branchData = updatedData.branchDetails;
-      
+
       if (branchData.newBranchSchema && branchData.newBranchSchema.length > 0) {
         changes.push({
           type: "added",
@@ -427,7 +460,7 @@ const ChangesApprovalPage = () => {
 
     if (updatedData.partnerDetails && hasData(updatedData.partnerDetails)) {
       const partnerData = updatedData.partnerDetails;
-      
+
       if (partnerData.newPartnerDetails && partnerData.newPartnerDetails.length > 0) {
         changes.push({
           type: "added",
@@ -458,7 +491,7 @@ const ChangesApprovalPage = () => {
 
     if (updatedData.machineryInformations && hasData(updatedData.machineryInformations)) {
       const machineryData = updatedData.machineryInformations;
-      
+
       if (machineryData.newMachineryInformations && machineryData.newMachineryInformations.length > 0) {
         changes.push({
           type: "added",
@@ -647,8 +680,153 @@ const ChangesApprovalPage = () => {
     return changes;
   };
 
+  const extractAllChanges = (updatedData: any, prefix: string = ""): any[] => {
+    const changes: any[] = [];
+
+    if (!updatedData || typeof updatedData !== 'object') {
+      return changes;
+    }
+
+    // Helper function to check if a value is meaningful (not empty/null/undefined)
+    const hasMeaningfulValue = (value: any): boolean => {
+      if (value === null || value === undefined) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (Array.isArray(value)) return value.length > 0;
+      if (typeof value === 'object') {
+        // Check if object has any meaningful properties
+        return Object.keys(value).some(key => hasMeaningfulValue(value[key]));
+      }
+      return true;
+    };
+
+    // Helper function to format field names (camelCase to Title Case)
+    const formatFieldName = (field: string): string => {
+      return field
+        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .trim();
+    };
+
+    // Helper function to format nested field names
+    const getFullFieldName = (key: string, parentPrefix: string): string => {
+      const formattedKey = formatFieldName(key);
+      return parentPrefix ? `${parentPrefix} - ${formattedKey}` : formattedKey;
+    };
+
+    // Process each key in updatedData
+    for (const key of Object.keys(updatedData)) {
+      const value = updatedData[key];
+      const fullFieldName = getFullFieldName(key, prefix);
+
+      // Skip metadata fields that shouldn't be shown as changes
+      if (['id', 'membershipId', 'billingId', 'invoiceId', 'labourId', 'createdAt', 'updatedAt', 'modifiedAt', 'modifiedBy'].includes(key)) {
+        continue;
+      }
+
+      // Handle arrays
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          // Determine the type based on key name
+          let changeType: "added" | "updated" | "deleted" = "updated";
+          if (key.toLowerCase().includes('new') || key.toLowerCase().includes('add')) {
+            changeType = "added";
+          } else if (key.toLowerCase().includes('delete') || key.toLowerCase().includes('remove')) {
+            changeType = "deleted";
+          }
+
+          changes.push({
+            type: changeType,
+            field: fullFieldName,
+            newValue: value,
+            description: `${value.length} item(s) - ${formatFieldName(key)}`
+          });
+        }
+      }
+      // Handle nested objects
+      else if (typeof value === 'object' && value !== null) {
+        // Check if it's a special nested structure (like branchDetails, partnerDetails)
+        if (hasMeaningfulValue(value)) {
+          // For objects with a single meaningful property (like {proposerID: "..."}), show it more cleanly
+          const keys = Object.keys(value);
+          const meaningfulKeys = keys.filter(k => hasMeaningfulValue(value[k]));
+
+          if (meaningfulKeys.length === 1 && typeof value[meaningfulKeys[0]] !== 'object') {
+            // Single primitive property - show it directly
+            const singleKey = meaningfulKeys[0];
+            const singleValue = value[singleKey];
+            let displayValue = singleValue;
+            let description = `${fullFieldName} changed to: ${singleValue}`;
+
+            // Format dates
+            if (typeof singleValue === 'string' && /^\d{4}-\d{2}-\d{2}/.test(singleValue)) {
+              try {
+                const date = new Date(singleValue);
+                if (!isNaN(date.getTime())) {
+                  displayValue = format(date, "MMM dd, yyyy");
+                  description = `${fullFieldName} changed to: ${displayValue}`;
+                }
+              } catch (e) {
+                // Not a valid date
+              }
+            }
+
+            changes.push({
+              type: "updated",
+              field: fullFieldName,
+              newValue: displayValue,
+              description: description
+            });
+          } else {
+            // Multiple properties or complex structure - recursively process
+            const nestedChanges = extractAllChanges(value, fullFieldName);
+            changes.push(...nestedChanges);
+          }
+        }
+      }
+      // Handle primitive values (string, number, boolean, date)
+      else if (hasMeaningfulValue(value)) {
+        let displayValue = value;
+        let description = `${fullFieldName} changed to: ${value}`;
+
+        // Format dates if detected
+        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              displayValue = format(date, "MMM dd, yyyy");
+              description = `${fullFieldName} changed to: ${displayValue}`;
+            }
+          } catch (e) {
+            // Not a valid date, keep original
+          }
+        }
+
+        // Format currency for amount fields
+        if ((key.toLowerCase().includes('amount') || key.toLowerCase().includes('total') || key.toLowerCase().includes('price')) && typeof value === 'number') {
+          displayValue = `₹${value}`;
+          description = `${fullFieldName} changed to: ${displayValue}`;
+        }
+
+        // Format percentage for percent fields
+        if (key.toLowerCase().includes('percent') && typeof value === 'number') {
+          displayValue = `${value}%`;
+          description = `${fullFieldName} changed to: ${displayValue}`;
+        }
+
+        changes.push({
+          type: "updated",
+          field: fullFieldName,
+          newValue: displayValue,
+          description: description
+        });
+      }
+    }
+
+    return changes;
+  };
+
   const extractLabourChanges = (updatedData: any) => {
-    return extractMemberChanges(updatedData);
+    return extractAllChanges(updatedData);
   };
 
   const formatFieldLabel = (label: string) =>
@@ -777,7 +955,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setMemberChanges(prev => prev.map(c => 
+          updateFunction = () => setMemberChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "APPROVED" } : c
           ));
           break;
@@ -791,7 +969,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setMembershipFeesChanges(prev => prev.map(c => 
+          updateFunction = () => setMembershipFeesChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "APPROVED" } : c
           ));
           break;
@@ -806,7 +984,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setInvoiceChanges(prev => prev.map(c => 
+          updateFunction = () => setInvoiceChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "APPROVED" } : c
           ));
           break;
@@ -835,9 +1013,9 @@ const ChangesApprovalPage = () => {
           title: "Success",
           description: "Changes approved successfully",
         });
-        
+
         updateFunction?.();
-        
+
         if (selectedChange?.id === change.id) {
           setShowDetailsDialog(false);
           setSelectedChange(null);
@@ -867,7 +1045,7 @@ const ChangesApprovalPage = () => {
 
     setIsProcessing(true);
     setDeclineError("");
-    
+
     try {
       let response;
       let updateFunction;
@@ -883,7 +1061,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setMemberChanges(prev => prev.map(c => 
+          updateFunction = () => setMemberChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "DECLINED" } : c
           ));
           break;
@@ -898,7 +1076,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setMembershipFeesChanges(prev => prev.map(c => 
+          updateFunction = () => setMembershipFeesChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "DECLINED" } : c
           ));
           break;
@@ -913,7 +1091,7 @@ const ChangesApprovalPage = () => {
             },
             { headers: { Authorization: `Bearer ${session.user.token}` } }
           );
-          updateFunction = () => setInvoiceChanges(prev => prev.map(c => 
+          updateFunction = () => setInvoiceChanges(prev => prev.map(c =>
             c.id === change.id ? { ...c, approvalStatus: "DECLINED" } : c
           ));
           break;
@@ -942,13 +1120,13 @@ const ChangesApprovalPage = () => {
           title: "Success",
           description: "Changes declined successfully",
         });
-        
+
         updateFunction?.();
-        
+
         setShowDeclineDialog(false);
         setDeclineNote("");
         setDeclineError("");
-        
+
         if (selectedChange?.id === change.id) {
           setShowDetailsDialog(false);
           setSelectedChange(null);
@@ -965,7 +1143,7 @@ const ChangesApprovalPage = () => {
 
   const handleDeclineSubmit = async () => {
     if (!selectedChange || !declineNote.trim()) return;
-    
+
     // Determine the type based on the selected change
     let type: 'member' | 'membershipFees' | 'invoice' | 'labour';
     if (selectedChange.type) {
@@ -979,7 +1157,7 @@ const ChangesApprovalPage = () => {
     } else {
       type = 'invoice';
     }
-    
+
     await handleDecline(selectedChange, type);
   };
 
@@ -1098,7 +1276,7 @@ const ChangesApprovalPage = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                                 <Receipt className="h-6 w-6 text-purple-500" />
+                <Receipt className="h-6 w-6 text-purple-500" />
                 <div>
                   <p className="text-sm font-medium">Invoice Changes</p>
                   <p className="text-lg font-bold">{summaryStats.invoiceChanges}</p>
@@ -1138,7 +1316,7 @@ const ChangesApprovalPage = () => {
                 <SelectItem value="DECLINED">Declined</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <Select
               value={dateFilter}
               onValueChange={(value) => {
@@ -1162,7 +1340,7 @@ const ChangesApprovalPage = () => {
                 <SelectItem value="custom">Custom Date</SelectItem>
               </SelectContent>
             </Select>
-            
+
             {dateFilter === "custom" && (
               <Input
                 type="date"
@@ -1185,10 +1363,10 @@ const ChangesApprovalPage = () => {
               <DollarSign className="h-4 w-4" />
               Membership Fees ({filteredMembershipFeesChanges.length})
             </TabsTrigger>
-                         <TabsTrigger value="invoices" className="flex items-center gap-2">
-               <Receipt className="h-4 w-4" />
-               Invoices ({filteredInvoiceChanges.length})
-             </TabsTrigger>
+            <TabsTrigger value="invoices" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              Invoices ({filteredInvoiceChanges.length})
+            </TabsTrigger>
             <TabsTrigger value="labour" className="flex items-center gap-2">
               <UserCog className="h-4 w-4" />
               Labour ({filteredLabourChanges.length})
@@ -1247,7 +1425,7 @@ const ChangesApprovalPage = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           Show Changes
                         </Button>
-                        
+
                         <Button
                           variant="default"
                           size="sm"
@@ -1258,7 +1436,7 @@ const ChangesApprovalPage = () => {
                           <Check className="h-4 w-4 mr-2" />
                           Approve
                         </Button>
-                        
+
                         <Button
                           variant="destructive"
                           size="sm"
@@ -1312,7 +1490,7 @@ const ChangesApprovalPage = () => {
                       <div className="mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <User className="h-4 w-4" />
-                          Modified by: User ID {change.modifiedBy}
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
                         </div>
                       </div>
 
@@ -1328,7 +1506,7 @@ const ChangesApprovalPage = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           Show Changes
                         </Button>
-                        
+
                         <Button
                           variant="default"
                           size="sm"
@@ -1339,7 +1517,7 @@ const ChangesApprovalPage = () => {
                           <Check className="h-4 w-4 mr-2" />
                           Approve
                         </Button>
-                        
+
                         <Button
                           variant="destructive"
                           size="sm"
@@ -1376,7 +1554,7 @@ const ChangesApprovalPage = () => {
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2">
-                                                         <Receipt className="h-5 w-5 text-purple-500" />
+                            <Receipt className="h-5 w-5 text-purple-500" />
                             <span className="font-semibold">{change.invoiceId}</span>
                           </div>
                           <Badge variant="secondary">Updated</Badge>
@@ -1393,7 +1571,7 @@ const ChangesApprovalPage = () => {
                       <div className="mb-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                           <User className="h-4 w-4" />
-                          Modified by: User ID {change.modifiedBy}
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
                         </div>
                       </div>
 
@@ -1409,7 +1587,7 @@ const ChangesApprovalPage = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           Show Changes
                         </Button>
-                        
+
                         <Button
                           variant="default"
                           size="sm"
@@ -1420,7 +1598,7 @@ const ChangesApprovalPage = () => {
                           <Check className="h-4 w-4 mr-2" />
                           Approve
                         </Button>
-                        
+
                         <Button
                           variant="destructive"
                           size="sm"
@@ -1462,7 +1640,7 @@ const ChangesApprovalPage = () => {
                           </div>
                           <Badge variant="secondary">Updated</Badge>
                         </div>
-                        <div className="flex flex-col items-end gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4" />
                             {format(new Date(change.modifiedAt), "MMM dd, yyyy 'at' h:mm a")}
@@ -1472,8 +1650,8 @@ const ChangesApprovalPage = () => {
                               change.approvalStatus === "PENDING"
                                 ? "destructive"
                                 : change.approvalStatus === "APPROVED"
-                                ? "default"
-                                : "destructive"
+                                  ? "default"
+                                  : "destructive"
                             }
                           >
                             {change.approvalStatus}
@@ -1481,28 +1659,14 @@ const ChangesApprovalPage = () => {
                         </div>
                       </div>
 
-                      <div className="mb-4 text-sm text-muted-foreground space-y-1">
-                        {change.updatedData?.fullName && (
-                          <div>
-                            <span className="font-medium">Full Name:</span> {change.updatedData.fullName}
-                          </div>
-                        )}
-                        {change.updatedData?.phoneNumber && (
-                          <div>
-                            <span className="font-medium">Phone:</span> {change.updatedData.phoneNumber}
-                          </div>
-                        )}
-                        {change.updatedData?.labourStatus && (
-                          <div>
-                            <span className="font-medium">Status:</span> {change.updatedData.labourStatus}
-                          </div>
-                        )}
-                        {change.updatedData?.assignedTo && (
-                          <div>
-                            <span className="font-medium">Assigned To:</span> {change.updatedData.assignedTo}
-                          </div>
-                        )}
+                      <div className="mb-4">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <User className="h-4 w-4" />
+                          Modified by: {userNamesMap[change.modifiedBy] || `User ID ${change.modifiedBy}`}
+                        </div>
                       </div>
+
+                      
 
                       <div className="flex items-center gap-2">
                         <Button
@@ -1588,7 +1752,7 @@ const ChangesApprovalPage = () => {
                       changes = extractInvoiceChanges(selectedChange.updatedData);
                       break;
                     case 'labour':
-                      changes = extractLabourChanges(selectedChange.updatedData);
+                      changes = extractAllChanges(selectedChange.updatedData);
                       break;
                   }
 
@@ -1619,37 +1783,13 @@ const ChangesApprovalPage = () => {
               </div>
             )}
 
-            <DialogFooter className="flex gap-2">
+            <DialogFooter>
               <Button
                 variant="outline"
                 onClick={() => setShowDetailsDialog(false)}
               >
                 Close
               </Button>
-              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canApprove && (
-                <Button
-                  variant="default"
-                  onClick={() => handleApprove(selectedChange, selectedChange.type)}
-                  disabled={isProcessing}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Approve
-                </Button>
-              )}
-              {status === "authenticated" && session?.user?.role === "ADMIN" && selectedChange && canDecline && (
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    setShowDetailsDialog(false);
-                    setShowDeclineDialog(true);
-                  }}
-                  disabled={isProcessing}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Decline
-                </Button>
-              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
