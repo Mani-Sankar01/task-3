@@ -159,9 +159,17 @@ export default function LabourList() {
 
     // Filter by status
     if (selectedStatus && selectedStatus !== "all") {
-      filtered = filtered.filter(
-        (labour) => labour.labourStatus === selectedStatus.toUpperCase()
-      );
+      filtered = filtered.filter((labour) => {
+        const labourStatus = labour.labourStatus?.toUpperCase() || "";
+        const filterStatus = selectedStatus.toUpperCase();
+        
+        // Handle BENCH/ON_BENCH mismatch
+        if (filterStatus === "BENCH") {
+          return labourStatus === "BENCH" || labourStatus === "ON_BENCH" || labourStatus === "ON BENCH";
+        }
+        
+        return labourStatus === filterStatus;
+      });
     }
 
     // Filter by member/industry
