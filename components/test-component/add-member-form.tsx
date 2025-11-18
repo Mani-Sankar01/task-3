@@ -219,7 +219,9 @@ const formSchema = z.object({
     signaturePath: z.string().optional(),
   }),
   declaration: z.object({
-    agreeToTerms: z.boolean(),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the terms and conditions to proceed",
+    }),
     photoUpload: z.any().refine((val) => {
       // Check if it's a File object or has existingPath
       if (!val) return false;
@@ -402,6 +404,19 @@ const AddMemberForm = () => {
       const formValues = methods.getValues();
       const photoUpload = formValues.declaration?.photoUpload;
       const signatureUpload = formValues.declaration?.signatureUpload;
+      const agreeToTerms = formValues.declaration?.agreeToTerms;
+      
+      // Check if terms are agreed
+      if (!agreeToTerms) {
+        toast({
+          title: "Required Field Missing",
+          description: "You must agree to the terms and conditions to proceed.",
+          variant: "destructive",
+        });
+        // Trigger validation to show error message below checkbox
+        await methods.trigger("declaration.agreeToTerms");
+        return;
+      }
       
       // Check if files are uploaded
       const hasPhotoUpload = photoUpload && (

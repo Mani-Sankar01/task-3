@@ -492,7 +492,12 @@ export default function Step5ProposerDeclaration() {
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                  <FormLabel>I agree to the terms and conditions</FormLabel>
+                  <FormLabel 
+                    data-required={true}
+                    data-tooltip="You must agree to the terms and conditions to proceed with the application."
+                  >
+                    I agree to the terms and conditions
+                  </FormLabel>
                 </div>
                 <FormMessage />
               </FormItem>

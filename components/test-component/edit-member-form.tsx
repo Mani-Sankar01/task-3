@@ -249,7 +249,9 @@ const formSchema = z.object({
     signaturePath: z.string().optional(),
   }),
   declaration: z.object({
-    agreeToTerms: z.boolean(),
+    agreeToTerms: z.boolean().refine((val) => val === true, {
+      message: "You must agree to the terms and conditions to proceed",
+    }),
     photoUpload: z
       .union([
         z.instanceof(File),
@@ -1126,6 +1128,20 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const handleSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     try {
+      // Validate agreeToTerms before proceeding
+      if (!data.declaration?.agreeToTerms) {
+        setPopupMessage({
+          isOpen: true,
+          type: "error",
+          title: "Required Field Missing",
+          message: "You must agree to the terms and conditions to proceed.",
+        });
+        // Trigger validation to show error message below checkbox
+        await methods.trigger("declaration.agreeToTerms");
+        setIsSubmitting(false);
+        return;
+      }
+
       const original = originalDataRef.current;
       if (!original) throw new Error("Original data not loaded");
 
