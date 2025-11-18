@@ -131,6 +131,7 @@ const formSchema = z.object({
         z.object({ existingPath: z.string().nullable() }),
       ])
       .optional(),
+    gstinIsExpirable: z.boolean().default(false),
     gstinExpiredAt: z.string().optional(),
     factoryLicenseNo: z.string(),
     factoryLicenseDoc: z
@@ -139,6 +140,7 @@ const formSchema = z.object({
         z.object({ existingPath: z.string().nullable() }),
       ])
       .optional(),
+    factoryLicenseIsExpirable: z.boolean().default(false),
     factoryLicenseExpiredAt: z.string().optional(),
     tspcbOrderNo: z.string(),
     tspcbOrderDoc: z
@@ -147,6 +149,7 @@ const formSchema = z.object({
         z.object({ existingPath: z.string().nullable() }),
       ])
       .optional(),
+    tspcbIsExpirable: z.boolean().default(false),
     tspcbExpiredAt: z.string().optional(),
     mdlNo: z.string(),
     mdlDoc: z
@@ -155,6 +158,7 @@ const formSchema = z.object({
         z.object({ existingPath: z.string().nullable() }),
       ])
       .optional(),
+    mdlIsExpirable: z.boolean().default(false),
     mdlExpiredAt: z.string().optional(),
     udyamCertificateNo: z.string(),
     udyamCertificateDoc: z
@@ -163,7 +167,23 @@ const formSchema = z.object({
         z.object({ existingPath: z.string().nullable() }),
       ])
       .optional(),
+    udyamIsExpirable: z.boolean().default(false),
     udyamCertificateExpiredAt: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.gstinIsExpirable && !data.gstinExpiredAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "GSTIN expiry date is required when document is expirable",
+        path: ["gstinExpiredAt"],
+      });
+    }
+    if (data.factoryLicenseIsExpirable && !data.factoryLicenseExpiredAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Factory License expiry date is required when document is expirable",
+        path: ["factoryLicenseExpiredAt"],
+      });
+    }
   }),
   communicationDetails: z.object({
     fullAddress: z.string().min(10, "Full Address is required"),
@@ -230,7 +250,16 @@ const formSchema = z.object({
             z.object({ existingPath: z.string().nullable() }),
           ])
           .optional(),
+        isExpirable: z.boolean().default(false),
         expiredAt: z.string().optional(),
+      }).superRefine((data, ctx) => {
+        if (data.isExpirable && !data.expiredAt) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Expiry date is required when document is expirable",
+            path: ["expiredAt"],
+          });
+        }
       })
     ),
   }),
@@ -361,18 +390,23 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       complianceDetails: {
         gstinNo: "",
         gstinDoc: { existingPath: null },
+        gstinIsExpirable: false,
         gstinExpiredAt: "",
         factoryLicenseNo: "",
         factoryLicenseDoc: { existingPath: null },
+        factoryLicenseIsExpirable: false,
         factoryLicenseExpiredAt: "",
         tspcbOrderNo: "",
         tspcbOrderDoc: { existingPath: null },
+        tspcbIsExpirable: false,
         tspcbExpiredAt: "",
         mdlNo: "",
         mdlDoc: { existingPath: null },
+        mdlIsExpirable: false,
         mdlExpiredAt: "",
         udyamCertificateNo: "",
         udyamCertificateDoc: { existingPath: null },
+        udyamIsExpirable: false,
         udyamCertificateExpiredAt: "",
       },
       communicationDetails: {
@@ -517,6 +551,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               existingPath:
                 reponseData.complianceDetails?.gstInCertificatePath || null,
             },
+            gstinIsExpirable: !!reponseData.complianceDetails?.gstExpiredAt,
             gstinExpiredAt: reponseData.complianceDetails?.gstExpiredAt
               ? new Date(reponseData.complianceDetails.gstExpiredAt)
                   .toISOString()
@@ -528,6 +563,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               existingPath:
                 reponseData.complianceDetails?.factoryLicensePath || null,
             },
+            factoryLicenseIsExpirable: !!reponseData.complianceDetails?.factoryLicenseExpiredAt,
             factoryLicenseExpiredAt: reponseData.complianceDetails
               ?.factoryLicenseExpiredAt
               ? new Date(reponseData.complianceDetails.factoryLicenseExpiredAt)
@@ -539,6 +575,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               existingPath:
                 reponseData.complianceDetails?.tspcbCertificatePath || null,
             },
+            tspcbIsExpirable: !!reponseData.complianceDetails?.tspcbExpiredAt,
             tspcbExpiredAt: reponseData.complianceDetails?.tspcbExpiredAt
               ? new Date(reponseData.complianceDetails.tspcbExpiredAt)
                   .toISOString()
@@ -549,6 +586,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               existingPath:
                 reponseData.complianceDetails?.mdlCertificatePath || null,
             },
+            mdlIsExpirable: !!reponseData.complianceDetails?.mdlExpiredAt,
             mdlExpiredAt: reponseData.complianceDetails?.mdlExpiredAt
               ? new Date(reponseData.complianceDetails.mdlExpiredAt)
                   .toISOString()
@@ -560,6 +598,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               existingPath:
                 reponseData.complianceDetails?.udyamCertificatePath || null,
             },
+            udyamIsExpirable: !!reponseData.complianceDetails?.udyamCertificateExpiredAt,
             udyamCertificateExpiredAt: reponseData.complianceDetails
               ?.udyamCertificateExpiredAt
               ? new Date(
@@ -616,6 +655,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                 file: {
                   existingPath: a.documentPath,
                 },
+                isExpirable: !!a.expiredAt,
                 expiredAt: a.expiredAt
                   ? new Date(a.expiredAt).toISOString().split("T")[0]
                   : "",
@@ -1391,9 +1431,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           reqData.complianceDetails.gstInNumber = data.complianceDetails.gstinNo;
         }
 
-        if (changed("complianceDetails", "gstinExpiredAt")) {
-          reqData.complianceDetails.gstExpiredAt =
-            data.complianceDetails.gstinExpiredAt || null;
+        if (changed("complianceDetails", "gstinIsExpirable") || changed("complianceDetails", "gstinExpiredAt")) {
+          if (data.complianceDetails.gstinIsExpirable && data.complianceDetails.gstinExpiredAt) {
+            reqData.complianceDetails.gstExpiredAt = data.complianceDetails.gstinExpiredAt;
+          } else {
+            reqData.complianceDetails.gstExpiredAt = null;
+          }
         }
 
         if (
@@ -1409,9 +1452,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             data.complianceDetails.factoryLicenseNo;
         }
 
-        if (changed("complianceDetails", "factoryLicenseExpiredAt")) {
-          reqData.complianceDetails.factoryLicenseExpiredAt =
-            data.complianceDetails.factoryLicenseExpiredAt || null;
+        if (changed("complianceDetails", "factoryLicenseIsExpirable") || changed("complianceDetails", "factoryLicenseExpiredAt")) {
+          if (data.complianceDetails.factoryLicenseIsExpirable && data.complianceDetails.factoryLicenseExpiredAt) {
+            reqData.complianceDetails.factoryLicenseExpiredAt = data.complianceDetails.factoryLicenseExpiredAt;
+          } else {
+            reqData.complianceDetails.factoryLicenseExpiredAt = null;
+          }
         }
 
         if (
@@ -1427,9 +1473,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             data.complianceDetails.tspcbOrderNo;
         }
 
-        if (changed("complianceDetails", "tspcbExpiredAt")) {
-          reqData.complianceDetails.tspcbExpiredAt =
-            data.complianceDetails.tspcbExpiredAt || null;
+        if (changed("complianceDetails", "tspcbIsExpirable") || changed("complianceDetails", "tspcbExpiredAt")) {
+          if (data.complianceDetails.tspcbIsExpirable && data.complianceDetails.tspcbExpiredAt) {
+            reqData.complianceDetails.tspcbExpiredAt = data.complianceDetails.tspcbExpiredAt;
+          } else {
+            reqData.complianceDetails.tspcbExpiredAt = null;
+          }
         }
 
         if (
@@ -1444,9 +1493,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           reqData.complianceDetails.mdlNumber = data.complianceDetails.mdlNo;
         }
 
-        if (changed("complianceDetails", "mdlExpiredAt")) {
-          reqData.complianceDetails.mdlExpiredAt =
-            data.complianceDetails.mdlExpiredAt || null;
+        if (changed("complianceDetails", "mdlIsExpirable") || changed("complianceDetails", "mdlExpiredAt")) {
+          if (data.complianceDetails.mdlIsExpirable && data.complianceDetails.mdlExpiredAt) {
+            reqData.complianceDetails.mdlExpiredAt = data.complianceDetails.mdlExpiredAt;
+          } else {
+            reqData.complianceDetails.mdlExpiredAt = null;
+          }
         }
 
         if (
@@ -1462,9 +1514,12 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             data.complianceDetails.udyamCertificateNo;
         }
 
-        if (changed("complianceDetails", "udyamCertificateExpiredAt")) {
-          reqData.complianceDetails.udyamCertificateExpiredAt =
-            data.complianceDetails.udyamCertificateExpiredAt || null;
+        if (changed("complianceDetails", "udyamIsExpirable") || changed("complianceDetails", "udyamCertificateExpiredAt")) {
+          if (data.complianceDetails.udyamIsExpirable && data.complianceDetails.udyamCertificateExpiredAt) {
+            reqData.complianceDetails.udyamCertificateExpiredAt = data.complianceDetails.udyamCertificateExpiredAt;
+          } else {
+            reqData.complianceDetails.udyamCertificateExpiredAt = null;
+          }
         }
 
         if (

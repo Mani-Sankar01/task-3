@@ -17,6 +17,7 @@ import { Button } from "../ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { FileUpload } from "@/components/ui/file-upload";
 import { downloadFile } from "@/lib/client-file-upload";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Step4MembershipDocsProps {
   isEditMode?: boolean;
@@ -26,6 +27,9 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
   const { control, watch } = useFormContext();
   const isMemberOfOrg = watch("membershipDetails.isMemberOfOrg");
   const hasAppliedEarlier = watch("membershipDetails.hasAppliedEarlier");
+  
+  // Watch for isExpirable flags for additional attachments
+  const additionalAttachments = watch("documentDetails.additionalAttachments") || [];
 
   // Add field array for dynamic attachments
   const attachmentsArray = useFieldArray({
@@ -224,7 +228,7 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => attachmentsArray.append({ name: "", file: null, expiredAt: "" })}
+            onClick={() => attachmentsArray.append({ name: "", file: null, isExpirable: false, expiredAt: "" })}
           >
             <Plus className="h-4 w-4 mr-2" /> Add Attachment
           </Button>
@@ -233,65 +237,85 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
         <div className="space-y-6">
           {/* Dynamic attachments */}
           <div style={isEditMode ? { display: 'none' } : {}}>
-            {attachmentsArray.fields.map((field, index) => (
-              <div key={field.id} className="flex items-end gap-4">
-                <FormField
-                  control={control}
-                  name={`documentDetails.additionalAttachments.${index}.name`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Document Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter document name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+            {attachmentsArray.fields.map((field, index) => {
+              const isExpirable = watch(`documentDetails.additionalAttachments.${index}.isExpirable`);
+              return (
+                <div key={field.id} className="flex items-end gap-4">
+                  <FormField
+                    control={control}
+                    name={`documentDetails.additionalAttachments.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Document Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter document name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={control}
+                    name={`documentDetails.additionalAttachments.${index}.file`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>File</FormLabel>
+                        <FormControl>
+                          <FileUpload
+                            onFileSelect={(file) => field.onChange(file)}
+                            onUploadComplete={() => {}}
+                            onUploadError={() => {}}
+                            subfolder="documents"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            existingFilePath={field.value?.existingPath}
+                            onDownload={handleDownload}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={control}
+                    name={`documentDetails.additionalAttachments.${index}.isExpirable`}
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                  {isExpirable && (
+                    <FormField
+                      control={control}
+                      name={`documentDetails.additionalAttachments.${index}.expiredAt`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Expiry Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   )}
-                />
-                <FormField
-                  control={control}
-                  name={`documentDetails.additionalAttachments.${index}.file`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>File</FormLabel>
-                      <FormControl>
-                        <FileUpload
-                          onFileSelect={(file) => field.onChange(file)}
-                          onUploadComplete={() => {}}
-                          onUploadError={() => {}}
-                          subfolder="documents"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          existingFilePath={field.value?.existingPath}
-                          onDownload={handleDownload}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={control}
-                  name={`documentDetails.additionalAttachments.${index}.expiredAt`}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Expiry Date</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={() => attachmentsArray.remove(index)}
-                  className="mb-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={() => attachmentsArray.remove(index)}
+                    className="mb-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

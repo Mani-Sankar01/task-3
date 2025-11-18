@@ -69,6 +69,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { updateMember, type Member, Attachment, type MachineryInformation } from "@/services/api";
 import { useForm } from "react-hook-form";
 import { uploadFile, downloadFile } from "@/lib/client-file-upload";
@@ -752,6 +753,7 @@ export default function MembershipDetailsClient({
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docName, setDocName] = useState("");
   const [docExpiry, setDocExpiry] = useState("");
+  const [docIsExpirable, setDocIsExpirable] = useState(false);
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState("");
   const [filePathForUpload, setFilePathForUpload] = useState<string | null>(null);
@@ -1100,27 +1102,27 @@ export default function MembershipDetailsClient({
         switch (docType) {
           case "gst":
             payload.complianceDetails.gstInCertificatePath = filePath;
-            if (docExpiry) payload.complianceDetails.gstExpiredAt = new Date(docExpiry).toISOString();
+            if (docIsExpirable && docExpiry) payload.complianceDetails.gstExpiredAt = new Date(docExpiry).toISOString();
             if (docName) payload.complianceDetails.gstInNumber = docName;
             break;
           case "factory":
             payload.complianceDetails.factoryLicensePath = filePath;
-            if (docExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(docExpiry).toISOString();
+            if (docIsExpirable && docExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(docExpiry).toISOString();
             if (docName) payload.complianceDetails.factoryLicenseNumber = docName;
             break;
           case "tspcb":
             payload.complianceDetails.tspcbCertificatePath = filePath;
-            if (docExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(docExpiry).toISOString();
+            if (docIsExpirable && docExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(docExpiry).toISOString();
             if (docName) payload.complianceDetails.tspcbOrderNumber = docName;
             break;
           case "mdl":
             payload.complianceDetails.mdlCertificatePath = filePath;
-            if (docExpiry) payload.complianceDetails.mdlExpiredAt = new Date(docExpiry).toISOString();
+            if (docIsExpirable && docExpiry) payload.complianceDetails.mdlExpiredAt = new Date(docExpiry).toISOString();
             if (docName) payload.complianceDetails.mdlNumber = docName;
             break;
           case "udyam":
             payload.complianceDetails.udyamCertificatePath = filePath;
-            if (docExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(docExpiry).toISOString();
+            if (docIsExpirable && docExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(docExpiry).toISOString();
             if (docName) payload.complianceDetails.udyamCertificateNumber = docName;
             break;
         }
@@ -1129,17 +1131,24 @@ export default function MembershipDetailsClient({
         payload.attachments = {};
         if (!editDoc) {
           // Add
-          payload.attachments.newAttachments = [{
+          const newAttachment: any = {
             documentName: docName,
             documentPath: filePath,
-            expiredAt: docExpiry ? new Date(docExpiry).toISOString() : undefined,
-          }];
+          };
+          if (docIsExpirable && docExpiry) {
+            newAttachment.expiredAt = new Date(docExpiry).toISOString();
+          }
+          payload.attachments.newAttachments = [newAttachment];
         } else {
           // Edit
           const update: any = { id: editDoc.id };
           if (docName && docName !== editDoc.documentName) update.documentName = docName;
           if (filePath && filePath !== editDoc.documentPath) update.documentPath = filePath;
-          if (docExpiry) update.expiredAt = new Date(docExpiry).toISOString();
+          if (docIsExpirable && docExpiry) {
+            update.expiredAt = new Date(docExpiry).toISOString();
+          } else {
+            update.expiredAt = null;
+          }
           payload.attachments.updateAttachments = [update];
         }
       }
@@ -1232,6 +1241,7 @@ export default function MembershipDetailsClient({
     setDocName("");
     setDocFile(null);
     setDocExpiry("");
+    setDocIsExpirable(false);
     setFilePathForUpload(null);
     setShowDocDialog(true);
   };
@@ -1240,7 +1250,9 @@ export default function MembershipDetailsClient({
     setDocType(type);
     setDocName(doc.documentName || "");
     setDocFile(null);
-    setDocExpiry(doc.expiredAt ? doc.expiredAt.split("T")[0] : "");
+    const hasExpiry = !!doc.expiredAt;
+    setDocIsExpirable(hasExpiry);
+    setDocExpiry(hasExpiry && doc.expiredAt ? doc.expiredAt.split("T")[0] : "");
     setFilePathForUpload(doc.documentPath || null);
     setShowDocDialog(true);
   };
@@ -1526,6 +1538,7 @@ export default function MembershipDetailsClient({
   const [editLicenseNumber, setEditLicenseNumber] = useState("");
   const [editLicenseFilePath, setEditLicenseFilePath] = useState<string | null>(null);
   const [editLicenseExpiry, setEditLicenseExpiry] = useState("");
+  const [editLicenseIsExpirable, setEditLicenseIsExpirable] = useState(false);
   const [editLicenseFile, setEditLicenseFile] = useState<File | null>(null);
   const [editLicenseDocError, setEditLicenseDocError] = useState("");
   const [showAddLicenseDialog, setShowAddLicenseDialog] = useState(false);
@@ -1533,6 +1546,7 @@ export default function MembershipDetailsClient({
   const [addLicenseNumber, setAddLicenseNumber] = useState("");
   const [addLicenseFilePath, setAddLicenseFilePath] = useState<string | null>(null);
   const [addLicenseExpiry, setAddLicenseExpiry] = useState("");
+  const [addLicenseIsExpirable, setAddLicenseIsExpirable] = useState(false);
   const [addLicenseFile, setAddLicenseFile] = useState<File | null>(null);
   const [addLicenseValidationError, setAddLicenseValidationError] = useState("");
   const [addLicenseValidationSuccess, setAddLicenseValidationSuccess] = useState("");
@@ -1634,37 +1648,43 @@ export default function MembershipDetailsClient({
       }
       let payload: any = { membershipId: member.membershipId };
       if (editLicenseType) {
+        // Only include the fields being updated, not all compliance details
         payload.complianceDetails = {};
         if (editLicenseType === "gst") {
           if (filePath) payload.complianceDetails.gstInCertificatePath = filePath;
-          if (editLicenseExpiry)
+          if (editLicenseNumber) payload.complianceDetails.gstInNumber = editLicenseNumber;
+          // Only include expiry date if isExpirable is true
+          if (editLicenseIsExpirable && editLicenseExpiry) {
             payload.complianceDetails.gstExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber)
-            payload.complianceDetails.gstInNumber = editLicenseNumber;
+          }
         } else if (editLicenseType === "factory") {
           if (filePath) payload.complianceDetails.factoryLicensePath = filePath;
-          if (editLicenseExpiry)
+          if (editLicenseNumber) payload.complianceDetails.factoryLicenseNumber = editLicenseNumber;
+          // Only include expiry date if isExpirable is true
+          if (editLicenseIsExpirable && editLicenseExpiry) {
             payload.complianceDetails.factoryLicenseExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber)
-            payload.complianceDetails.factoryLicenseNumber = editLicenseNumber;
+          }
         } else if (editLicenseType === "tspcb") {
           if (filePath) payload.complianceDetails.tspcbCertificatePath = filePath;
-          if (editLicenseExpiry)
+          if (editLicenseNumber) payload.complianceDetails.tspcbOrderNumber = editLicenseNumber;
+          // Only include expiry date if isExpirable is true
+          if (editLicenseIsExpirable && editLicenseExpiry) {
             payload.complianceDetails.tspcbExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber)
-            payload.complianceDetails.tspcbOrderNumber = editLicenseNumber;
+          }
         } else if (editLicenseType === "mdl") {
           if (filePath) payload.complianceDetails.mdlCertificatePath = filePath;
-          if (editLicenseExpiry)
+          if (editLicenseNumber) payload.complianceDetails.mdlNumber = editLicenseNumber;
+          // Only include expiry date if isExpirable is true
+          if (editLicenseIsExpirable && editLicenseExpiry) {
             payload.complianceDetails.mdlExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber)
-            payload.complianceDetails.mdlNumber = editLicenseNumber;
+          }
         } else if (editLicenseType === "udyam") {
           if (filePath) payload.complianceDetails.udyamCertificatePath = filePath;
-          if (editLicenseExpiry)
+          if (editLicenseNumber) payload.complianceDetails.udyamCertificateNumber = editLicenseNumber;
+          // Only include expiry date if isExpirable is true
+          if (editLicenseIsExpirable && editLicenseExpiry) {
             payload.complianceDetails.udyamCertificateExpiredAt = new Date(editLicenseExpiry).toISOString();
-          if (editLicenseNumber)
-            payload.complianceDetails.udyamCertificateNumber = editLicenseNumber;
+          }
         }
       }
       if (!session?.user.token) throw new Error("No auth token");
@@ -1944,31 +1964,44 @@ export default function MembershipDetailsClient({
 
       let payload: any = { membershipId: member.membershipId };
 
+      // Only include the fields being added/updated, not all compliance details
+      payload.complianceDetails = {};
+
       if (addLicenseType === "gst") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        if (addLicenseExpiry) payload.complianceDetails.gstExpiredAt = new Date(addLicenseExpiry).toISOString();
         if (addLicenseNumber) payload.complianceDetails.gstInNumber = addLicenseNumber;
         if (filePath) payload.complianceDetails.gstInCertificatePath = filePath;
+        // Only include expiry date if isExpirable is true
+        if (addLicenseIsExpirable && addLicenseExpiry) {
+          payload.complianceDetails.gstExpiredAt = new Date(addLicenseExpiry).toISOString();
+        }
       } else if (addLicenseType === "factory") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        if (addLicenseExpiry) payload.complianceDetails.factoryLicenseExpiredAt = new Date(addLicenseExpiry).toISOString();
         if (addLicenseNumber) payload.complianceDetails.factoryLicenseNumber = addLicenseNumber;
         if (filePath) payload.complianceDetails.factoryLicensePath = filePath;
+        // Only include expiry date if isExpirable is true
+        if (addLicenseIsExpirable && addLicenseExpiry) {
+          payload.complianceDetails.factoryLicenseExpiredAt = new Date(addLicenseExpiry).toISOString();
+        }
       } else if (addLicenseType === "tspcb") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        if (addLicenseExpiry) payload.complianceDetails.tspcbExpiredAt = new Date(addLicenseExpiry).toISOString();
         if (addLicenseNumber) payload.complianceDetails.tspcbOrderNumber = addLicenseNumber;
         if (filePath) payload.complianceDetails.tspcbCertificatePath = filePath;
+        // Only include expiry date if isExpirable is true
+        if (addLicenseIsExpirable && addLicenseExpiry) {
+          payload.complianceDetails.tspcbExpiredAt = new Date(addLicenseExpiry).toISOString();
+        }
       } else if (addLicenseType === "mdl") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        if (addLicenseExpiry) payload.complianceDetails.mdlExpiredAt = new Date(addLicenseExpiry).toISOString();
         if (addLicenseNumber) payload.complianceDetails.mdlNumber = addLicenseNumber;
         if (filePath) payload.complianceDetails.mdlCertificatePath = filePath;
+        // Only include expiry date if isExpirable is true
+        if (addLicenseIsExpirable && addLicenseExpiry) {
+          payload.complianceDetails.mdlExpiredAt = new Date(addLicenseExpiry).toISOString();
+        }
       } else if (addLicenseType === "udyam") {
-        payload.complianceDetails = { ...member.complianceDetails };
-        if (addLicenseExpiry) payload.complianceDetails.udyamCertificateExpiredAt = new Date(addLicenseExpiry).toISOString();
         if (addLicenseNumber) payload.complianceDetails.udyamCertificateNumber = addLicenseNumber;
         if (filePath) payload.complianceDetails.udyamCertificatePath = filePath;
+        // Only include expiry date if isExpirable is true
+        if (addLicenseIsExpirable && addLicenseExpiry) {
+          payload.complianceDetails.udyamCertificateExpiredAt = new Date(addLicenseExpiry).toISOString();
+        }
       }
 
       const response = await axios.post(
@@ -2001,27 +2034,30 @@ export default function MembershipDetailsClient({
 
   const openEditLicenseDialog = (type: string) => {
     setEditLicenseType(type);
+    let expiredAt = "";
     if (type === "gst") {
       setEditLicenseNumber(member.complianceDetails.gstInNumber || "");
       setEditLicenseFilePath(member.complianceDetails.gstInCertificatePath || null);
-      setEditLicenseExpiry(member.complianceDetails.gstExpiredAt ? new Date(member.complianceDetails.gstExpiredAt).toISOString().split("T")[0] : "");
+      expiredAt = member.complianceDetails.gstExpiredAt ? new Date(member.complianceDetails.gstExpiredAt).toISOString().split("T")[0] : "";
     } else if (type === "factory") {
       setEditLicenseNumber(member.complianceDetails.factoryLicenseNumber || "");
       setEditLicenseFilePath(member.complianceDetails.factoryLicensePath || null);
-      setEditLicenseExpiry(member.complianceDetails.factoryLicenseExpiredAt ? new Date(member.complianceDetails.factoryLicenseExpiredAt).toISOString().split("T")[0] : "");
+      expiredAt = member.complianceDetails.factoryLicenseExpiredAt ? new Date(member.complianceDetails.factoryLicenseExpiredAt).toISOString().split("T")[0] : "";
     } else if (type === "tspcb") {
       setEditLicenseNumber(member.complianceDetails.tspcbOrderNumber || "");
       setEditLicenseFilePath(member.complianceDetails.tspcbCertificatePath || null);
-      setEditLicenseExpiry(member.complianceDetails.tspcbExpiredAt ? new Date(member.complianceDetails.tspcbExpiredAt).toISOString().split("T")[0] : "");
+      expiredAt = member.complianceDetails.tspcbExpiredAt ? new Date(member.complianceDetails.tspcbExpiredAt).toISOString().split("T")[0] : "";
     } else if (type === "mdl") {
       setEditLicenseNumber(member.complianceDetails.mdlNumber || "");
       setEditLicenseFilePath(member.complianceDetails.mdlCertificatePath || null);
-      setEditLicenseExpiry(member.complianceDetails.mdlExpiredAt ? new Date(member.complianceDetails.mdlExpiredAt).toISOString().split("T")[0] : "");
+      expiredAt = member.complianceDetails.mdlExpiredAt ? new Date(member.complianceDetails.mdlExpiredAt).toISOString().split("T")[0] : "";
     } else if (type === "udyam") {
       setEditLicenseNumber(member.complianceDetails.udyamCertificateNumber || "");
       setEditLicenseFilePath(member.complianceDetails.udyamCertificatePath || null);
-      setEditLicenseExpiry(member.complianceDetails.udyamCertificateExpiredAt ? new Date(member.complianceDetails.udyamCertificateExpiredAt).toISOString().split("T")[0] : "");
+      expiredAt = member.complianceDetails.udyamCertificateExpiredAt ? new Date(member.complianceDetails.udyamCertificateExpiredAt).toISOString().split("T")[0] : "";
     }
+    setEditLicenseIsExpirable(!!expiredAt);
+    setEditLicenseExpiry(expiredAt);
     setEditLicenseFile(null); // Clear file selection for new upload
   };
 
@@ -2870,6 +2906,7 @@ export default function MembershipDetailsClient({
                   <TableRow>
                     <TableHead>Document Name</TableHead>
                     <TableHead>File Path</TableHead>
+                    <TableHead>Is Expirable</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     {(session?.user?.role === "ADMIN" ||
@@ -2882,12 +2919,19 @@ export default function MembershipDetailsClient({
                 <TableBody>
 
                   {/* Additional attachments */}
-                  {attachmentsWithExpiry.map((attachment) => (
+                  {attachmentsWithExpiry.map((attachment) => {
+                    const isExpirable = !!attachment.expiredAt;
+                    return (
                     <TableRow key={attachment.id}>
                       <TableCell className="font-medium">{attachment.documentName}</TableCell>
                       <TableCell>{attachment.documentPath || "-"}</TableCell>
                       <TableCell>
-                        {attachment.expiredAt ? (
+                        <Badge variant={isExpirable ? "default" : "secondary"}>
+                          {isExpirable ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isExpirable && attachment.expiredAt ? (
                           new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
                             <Badge variant="default">Active</Badge>
                           ) : (
@@ -2897,7 +2941,7 @@ export default function MembershipDetailsClient({
                           <Badge variant="secondary">No Expiry</Badge>
                         )}
                       </TableCell>
-                      <TableCell>{attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
+                      <TableCell>{isExpirable && attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
                       {(session?.user?.role === "ADMIN" ||
                         session?.user?.role === "TQMA_EDITOR" ||
                         session?.user?.role === "TSMWA_EDITOR") &&
@@ -2908,7 +2952,8 @@ export default function MembershipDetailsClient({
                         </TableCell>
                       }
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -2948,10 +2993,23 @@ export default function MembershipDetailsClient({
                   onDownload={filePath => handleDownloadDocument(filePath)}
                   onRemoveFile={() => setFilePathForUpload(null)}
                 />
-                <div>
-                  <Label>Expiry Date</Label>
-                  <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} />
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="docIsExpirable"
+                    checked={docIsExpirable}
+                    onCheckedChange={(checked) => {
+                      setDocIsExpirable(checked as boolean);
+                      if (!checked) setDocExpiry("");
+                    }}
+                  />
+                  <Label htmlFor="docIsExpirable" className="cursor-pointer">Is Expirable</Label>
                 </div>
+                {docIsExpirable && (
+                  <div>
+                    <Label>Expiry Date</Label>
+                    <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>Cancel</Button>
@@ -3105,6 +3163,7 @@ export default function MembershipDetailsClient({
                     <TableHead>Document Name</TableHead>
                     <TableHead>Number</TableHead>
                     <TableHead>File Path</TableHead>
+                    <TableHead>Is Expirable</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
                     {(session?.user?.role === "ADMIN" ||
@@ -3151,14 +3210,21 @@ export default function MembershipDetailsClient({
                       path: member.complianceDetails.udyamCertificatePath,
                       expiredAt: member.complianceDetails.udyamCertificateExpiredAt,
                     },
-                  ].filter(doc => doc.number || doc.path).map((doc) => (
+                  ].filter(doc => doc.number || doc.path).map((doc) => {
+                    const isExpirable = !!doc.expiredAt;
+                    return (
                     <TableRow key={doc.type}>
                       <TableCell className="font-medium">{doc.label}</TableCell>
                       <TableCell>{doc.number || "-"}</TableCell>
                       <TableCell>{doc.path || "-"}</TableCell>
                       <TableCell>
-                        {doc.expiredAt ? (
-                          new Date(doc.expiredAt) >= new Date(new Date().toDateString()) ? (
+                        <Badge variant={isExpirable ? "default" : "secondary"}>
+                          {isExpirable ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isExpirable && doc.expiredAt ? (
+                          new Date(doc.expiredAt as string) >= new Date(new Date().toDateString()) ? (
                             <Badge variant="default">Active</Badge>
                           ) : (
                             <Badge variant="destructive">Expired</Badge>
@@ -3167,7 +3233,7 @@ export default function MembershipDetailsClient({
                           <Badge variant="secondary">No Expiry</Badge>
                         )}
                       </TableCell>
-                      <TableCell>{doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
+                      <TableCell>{isExpirable && doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
                       {(session?.user?.role === "ADMIN" ||
                         session?.user?.role === "TQMA_EDITOR" ||
                         session?.user?.role === "TSMWA_EDITOR") &&
@@ -3198,7 +3264,8 @@ export default function MembershipDetailsClient({
                         </TableCell>
                       }
                     </TableRow>
-                  ))}
+                  );
+                  })}
                 </TableBody>
               </Table>
               {[
@@ -3261,8 +3328,23 @@ export default function MembershipDetailsClient({
                   onDownload={filePath => handleDownloadDocument(filePath)}
                   onRemoveFile={() => setEditLicenseFilePath(null)}
                 />
-                <Label>Expiry Date</Label>
-                <Input type="date" value={editLicenseExpiry} onChange={e => setEditLicenseExpiry(e.target.value)} />
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="editLicenseIsExpirable"
+                    checked={editLicenseIsExpirable}
+                    onCheckedChange={(checked) => {
+                      setEditLicenseIsExpirable(checked as boolean);
+                      if (!checked) setEditLicenseExpiry("");
+                    }}
+                  />
+                  <Label htmlFor="editLicenseIsExpirable" className="cursor-pointer">Is Expirable</Label>
+                </div>
+                {editLicenseIsExpirable && (
+                  <>
+                    <Label>Expiry Date</Label>
+                    <Input type="date" value={editLicenseExpiry} onChange={e => setEditLicenseExpiry(e.target.value)} />
+                  </>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setEditLicenseType(null)} disabled={docLoading}>Cancel</Button>
@@ -3429,14 +3511,27 @@ export default function MembershipDetailsClient({
                       />
                     </div>
 
-                    <div>
-                      <Label>Expiry Date</Label>
-                      <Input
-                        type="date"
-                        value={addLicenseExpiry}
-                        onChange={e => setAddLicenseExpiry(e.target.value)}
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="addLicenseIsExpirable"
+                        checked={addLicenseIsExpirable}
+                        onCheckedChange={(checked) => {
+                          setAddLicenseIsExpirable(checked as boolean);
+                          if (!checked) setAddLicenseExpiry("");
+                        }}
                       />
+                      <Label htmlFor="addLicenseIsExpirable" className="cursor-pointer">Is Expirable</Label>
                     </div>
+                    {addLicenseIsExpirable && (
+                      <div>
+                        <Label>Expiry Date</Label>
+                        <Input
+                          type="date"
+                          value={addLicenseExpiry}
+                          onChange={e => setAddLicenseExpiry(e.target.value)}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
               </div>

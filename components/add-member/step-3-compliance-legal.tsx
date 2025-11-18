@@ -18,6 +18,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUpload } from "@/components/ui/file-upload";
 import { downloadFile } from "@/lib/client-file-upload";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -61,7 +62,14 @@ export default function Step3ComplianceLegal({
     // For demo purposes, show success dialog
     setShowVerifyDialog(true);
   };
-  const { control } = useFormContext();
+  const { control, watch } = useFormContext();
+  
+  // Watch for isExpirable flags
+  const gstinIsExpirable = watch("complianceDetails.gstinIsExpirable");
+  const factoryLicenseIsExpirable = watch("complianceDetails.factoryLicenseIsExpirable");
+  const tspcbIsExpirable = watch("complianceDetails.tspcbIsExpirable");
+  const mdlIsExpirable = watch("complianceDetails.mdlIsExpirable");
+  const udyamIsExpirable = watch("complianceDetails.udyamIsExpirable");
 
   // Partner details field array
   const partnerArray = useFieldArray({
@@ -135,20 +143,37 @@ export default function Step3ComplianceLegal({
             />
               <FormField
                 control={control}
-                name="complianceDetails.gstinExpiredAt"
+                name="complianceDetails.gstinIsExpirable"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel>GSTIN Expiry Date</FormLabel>
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
                   </FormItem>
                 )}
               />
+              {gstinIsExpirable && (
+                <FormField
+                  control={control}
+                  name="complianceDetails.gstinExpiredAt"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel>GSTIN Expiry Date</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             
             {/* GST Username and Password */}
@@ -288,22 +313,39 @@ export default function Step3ComplianceLegal({
             />
               <FormField
                 control={control}
-                name="complianceDetails.factoryLicenseExpiredAt"
+                name="complianceDetails.factoryLicenseIsExpirable"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel data-tooltip="Factory License expiry date">
-                      Factory License Expiry Date
-                    </FormLabel>
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
                   </FormItem>
                 )}
               />
+              {factoryLicenseIsExpirable && (
+                <FormField
+                  control={control}
+                  name="complianceDetails.factoryLicenseExpiredAt"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel data-tooltip="Factory License expiry date">
+                        Factory License Expiry Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={control}
@@ -372,25 +414,42 @@ export default function Step3ComplianceLegal({
             />
               <FormField
                 control={control}
-                name="complianceDetails.tspcbExpiredAt"
+                name="complianceDetails.tspcbIsExpirable"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel
-                      data-required="false"
-                      data-tooltip="Optional: add the TSPCB approval expiry date"
-                    >
-                      TSPCB Expiry Date
-                    </FormLabel>
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
                   </FormItem>
                 )}
               />
+              {tspcbIsExpirable && (
+                <FormField
+                  control={control}
+                  name="complianceDetails.tspcbExpiredAt"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel
+                        data-required="false"
+                        data-tooltip="Optional: add the TSPCB approval expiry date"
+                      >
+                        TSPCB Expiry Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={control}
@@ -462,25 +521,42 @@ export default function Step3ComplianceLegal({
             />
               <FormField
                 control={control}
-                name="complianceDetails.mdlExpiredAt"
+                name="complianceDetails.mdlIsExpirable"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel
-                      data-required="false"
-                      data-tooltip="Optional: add the MDL expiry date"
-                    >
-                      MDL Expiry Date
-                    </FormLabel>
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
                   </FormItem>
                 )}
               />
+              {mdlIsExpirable && (
+                <FormField
+                  control={control}
+                  name="complianceDetails.mdlExpiredAt"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel
+                        data-required="false"
+                        data-tooltip="Optional: add the MDL expiry date"
+                      >
+                        MDL Expiry Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={control}
@@ -552,25 +628,42 @@ export default function Step3ComplianceLegal({
             />
               <FormField
                 control={control}
-                name="complianceDetails.udyamCertificateExpiredAt"
+                name="complianceDetails.udyamIsExpirable"
                 render={({ field }) => (
-                  <FormItem className="flex-1">
-                    <FormLabel
-                      data-required="false"
-                      data-tooltip="Optional: add the Udyam certificate expiry date"
-                    >
-                      Udyam Certificate Expiry Date
-                    </FormLabel>
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
                     <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
-                    <FormMessage />
+                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
                   </FormItem>
                 )}
               />
+              {udyamIsExpirable && (
+                <FormField
+                  control={control}
+                  name="complianceDetails.udyamCertificateExpiredAt"
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      <FormLabel
+                        data-required="false"
+                        data-tooltip="Optional: add the Udyam certificate expiry date"
+                      >
+                        Udyam Certificate Expiry Date
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="date"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
             <FormField
               control={control}

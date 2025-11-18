@@ -141,7 +141,8 @@ const formSchema = z.object({
             (typeof file === "object" && file !== null && "existingPath" in file)),
         "GSTIN certificate is required"
       ),
-    gstinExpiredAt: z.string().min(1, "GSTIN expiry date is required"),
+    gstinIsExpirable: z.boolean().default(false),
+    gstinExpiredAt: z.string().optional(),
     factoryLicenseDoc: z
       .any()
       .refine(
@@ -151,16 +152,32 @@ const formSchema = z.object({
             (typeof file === "object" && file !== null && "existingPath" in file)),
         "Factory License document is required"
       ),
-    factoryLicenseExpiredAt: z.string().min(
-      1,
-      "Factory License expiry date is required"
-    ),
+    factoryLicenseIsExpirable: z.boolean().default(false),
+    factoryLicenseExpiredAt: z.string().optional(),
     tspcbOrderDoc: z.any().optional(),
+    tspcbIsExpirable: z.boolean().default(false),
     tspcbExpiredAt: z.string().optional(),
     mdlDoc: z.any().optional(),
+    mdlIsExpirable: z.boolean().default(false),
     mdlExpiredAt: z.string().optional(),
     udyamCertificateDoc: z.any().optional(),
+    udyamIsExpirable: z.boolean().default(false),
     udyamCertificateExpiredAt: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.gstinIsExpirable && !data.gstinExpiredAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "GSTIN expiry date is required when document is expirable",
+        path: ["gstinExpiredAt"],
+      });
+    }
+    if (data.factoryLicenseIsExpirable && !data.factoryLicenseExpiredAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Factory License expiry date is required when document is expirable",
+        path: ["factoryLicenseExpiredAt"],
+      });
+    }
   }),
   communicationDetails: z.object({
     fullAddress: z.string().min(10, "Full Address is required"),
@@ -199,7 +216,16 @@ const formSchema = z.object({
         z.object({
           name: z.string(),
           file: z.any().optional(),
+          isExpirable: z.boolean().default(false),
           expiredAt: z.string().optional(),
+        }).superRefine((data, ctx) => {
+          if (data.isExpirable && !data.expiredAt) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Expiry date is required when document is expirable",
+              path: ["expiredAt"],
+            });
+          }
         })
       )
       .default([]),
@@ -344,14 +370,19 @@ const AddMemberForm = () => {
         mdlNo: "",
         udyamCertificateNo: "",
         gstinDoc: null,
+        gstinIsExpirable: false,
         gstinExpiredAt: undefined,
         factoryLicenseDoc: null,
+        factoryLicenseIsExpirable: false,
         factoryLicenseExpiredAt: undefined,
         tspcbOrderDoc: null,
+        tspcbIsExpirable: false,
         tspcbExpiredAt: undefined,
         mdlDoc: null,
+        mdlIsExpirable: false,
         mdlExpiredAt: undefined,
         udyamCertificateDoc: null,
+        udyamIsExpirable: false,
         udyamCertificateExpiredAt: undefined,
       },
       communicationDetails: {
@@ -604,13 +635,15 @@ const AddMemberForm = () => {
         if (attachment.file) {
           const result = await uploadFile(attachment.file, "documents");
           if (result.success && result.filePath) {
-            additionalAttachments.push({
+            const attachmentPayload: any = {
               documentName: attachment.name,
               documentPath: result.filePath,
-              expiredAt: attachment.expiredAt
-                ? new Date(attachment.expiredAt).toISOString()
-                : null,
-            });
+            };
+            // Only include expiredAt if isExpirable is true
+            if (attachment.isExpirable && attachment.expiredAt) {
+              attachmentPayload.expiredAt = new Date(attachment.expiredAt).toISOString();
+            }
+            additionalAttachments.push(attachmentPayload);
           } else {
             setErrorPopup({
               isOpen: true,
@@ -798,7 +831,7 @@ const AddMemberForm = () => {
         if (gstCertificatePath) {
           complianceDetails.gstInCertificatePath = gstCertificatePath;
         }
-        if (data.complianceDetails.gstinExpiredAt) {
+        if (data.complianceDetails.gstinIsExpirable && data.complianceDetails.gstinExpiredAt) {
           complianceDetails.gstExpiredAt = new Date(
             data.complianceDetails.gstinExpiredAt
           ).toISOString();
@@ -831,7 +864,7 @@ const AddMemberForm = () => {
         if (factoryLicensePath) {
           complianceDetails.factoryLicensePath = factoryLicensePath;
         }
-        if (data.complianceDetails.factoryLicenseExpiredAt) {
+        if (data.complianceDetails.factoryLicenseIsExpirable && data.complianceDetails.factoryLicenseExpiredAt) {
           complianceDetails.factoryLicenseExpiredAt = new Date(
             data.complianceDetails.factoryLicenseExpiredAt
           ).toISOString();
@@ -847,7 +880,7 @@ const AddMemberForm = () => {
         if (tspcbCertificatePath) {
           complianceDetails.tspcbCertificatePath = tspcbCertificatePath;
         }
-        if (data.complianceDetails.tspcbExpiredAt) {
+        if (data.complianceDetails.tspcbIsExpirable && data.complianceDetails.tspcbExpiredAt) {
           complianceDetails.tspcbExpiredAt = new Date(
             data.complianceDetails.tspcbExpiredAt
           ).toISOString();
@@ -863,7 +896,7 @@ const AddMemberForm = () => {
         if (mdlCertificatePath) {
           complianceDetails.mdlCertificatePath = mdlCertificatePath;
         }
-        if (data.complianceDetails.mdlExpiredAt) {
+        if (data.complianceDetails.mdlIsExpirable && data.complianceDetails.mdlExpiredAt) {
           complianceDetails.mdlExpiredAt = new Date(
             data.complianceDetails.mdlExpiredAt
           ).toISOString();
@@ -880,7 +913,7 @@ const AddMemberForm = () => {
         if (udyamCertificatePath) {
           complianceDetails.udyamCertificatePath = udyamCertificatePath;
         }
-        if (data.complianceDetails.udyamCertificateExpiredAt) {
+        if (data.complianceDetails.udyamIsExpirable && data.complianceDetails.udyamCertificateExpiredAt) {
           complianceDetails.udyamCertificateExpiredAt = new Date(
             data.complianceDetails.udyamCertificateExpiredAt
           ).toISOString();
