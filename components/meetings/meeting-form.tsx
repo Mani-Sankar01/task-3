@@ -498,7 +498,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         } else if (data.memberAttendees?.type === "selectedMandal" && data.memberAttendees.mandal && data.memberAttendees.mandal.length > 0) {
           memberAttendees.mandals = data.memberAttendees.mandal;
         } else if (data.memberAttendees?.type === "selectedMembers" && data.memberAttendees.custom && data.memberAttendees.custom.length > 0) {
-          memberAttendees.customMembers = data.memberAttendees.custom;
+          // Use "custom" for create/add operation (not "customMembers")
+          memberAttendees.custom = data.memberAttendees.custom;
         }
         
         return memberAttendees;
@@ -728,6 +729,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 ?.map((m: any) => m.id)
                 ?.filter(Boolean) || [];
               if (deletedMemberIds.length > 0) {
+                // Use "deleteCustom" for edit/update operation (array of IDs)
                 memberUpdates.deleteCustom = deletedMemberIds;
               }
             }
@@ -797,7 +799,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               if (typeChanged) {
                 // If switching to selectedMembers, add all new members
                 if (newCustomMembers.length > 0) {
-                  memberUpdates.newCustomMembers = newCustomMembers;
+                  // Use "newCustom" for edit/update operation (array of membership IDs)
+                  memberUpdates.newCustom = newCustomMembers;
                 }
               } else {
                 // If staying in selectedMembers, handle additions and deletions
@@ -805,10 +808,18 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 const deletedMembers = originalCustomMembers.filter((member: string) => !newCustomMembers.includes(member));
                 
                 if (addedMembers.length > 0) {
-                  memberUpdates.newCustomMembers = addedMembers;
+                  // Use "newCustom" for edit/update operation (array of membership IDs)
+                  memberUpdates.newCustom = addedMembers;
                 }
                 if (deletedMembers.length > 0) {
-                  memberUpdates.deleteCustomMembers = deletedMembers;
+                  // Get the IDs of deleted members - use "deleteCustom" for edit/update (array of IDs)
+                  const deletedMemberIds = originalMemberAttendee.customMembers
+                    ?.filter((m: any) => deletedMembers.includes(m.membershipId || m))
+                    ?.map((m: any) => m.id)
+                    ?.filter(Boolean) || [];
+                  if (deletedMemberIds.length > 0) {
+                    memberUpdates.deleteCustom = deletedMemberIds;
+                  }
                 }
               }
             }

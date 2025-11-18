@@ -470,11 +470,23 @@ export default function MeetingsList() {
       } else if (memberAttendee.allExecutives) {
         types.push("All Executives");
       } else if (memberAttendee.zones && memberAttendee.zones.length > 0) {
-        types.push("Selected Zones");
+        const zoneCount = Array.isArray(memberAttendee.zones) ? memberAttendee.zones.length : 0;
+        types.push(`Selected Zones (${zoneCount} zone(s))`);
       } else if (memberAttendee.mandals && memberAttendee.mandals.length > 0) {
-        types.push("Selected Mandals");
+        const mandalCount = Array.isArray(memberAttendee.mandals) ? memberAttendee.mandals.length : 0;
+        types.push(`Selected Mandals (${mandalCount} mandal(s))`);
       } else if (memberAttendee.customMembers && memberAttendee.customMembers.length > 0) {
-        types.push("Selected Members");
+        const memberCount = Array.isArray(memberAttendee.customMembers) ? memberAttendee.customMembers.length : 0;
+        types.push(`Selected Members (${memberCount} member(s))`);
+      } else if (memberAttendee.zones || memberAttendee.mandals || memberAttendee.customMembers) {
+        // Show type even if arrays are empty (when switching types)
+        if (memberAttendee.zones !== undefined) {
+          types.push("Selected Zones");
+        } else if (memberAttendee.mandals !== undefined) {
+          types.push("Selected Mandals");
+        } else if (memberAttendee.customMembers !== undefined) {
+          types.push("Selected Members");
+        }
       }
     }
 

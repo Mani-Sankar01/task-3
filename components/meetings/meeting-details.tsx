@@ -183,7 +183,19 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
           const customCount = (memberAttendee.customMembers as any[]).length;
           memberDetails.push(`${customCount} Custom Member(s)`);
         }
-        types.push(`Selected Members (${memberDetails.join(", ")})`);
+        
+        // Show selected type even if arrays are empty (when switching types)
+        if (memberDetails.length > 0) {
+          types.push(`Selected Members (${memberDetails.join(", ")})`);
+        } else if (memberAttendee.zones !== undefined || memberAttendee.mandals !== undefined || memberAttendee.customMembers !== undefined) {
+          if (memberAttendee.zones !== undefined) {
+            types.push("Selected Zones");
+          } else if (memberAttendee.mandals !== undefined) {
+            types.push("Selected Mandals");
+          } else if (memberAttendee.customMembers !== undefined) {
+            types.push("Selected Members");
+          }
+        }
       }
     }
  
