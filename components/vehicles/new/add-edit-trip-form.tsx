@@ -354,7 +354,7 @@ export default function AddEditTripForm({
             <p className="text-muted-foreground mb-4">
               The vehicle you're looking for doesn't exist or has been removed.
             </p>
-            <Button onClick={() => router.push("/admin/vehicle")}>
+            <Button onClick={() => router.push(`/${renderRoleBasedPath(session?.user?.role)}/vehicle`)}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Vehicles
             </Button>
           </CardContent>

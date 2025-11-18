@@ -228,7 +228,7 @@ export default function EditVehicleForm({
             message:
               "The vehicle has been added successfully. You will be redirected back.",
           });
-          router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicles`);
+          router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
         } else {
           const errorMessage = response.data?.message || "Something went wrong. Vehicle not added.";
           toast({
