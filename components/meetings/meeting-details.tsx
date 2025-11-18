@@ -243,7 +243,8 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         }
         if (labourDetails.length > 0) {
           types.push(`Selected Labour (${labourDetails.join(", ")})`);
-        } else {
+        } else if (labourAttendee.customLabours !== undefined || labourAttendee.membershipID !== undefined) {
+          // Show selected type even if arrays are empty (when switching types)
           types.push("Selected Labour");
         }
       }

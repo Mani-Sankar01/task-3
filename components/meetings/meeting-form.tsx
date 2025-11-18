@@ -549,7 +549,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         } else if (data.labourAttendees?.type === "selectedLabour" && data.labourAttendees.custom && data.labourAttendees.custom.length > 0) {
           // 3. Selected Labour
           labourAttendees.all = false;
-          labourAttendees.customLabours = data.labourAttendees.custom;
+          // Use "custom" for create/add operation (not "customLabours")
+          labourAttendees.custom = data.labourAttendees.custom;
         }
         
         return labourAttendees;
@@ -940,17 +941,18 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             console.log("Deleted custom labours:", deletedCustomLabours);
             
             if (addedCustomLabours.length > 0) {
-              labourUpdates.newCustomLabours = addedCustomLabours;
+              // Use "newCustom" for edit/update operation (array of labour IDs)
+              labourUpdates.newCustom = addedCustomLabours;
             }
             if (deletedCustomLabours.length > 0) {
-              // Get the IDs of deleted custom labours
+              // Get the IDs of deleted custom labours - use "deleteCustom" for edit/update (array of IDs)
               const deletedCustomLabourIds = (originalLabourAttendee.customLabours || [])
-                ?.filter((l: any) => deletedCustomLabours.includes(l.labourId))
+                ?.filter((l: any) => deletedCustomLabours.includes(l.labourId || l))
                 ?.map((l: any) => l.id)
                 ?.filter(Boolean) || [];
               console.log("Deleted custom labour IDs:", deletedCustomLabourIds);
               if (deletedCustomLabourIds.length > 0) {
-                labourUpdates.deleteCustomLabours = deletedCustomLabourIds;
+                labourUpdates.deleteCustom = deletedCustomLabourIds;
               }
             }
           }

@@ -524,6 +524,10 @@ export default function MeetingsList() {
       } else if (labourAttendee.membershipID && labourAttendee.membershipID.length > 0) {
         types.push("Selected Labour");
       } else if (labourAttendee.customLabours && labourAttendee.customLabours.length > 0) {
+        const labourCount = Array.isArray(labourAttendee.customLabours) ? labourAttendee.customLabours.length : 0;
+        types.push(`Selected Labour (${labourCount} labour(s))`);
+      } else if (labourAttendee.customLabours !== undefined || labourAttendee.membershipID !== undefined) {
+        // Show selected type even if arrays are empty (when switching types)
         types.push("Selected Labour");
       }
     }
