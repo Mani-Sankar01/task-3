@@ -705,30 +705,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                   )}
                 />
 
-                {/* Renewal Date */}
-                <FormField
-                  control={form.control}
-                  name="dateOfRenewal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel
-                        data-required="false"
-                        data-tooltip="Backend auto-handles renewal date when applicable"
-                      >
-                        Date of Renewal
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          {...field}
-                          disabled
-                          placeholder="Auto-handled by backend"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* Status */}
                 <FormField
@@ -748,7 +724,6 @@ export default function LeaseQueryForm({ id }: LeaseQueryFormProps) {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="PENDING">Pending</SelectItem>
-                          <SelectItem value="PROCESSING">Processing</SelectItem>
                           <SelectItem value="RESOLVED">Resolved</SelectItem>
                           <SelectItem value="REJECTED">Rejected</SelectItem>
                         </SelectContent>

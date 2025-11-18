@@ -648,6 +648,10 @@ export default function LeaseQueryList() {
                       <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                   </TableHead>
+
+                  <TableHead className="hidden md:table-cell">
+                    Renewal Date
+                  </TableHead>
                   <TableHead className="hidden md:table-cell">
                     <Button
                       variant="ghost"
@@ -685,6 +689,9 @@ export default function LeaseQueryList() {
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {new Date(query.expiryOfLease).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {query.dateOfRenewal ? new Date(query.dateOfRenewal).toLocaleDateString() : "N/A"}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <Badge
