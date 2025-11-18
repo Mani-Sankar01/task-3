@@ -101,41 +101,23 @@ export default function Step5ProposerDeclaration() {
     }
   }, [isLoading, validMembers, executiveMembers, proposer1Id, proposer2Id]);
 
-  const fetchSignatureForMember = async (memberId: string) => {
-    if (!session?.user?.token) return "";
-    try {
-      const response = await axios.get(
-        `${process.env.BACKEND_API_URL}/api/member/get_member_signature/${memberId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        }
-      );
-
-      const payload = response.data?.data || response.data || {};
-      return (
-        payload.signaturePath ||
-        payload.signedDocumentPath ||
-        payload.proposerSignaturePath ||
-        ""
-      );
-    } catch (error) {
-      console.error("Failed to fetch signature for member", memberId, error);
-      return "";
+  const getMemberSignature = (member: any) => {
+    // Prioritize declarations.applicationSignaturePath as this is the standard signature path
+    if (member?.declarations?.applicationSignaturePath) {
+      return member.declarations.applicationSignaturePath;
     }
+    // Fallback to other signature paths if applicationSignaturePath is not available
+    return (
+      member?.declarations?.signaturePath ||
+      member?.signaturePath ||
+      member?.signature_path ||
+      member?.proposerSignaturePath ||
+      member?.executiveProposerSignaturePath ||
+      member?.proposer?.signaturePath ||
+      member?.executiveProposer?.signaturePath ||
+      ""
+    );
   };
-
-  const getFallbackSignature = (member: any) =>
-    member?.signaturePath ||
-    member?.signature_path ||
-    member?.proposerSignaturePath ||
-    member?.executiveProposerSignaturePath ||
-    member?.proposer?.signaturePath ||
-    member?.executiveProposer?.signaturePath ||
-    member?.declarations?.applicationSignaturePath ||
-    member?.declarations?.signaturePath ||
-    "";
 
   // Handle proposer 1 selection
   const handleProposer1Select = (memberId: any) => {
@@ -150,15 +132,11 @@ export default function Step5ProposerDeclaration() {
         "proposer1.address",
         selectedMember.complianceDetails?.fullAddress || ""
       );
-      const fallbackSignature = getFallbackSignature(selectedMember);
-      if (fallbackSignature) {
-        setValue("proposer1.signaturePath", fallbackSignature);
+      // Set signature path from declarations.applicationSignaturePath (or fallback)
+      const signaturePath = getMemberSignature(selectedMember);
+      if (signaturePath) {
+        setValue("proposer1.signaturePath", signaturePath);
       }
-      fetchSignatureForMember(memberId).then((signaturePath) => {
-        if (signaturePath) {
-          setValue("proposer1.signaturePath", signaturePath);
-        }
-      });
     }
   };
 
@@ -175,15 +153,11 @@ export default function Step5ProposerDeclaration() {
         selectedMember.complianceDetails?.fullAddress || ""
       );
       setValue("proposer2.membershipId", memberId);
-      const fallbackSignature = getFallbackSignature(selectedMember);
-      if (fallbackSignature) {
-        setValue("proposer2.signaturePath", fallbackSignature);
+      // Set signature path from declarations.applicationSignaturePath (or fallback)
+      const signaturePath = getMemberSignature(selectedMember);
+      if (signaturePath) {
+        setValue("proposer2.signaturePath", signaturePath);
       }
-      fetchSignatureForMember(memberId).then((signaturePath) => {
-        if (signaturePath) {
-          setValue("proposer2.signaturePath", signaturePath);
-        }
-      });
     }
   };
 
@@ -225,7 +199,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer1.memberId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Select Valid Member</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional. Select a valid member if available."
+                >
+                  Select Valid Member
+                </FormLabel>
                 <Select
                   onValueChange={(value) => {
                     field.onChange(value);
@@ -237,9 +216,9 @@ export default function Step5ProposerDeclaration() {
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
-                          !isLoading && proposer1Id && proposer2Id
+                          !isLoading && proposer1Id
                             ? `${proposer1Name} - ${proposer1firm}`
-                            : "Select Valid Member"
+                            : "Select Valid Member (Optional)"
                         }
                       />
                     </SelectTrigger>
@@ -265,7 +244,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer1.name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when a valid member is selected."
+                >
+                  Name
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Name will be auto-filled"
@@ -301,7 +285,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer1.firmName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Firm Name</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when a valid member is selected."
+                >
+                  Firm Name
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Firm name will be auto-filled"
@@ -319,7 +308,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer1.address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Address</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when a valid member is selected."
+                >
+                  Address
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Address will be auto-filled"
@@ -345,7 +339,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer2.memberId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Select Executive Member</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional. Select an executive member if available."
+                >
+                  Select Executive Member
+                </FormLabel>
                 <Select
                   onValueChange={(value) => {
                     field.onChange(value);
@@ -359,7 +358,7 @@ export default function Step5ProposerDeclaration() {
                         placeholder={
                           !isLoading && proposer2Name && proposer2firm
                             ? `${proposer2Name} - ${proposer2firm}`
-                            : "Select an executive member"
+                            : "Select an executive member (Optional)"
                         }
                       />
                     </SelectTrigger>
@@ -385,7 +384,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer2.name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Name</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when an executive member is selected."
+                >
+                  Name
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Name will be auto-filled"
@@ -421,7 +425,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer2.firmName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Firm Name</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when an executive member is selected."
+                >
+                  Firm Name
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Firm name will be auto-filled"
@@ -439,7 +448,12 @@ export default function Step5ProposerDeclaration() {
             name="proposer2.address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Address</FormLabel>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when an executive member is selected."
+                >
+                  Address
+                </FormLabel>
                 <FormControl>
                   <Input
                     placeholder="Address will be auto-filled"
