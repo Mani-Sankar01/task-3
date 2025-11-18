@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
 // Dynamic import for PDF generation to avoid SSR issues
 import {
   CalendarIcon,
+  CheckCircle2,
   CircleCheck,
   CircleX,
   Clock,
@@ -16,6 +17,7 @@ import {
   Edit,
   Eye,
   FileDown,
+  Loader2,
   MoreHorizontal,
   Plus,
   Search,
@@ -110,6 +112,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "../ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogClose,
@@ -129,6 +132,7 @@ export default function InvoiceList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [invoices, setInvoices] = useState<ApiInvoice[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<ApiInvoice[]>([]);
+  const [dateFilterType, setDateFilterType] = useState<"all" | "today" | "lastMonth" | "custom">("all");
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -142,6 +146,11 @@ export default function InvoiceList() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
+  const [isSubmittingGST, setIsSubmittingGST] = useState(false);
+  const [showGSTConfirmationDialog, setShowGSTConfirmationDialog] = useState(false);
+  const [showGSTDialog, setShowGSTDialog] = useState(false);
+  const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"connecting" | "submitting" | "submitted" | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
 
@@ -244,12 +253,28 @@ export default function InvoiceList() {
   useEffect(() => {
     let filtered = invoices;
 
-    // Filter by date range
-    if (dateRange.from && dateRange.to) {
+    // Filter by date range based on filter type
+    if (dateFilterType === "today") {
+      const today = new Date();
+      const start = startOfDay(today);
+      const end = endOfDay(today);
       filtered = filtered.filter((invoice) => {
         const invoiceDate = new Date(invoice.invoiceDate);
-        const start = dateRange.from!;
-        const end = dateRange.to!;
+        return invoiceDate >= start && invoiceDate <= end;
+      });
+    } else if (dateFilterType === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      const start = startOfMonth(lastMonth);
+      const end = endOfMonth(lastMonth);
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        return invoiceDate >= start && invoiceDate <= end;
+      });
+    } else if (dateFilterType === "custom" && dateRange.from && dateRange.to) {
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        const start = startOfDay(dateRange.from!);
+        const end = endOfDay(dateRange.to!);
         return invoiceDate >= start && invoiceDate <= end;
       });
     }
@@ -272,7 +297,7 @@ export default function InvoiceList() {
 
     setFilteredInvoices(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [searchTerm, dateRange, selectedMemberId, invoices]);
+  }, [searchTerm, dateFilterType, dateRange, selectedMemberId, invoices]);
 
   // Paginate the filtered invoices
   const paginatedInvoices = filteredInvoices.slice(
@@ -641,11 +666,140 @@ export default function InvoiceList() {
   };
 
   const clearDateFilter = () => {
+    setDateFilterType("all");
     setDateRange({ from: undefined, to: undefined });
+  };
+
+  const handleDateFilterTypeChange = (value: "all" | "today" | "lastMonth" | "custom") => {
+    setDateFilterType(value);
+    if (value === "today") {
+      const today = new Date();
+      setDateRange({ from: startOfDay(today), to: endOfDay(today) });
+    } else if (value === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+    } else if (value === "all") {
+      setDateRange({ from: undefined, to: undefined });
+    }
+    // For "custom", don't change dateRange - let user select manually
   };
 
   const clearMemberFilter = () => {
     setSelectedMemberId("");
+  };
+
+  // Handle invoice selection
+  const handleSelectInvoice = (invoiceId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedInvoiceIds((prev) => [...prev, invoiceId]);
+    } else {
+      setSelectedInvoiceIds((prev) => prev.filter((id) => id !== invoiceId));
+    }
+  };
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedInvoiceIds(paginatedInvoices.map((invoice) => invoice.invoiceId));
+    } else {
+      setSelectedInvoiceIds([]);
+    }
+  };
+
+  // Check if all current page invoices are selected
+  const allSelected = paginatedInvoices.length > 0 && 
+    paginatedInvoices.every((invoice) => selectedInvoiceIds.includes(invoice.invoiceId));
+
+  // Check if some invoices are selected
+  const someSelected = selectedInvoiceIds.length > 0 && !allSelected;
+
+  // Handle GST submission - show confirmation first
+  const handleSubmitGST = () => {
+    if (selectedInvoiceIds.length === 0) {
+      toast({
+        title: "No Invoices Selected",
+        description: "Please select at least one invoice to submit for GST.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Show confirmation dialog first
+    setShowGSTConfirmationDialog(true);
+  };
+
+  // Confirm and proceed with GST submission (fake API call for now)
+  const confirmSubmitGST = async () => {
+    setShowGSTConfirmationDialog(false);
+    
+    // Open dialog and start fake submission process
+    setShowGSTDialog(true);
+    setGstSubmissionStatus("connecting");
+    setIsSubmittingGST(true);
+
+    // Simulate connecting to GST
+    setTimeout(() => {
+      setGstSubmissionStatus("submitting");
+    }, 1500);
+
+    // Simulate submitting
+    setTimeout(() => {
+      setGstSubmissionStatus("submitted");
+      setIsSubmittingGST(false);
+      
+      // Close dialog after 2 seconds and clear selection
+      setTimeout(() => {
+        setShowGSTDialog(false);
+        setGstSubmissionStatus(null);
+        setSelectedInvoiceIds([]);
+        toast({
+          title: "GST Submitted Successfully",
+          description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
+        });
+      }, 2000);
+    }, 3000);
+
+    // Fake API call (commented out for now)
+    /*
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit GST.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingGST(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const response = await axios.post(
+        `${apiUrl}/api/gst/submitByID`,
+        { invoicesId: selectedInvoiceIds },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      toast({
+        title: "GST Submitted Successfully",
+        description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
+      });
+
+      setSelectedInvoiceIds([]);
+    } catch (error: any) {
+      console.error("Error submitting GST:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to submit GST. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingGST(false);
+    }
+    */
   };
 
   if (isLoading || status === "loading") {
@@ -671,13 +825,32 @@ export default function InvoiceList() {
             <CardTitle className="text-2xl">Invoices</CardTitle>
             <CardDescription>Manage all invoices</CardDescription>
           </div>
-          {(session?.user?.role === "ADMIN" ||
-            session?.user?.role === "TQMA_EDITOR" ||
-            session?.user?.role === "TSMWA_EDITOR") &&
-            <Button onClick={handleCreateInvoice}>
-              <Plus className="mr-2 h-4 w-4" /> Create Invoice
-            </Button>
-          }
+          <div className="flex items-center gap-2">
+            {(session?.user?.role === "ADMIN" ||
+              session?.user?.role === "TQMA_EDITOR" ||
+              session?.user?.role === "TSMWA_EDITOR") && (
+              <Button onClick={handleCreateInvoice}>
+                <Plus className="mr-2 h-4 w-4" /> Create Invoice
+              </Button>
+            )}
+            {selectedInvoiceIds.length > 0 && (
+              <Button 
+                onClick={handleSubmitGST}
+                disabled={isSubmittingGST}
+                variant="default"
+              >
+                {isSubmittingGST ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  <>
+                    Submit GST ({selectedInvoiceIds.length})
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-col sm:flex-row gap-4">
@@ -725,49 +898,67 @@ export default function InvoiceList() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-[240px] justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
+              <Select
+                value={dateFilterType}
+                onValueChange={(value) => handleDateFilterTypeChange(value as "all" | "today" | "lastMonth" | "custom")}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Date filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="lastMonth">Last Month</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {dateFilterType === "custom" && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[240px] justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
                       ) : (
-                        format(dateRange.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span>Pick a date range</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange.from}
-                    selected={{
-                      from: dateRange.from,
-                      to: dateRange.to,
-                    }}
-                    onSelect={(range) => {
-                      if (range) {
-                        setDateRange({
-                          from: range.from,
-                          to: range.to,
-                        });
-                      }
-                    }}
-                    numberOfMonths={2}
-                  />
-                </PopoverContent>
-              </Popover>
-              {(dateRange.from || dateRange.to) && (
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange.from}
+                      selected={{
+                        from: dateRange.from,
+                        to: dateRange.to,
+                      }}
+                      onSelect={(range) => {
+                        if (range) {
+                          setDateRange({
+                            from: range.from,
+                            to: range.to,
+                          });
+                        }
+                      }}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {dateFilterType !== "all" && (
                 <Button variant="ghost" size="sm" onClick={clearDateFilter}>
                   Clear
                 </Button>
@@ -787,6 +978,13 @@ export default function InvoiceList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={allSelected || someSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Membership ID</TableHead>
@@ -806,6 +1004,19 @@ export default function InvoiceList() {
                       key={invoice.id}
                       className="cursor-pointer hover:bg-muted/50"
                     >
+                      <TableCell 
+                        className="w-[50px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={selectedInvoiceIds.includes(invoice.invoiceId)}
+                          onCheckedChange={(checked) => 
+                            handleSelectInvoice(invoice.invoiceId, checked as boolean)
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select invoice ${invoice.invoiceId}`}
+                        />
+                      </TableCell>
                       <TableCell 
                         className="font-medium"
                         onClick={() => handleViewInvoice(invoice.invoiceId)}
@@ -1058,8 +1269,94 @@ export default function InvoiceList() {
               </div>
             </div>
           )}
-        </CardContent>
+          </CardContent>
       </Card>
+
+      {/* GST Confirmation Dialog */}
+      <Dialog open={showGSTConfirmationDialog} onOpenChange={setShowGSTConfirmationDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm GST Submission</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to submit {selectedInvoiceIds.length} invoice(s) for GST?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              This action will submit the selected invoices to the GST portal. Please ensure all information is correct before proceeding.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowGSTConfirmationDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmSubmitGST}>
+              Confirm & Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GST Submission Dialog */}
+      <Dialog 
+        open={showGSTDialog} 
+        onOpenChange={(open) => {
+          // Prevent closing during submission process
+          if (!open && (gstSubmissionStatus === "connecting" || gstSubmissionStatus === "submitting")) {
+            return;
+          }
+          setShowGSTDialog(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Submitting GST</DialogTitle>
+            <DialogDescription>
+              Please wait while we process your GST submission.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+            {gstSubmissionStatus === "connecting" && (
+              <>
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg font-medium">Connecting to GST...</p>
+              </>
+            )}
+            {gstSubmissionStatus === "submitting" && (
+              <>
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg font-medium">Submitting...</p>
+              </>
+            )}
+            {gstSubmissionStatus === "submitted" && (
+              <>
+                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                <p className="text-lg font-medium text-green-600">Submitted</p>
+              </>
+            )}
+            <p className="text-sm text-muted-foreground text-center">
+              {gstSubmissionStatus === "connecting" && "Establishing connection to GST portal..."}
+              {gstSubmissionStatus === "submitting" && `Submitting ${selectedInvoiceIds.length} invoice(s)...`}
+              {gstSubmissionStatus === "submitted" && "Your invoices have been successfully submitted for GST."}
+            </p>
+          </div>
+          {gstSubmissionStatus === "submitted" && (
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button onClick={() => {
+                  setShowGSTDialog(false);
+                  setGstSubmissionStatus(null);
+                }}>
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
