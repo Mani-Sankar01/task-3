@@ -833,7 +833,7 @@ export default function InvoiceList() {
                 <Plus className="mr-2 h-4 w-4" /> Create Invoice
               </Button>
             )}
-            {selectedInvoiceIds.length > 0 && (
+            {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR")&& (
               <Button 
                 onClick={handleSubmitGST}
                 disabled={isSubmittingGST}
