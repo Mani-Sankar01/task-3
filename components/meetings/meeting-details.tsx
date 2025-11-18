@@ -207,6 +207,12 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         }
         if (vehicleDetails.length > 0) {
           types.push(`Selected Vehicles (${vehicleDetails.join(", ")})`);
+        } else if (vehicleAttendee.owner || vehicleAttendee.driver) {
+          // Show selected type even if no custom vehicles yet
+          const labels = [];
+          if (vehicleAttendee.owner) labels.push("Owners");
+          if (vehicleAttendee.driver) labels.push("Drivers");
+          types.push(`Selected Vehicle ${labels.join(" & ")}`);
         }
       }
     }

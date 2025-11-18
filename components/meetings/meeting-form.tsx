@@ -184,7 +184,7 @@ const formSchema = z.object({
     custom: z.array(z.string()).optional(),
   }).optional(),
   vehicleAttendees: z.object({
-    type: z.enum(["allOwners", "allDrivers", "selectedOwners", "selectedDrivers"]).optional(),
+    type: z.enum(["allOwners", "allDrivers", "allDriversAndOwners", "selectedOwners", "selectedDrivers"]).optional(),
     owner: z.boolean().optional(),
     driver: z.boolean().optional(),
     custom: z.array(z.object({
@@ -403,12 +403,18 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         vehicleAttendees: {
           type: vehicleAttendee.all
             ? vehicleAttendee.owner && vehicleAttendee.driver
-              ? "allOwners"
+              ? "allDriversAndOwners"
               : vehicleAttendee.owner
               ? "allOwners"
               : "allDrivers"
             : vehicleAttendee.customVehicle?.length
             ? vehicleAttendee.owner
+              ? "selectedOwners"
+              : "selectedDrivers"
+            : vehicleAttendee.owner || vehicleAttendee.driver
+            ? vehicleAttendee.owner && vehicleAttendee.driver
+              ? "selectedOwners" // If both are true but all is false and no customVehicle, default to selectedOwners
+              : vehicleAttendee.owner
               ? "selectedOwners"
               : "selectedDrivers"
             : undefined,
@@ -509,16 +515,25 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           vehicleAttendees.owner = false;
           vehicleAttendees.driver = true;
           vehicleAttendees.all = true;
-        } else if (data.vehicleAttendees?.type === "selectedOwners" && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
+        } else if (data.vehicleAttendees?.type === "allDriversAndOwners") {
           vehicleAttendees.owner = true;
-          vehicleAttendees.driver = false;
-          vehicleAttendees.all = false;
-          vehicleAttendees.customVehicle = data.vehicleAttendees.custom;
-        } else if (data.vehicleAttendees?.type === "selectedDrivers" && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
-          vehicleAttendees.owner = false;
           vehicleAttendees.driver = true;
+          vehicleAttendees.all = true;
+        } else if ((data.vehicleAttendees?.type === "selectedOwners" || data.vehicleAttendees?.type === "selectedDrivers") && data.vehicleAttendees.custom && data.vehicleAttendees.custom.length > 0) {
+          // Determine owner/driver flags from the selected type and vehicle flags
+          const isOwnerType = data.vehicleAttendees?.type === "selectedOwners";
+          const customVehicles = data.vehicleAttendees.custom.map((v: any) => ({
+            vehicleId: v.vehicleId,
+            owner: v.owner ?? isOwnerType,
+            driver: v.driver ?? !isOwnerType,
+          }));
+          
+          // Set top-level flags: true if any vehicle has that flag
+          vehicleAttendees.owner = customVehicles.some((v: any) => v.owner) || isOwnerType;
+          vehicleAttendees.driver = customVehicles.some((v: any) => v.driver) || !isOwnerType;
           vehicleAttendees.all = false;
-          vehicleAttendees.customVehicle = data.vehicleAttendees.custom;
+          // Use "custom" for create/add operation (not "customVehicle")
+          vehicleAttendees.custom = customVehicles;
         }
         
         return vehicleAttendees;
@@ -831,7 +846,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           updateData.attendees = updateData.attendees || {};
           
           // Determine if it's "all" based on type
-          const isAllType = data.vehicleAttendees?.type === "allOwners" || data.vehicleAttendees?.type === "allDrivers";
+          const isAllType = data.vehicleAttendees?.type === "allOwners" || data.vehicleAttendees?.type === "allDrivers" || data.vehicleAttendees?.type === "allDriversAndOwners";
           
           const vehicleUpdates: any = {
             owner: data.vehicleAttendees?.owner || false,
@@ -849,16 +864,21 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             );
             
             if (addedVehicles.length > 0) {
-              vehicleUpdates.newCustomVehicle = addedVehicles;
+              // Use "newCustom" for edit/update operation
+              vehicleUpdates.newCustom = addedVehicles.map((v: any) => ({
+                vehicleId: v.vehicleId,
+                owner: v.owner,
+                driver: v.driver,
+              }));
             }
             if (deletedVehicles.length > 0) {
-              // Get the IDs of deleted vehicles
+              // Get the IDs of deleted vehicles - use "deleteCustom" for edit/update
               const deletedVehicleIds = (originalVehicleAttendee.customVehicle || [])
                 ?.filter((v: any) => deletedVehicles.some((delV: any) => delV.vehicleId === v.vehicleId))
                 ?.map((v: any) => v.id)
                 ?.filter(Boolean) || [];
               if (deletedVehicleIds.length > 0) {
-                vehicleUpdates.deleteCustomVehicle = deletedVehicleIds;
+                vehicleUpdates.deleteCustom = deletedVehicleIds;
               }
             }
           }
@@ -1516,6 +1536,9 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                               } else if (value === "allDrivers") {
                                 form.setValue("vehicleAttendees.owner", false);
                                 form.setValue("vehicleAttendees.driver", true);
+                              } else if (value === "allDriversAndOwners") {
+                                form.setValue("vehicleAttendees.owner", true);
+                                form.setValue("vehicleAttendees.driver", true);
                               } else if (value === "selectedOwners") {
                                 form.setValue("vehicleAttendees.owner", true);
                                 form.setValue("vehicleAttendees.driver", false);
@@ -1524,7 +1547,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                 form.setValue("vehicleAttendees.driver", true);
                               }
                               // Clear custom selections when switching to "all"
-                              if (value === "allOwners" || value === "allDrivers") {
+                              if (value === "allOwners" || value === "allDrivers" || value === "allDriversAndOwners") {
                                 form.setValue("vehicleAttendees.custom", []);
                               }
                             }} 
@@ -1538,6 +1561,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           <SelectContent>
                               <SelectItem value="allOwners">All Vehicle Owners</SelectItem>
                               <SelectItem value="allDrivers">All Vehicle Drivers</SelectItem>
+                              <SelectItem value="allDriversAndOwners">All Driver & Owners</SelectItem>
                               <SelectItem value="selectedOwners">Selected Vehicle Owners</SelectItem>
                               <SelectItem value="selectedDrivers">Selected Vehicle Drivers</SelectItem>
                           </SelectContent>

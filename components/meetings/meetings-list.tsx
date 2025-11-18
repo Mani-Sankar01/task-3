@@ -490,15 +490,18 @@ export default function MeetingsList() {
         }
       } else {
         // Selected vehicles
-        if (vehicleAttendee.customVehicle && vehicleAttendee.customVehicle.length > 0) {
-          const vehicleLabels = [];
-          if (vehicleAttendee.owner) vehicleLabels.push("Owners");
-          if (vehicleAttendee.driver) vehicleLabels.push("Drivers");
-          if (vehicleLabels.length > 0) {
-            types.push(`Selected Vehicle ${vehicleLabels.join(" & ")}`);
+        const vehicleLabels = [];
+        if (vehicleAttendee.owner) vehicleLabels.push("Owners");
+        if (vehicleAttendee.driver) vehicleLabels.push("Drivers");
+        if (vehicleLabels.length > 0) {
+          const customCount = vehicleAttendee.customVehicle?.length || 0;
+          if (customCount > 0) {
+            types.push(`Selected Vehicle ${vehicleLabels.join(" & ")} (${customCount} vehicle(s))`);
           } else {
-            types.push("Selected Vehicles");
+            types.push(`Selected Vehicle ${vehicleLabels.join(" & ")}`);
           }
+        } else if (vehicleAttendee.customVehicle && vehicleAttendee.customVehicle.length > 0) {
+          types.push("Selected Vehicles");
         }
       }
     }
