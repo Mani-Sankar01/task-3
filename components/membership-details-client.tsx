@@ -1929,12 +1929,13 @@ export default function MembershipDetailsClient({
       };
 
       const responseKey = responseKeys[fieldName];
+      const displayName = responseKey || fieldName;
       if (response.data[responseKey]) {
         if (response.data[responseKey].isMember) {
           const firmName = response.data[responseKey].firmName || "Unknown Firm";
           setAddLicenseValidationError(`Already added for ${firmName}`);
         } else {
-          setAddLicenseValidationSuccess(`This ${fieldName} is unique and can be used.`);
+          setAddLicenseValidationSuccess(`This ${displayName} is unique and can be used.`);
         }
       }
     } catch (error) {
@@ -3447,7 +3448,14 @@ export default function MembershipDetailsClient({
               <div className="space-y-4">
                 <div>
                   <Label>License Type</Label>
-                  <Select value={addLicenseType} onValueChange={setAddLicenseType}>
+                  <Select value={addLicenseType} onValueChange={(value) => {
+                    setAddLicenseType(value);
+                    // Clear validation messages when license type changes
+                    setAddLicenseValidationError("");
+                    setAddLicenseValidationSuccess("");
+                    // Clear number field when type changes
+                    setAddLicenseNumber("");
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select license type" />
                     </SelectTrigger>
