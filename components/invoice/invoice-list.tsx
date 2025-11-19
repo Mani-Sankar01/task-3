@@ -292,7 +292,8 @@ export default function InvoiceList() {
       filtered = filtered.filter(
         (invoice) =>
           invoice.invoiceId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          invoice.membershipId.toLowerCase().includes(searchTerm.toLowerCase())
+          invoice.membershipId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          invoice.members?.firmName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
