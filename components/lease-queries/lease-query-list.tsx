@@ -712,6 +712,14 @@ export default function LeaseQueryList() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <Button variant="ghost" className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewQueryDetails(query.leaseQueryId);
+                            }}
+                          >
+                            <Eye className=" h-4 w-4" />
+                          </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             asChild

@@ -392,13 +392,13 @@ const page = () => {
               </CardDescription>
             </div>
             {(session?.user?.role === "ADMIN" ||
-                session?.user?.role === "TQMA_EDITOR" ||
-                session?.user?.role === "TSMWA_EDITOR") &&
-            <Link href={"/tsmwa/memberships/add"}>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Add Member
-              </Button>
-            </Link>}
+              session?.user?.role === "TQMA_EDITOR" ||
+              session?.user?.role === "TSMWA_EDITOR") &&
+              <Link href={"/tsmwa/memberships/add"}>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Add Member
+                </Button>
+              </Link>}
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -534,8 +534,8 @@ const page = () => {
                               member.membershipStatus === "ACTIVE"
                                 ? "default"
                                 : member.membershipStatus === "INACTIVE"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {member.membershipStatus.charAt(0).toUpperCase() +
@@ -551,8 +551,8 @@ const page = () => {
                               member.approvalStatus === "APPROVED"
                                 ? "default"
                                 : member.approvalStatus === "DECLINED"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {member.approvalStatus.charAt(0).toUpperCase() +
@@ -560,6 +560,15 @@ const page = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Button variant="ghost" className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewMemberDetails(member.membershipId);
+                            }}
+                          >
+                            <EyeIcon className=" h-4 w-4" />
+
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               asChild

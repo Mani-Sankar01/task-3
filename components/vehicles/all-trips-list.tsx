@@ -367,8 +367,8 @@ export default function AllTripsList() {
             session?.user?.role === "TQMA_EDITOR" ||
             session?.user?.role === "TSMWA_EDITOR") &&
             <Button onClick={addNewTrip}>
-            <Plus className="mr-2 h-4 w-4" /> Add Trip
-          </Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Trip
+            </Button>
           }
         </CardHeader>
         <CardContent>
@@ -434,11 +434,11 @@ export default function AllTripsList() {
                           <ArrowUpDown className="ml-2 h-4 w-4" />
                         </Button>
                       </TableHead>
-                                            <TableHead>
+                      <TableHead>
                         <Button
                           variant="ghost"
                           onClick={() => handleSort("balanceAmount")}
-                          className="flex items-center p-0 h-auto font-medium"  
+                          className="flex items-center p-0 h-auto font-medium"
                         >
                           Due Amount
                           <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -499,8 +499,8 @@ export default function AllTripsList() {
                                   trip.paymentStatus === "PAID"
                                     ? "default"
                                     : trip.paymentStatus === "PARTIAL"
-                                    ? "secondary"
-                                    : "destructive"
+                                      ? "secondary"
+                                      : "destructive"
                                 }
                               >
                                 {trip.paymentStatus.charAt(0).toUpperCase() +
@@ -508,6 +508,14 @@ export default function AllTripsList() {
                               </Badge>
                             </TableCell>
                             <TableCell>
+                              <Button variant="ghost" className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  viewTripDetails(trip.tripId);
+                                }}
+                              >
+                                <Eye className=" h-4 w-4" />
+                              </Button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
@@ -539,28 +547,28 @@ export default function AllTripsList() {
                                   {(session?.user?.role === "TSMWA_EDITOR" ||
                                     session?.user?.role === "TQMA_EDITOR" ||
                                     session?.user?.role === "ADMIN") && (
-                                                                  <>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    editTrip(trip.vehicleId, trip.tripId)
-                                  }
-                                >
-                                  <Edit className="mr-1 h-4 w-4" /> Edit Trip
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                            {trip.paymentStatus && trip.paymentStatus.toUpperCase() !== "PAID" && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // TODO: Add send reminder functionality when API is available
-                                }}
-                              >
-                                <Mail className="mr-1 h-4 w-4" />
-                                Send Reminder
-                              </DropdownMenuItem>
-                            )}
-                            {session?.user?.role === "ADMIN" && (
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={() =>
+                                            editTrip(trip.vehicleId, trip.tripId)
+                                          }
+                                        >
+                                          <Edit className="mr-1 h-4 w-4" /> Edit Trip
+                                        </DropdownMenuItem>
+                                      </>
+                                    )}
+                                  {trip.paymentStatus && trip.paymentStatus.toUpperCase() !== "PAID" && (
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        // TODO: Add send reminder functionality when API is available
+                                      }}
+                                    >
+                                      <Mail className="mr-1 h-4 w-4" />
+                                      Send Reminder
+                                    </DropdownMenuItem>
+                                  )}
+                                  {session?.user?.role === "ADMIN" && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <Dialog>

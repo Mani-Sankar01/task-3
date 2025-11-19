@@ -296,8 +296,8 @@ export default function VehiclesList() {
             session?.user?.role === "TQMA_EDITOR" ||
             session?.user?.role === "TSMWA_EDITOR") &&
             <Button onClick={addNewVehicle}>
-            <Plus className="mr-2 h-4 w-4" /> Add Vehicle
-          </Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Vehicle
+            </Button>
           }
         </CardHeader>
         <CardContent>
@@ -371,7 +371,7 @@ export default function VehiclesList() {
                       key={vehicle.id}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell 
+                      <TableCell
                         className="font-medium cursor-pointer"
                         onClick={() => viewVehicleDetails(vehicle.vehicleId)}
                       >
@@ -393,8 +393,8 @@ export default function VehiclesList() {
                             vehicle.status === "ACTIVE"
                               ? "default"
                               : vehicle.status === "MAINTENANCE"
-                              ? "secondary"
-                              : "destructive"
+                                ? "secondary"
+                                : "destructive"
                           }
                         >
                           {vehicle.status.charAt(0).toUpperCase() +
@@ -402,6 +402,14 @@ export default function VehiclesList() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <Button variant="ghost" className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewVehicleDetails(vehicle.vehicleId);
+                          }}
+                        >
+                          <Eye className=" h-4 w-4" />
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             asChild
@@ -426,27 +434,27 @@ export default function VehiclesList() {
                             {(session?.user?.role === "TSMWA_EDITOR" ||
                               session?.user?.role === "TQMA_EDITOR" ||
                               session?.user?.role === "ADMIN") && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    editVehicle(vehicle.vehicleId);
-                                  }}
-                                >
-                                  <Edit className="mr-1 h-4 w-4" /> Edit Vehicle
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(
-                                      `/admin/vehicle/${vehicle.vehicleId}/add-trip`
-                                    );
-                                  }}
-                                >
-                                  <Plus className="mr-1 h-4 w-4" /> Add Trip
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                                <>
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      editVehicle(vehicle.vehicleId);
+                                    }}
+                                  >
+                                    <Edit className="mr-1 h-4 w-4" /> Edit Vehicle
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      router.push(
+                                        `/admin/vehicle/${vehicle.vehicleId}/add-trip`
+                                      );
+                                    }}
+                                  >
+                                    <Plus className="mr-1 h-4 w-4" /> Add Trip
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             {session?.user?.role === "ADMIN" && (
                               <>
                                 <DropdownMenuSeparator />

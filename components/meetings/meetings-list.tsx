@@ -127,7 +127,7 @@ export default function MeetingsList() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Meeting | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -156,7 +156,7 @@ export default function MeetingsList() {
           Authorization: `Bearer ${session.user.token}`,
         },
       });
-      
+
       const meetingsData = Array.isArray(response.data) ? response.data : response.data.meetings || response.data.data || [];
       setMeetings(meetingsData);
     } catch (error) {
@@ -386,7 +386,7 @@ export default function MeetingsList() {
           },
         }
       );
-      
+
       toast({
         title: "Meeting Cancelled",
         description: "Meeting has been cancelled successfully."
@@ -394,7 +394,7 @@ export default function MeetingsList() {
 
       // Refresh the meetings list
       await fetchMeetings();
-      
+
       // Close dialog
       closeCancelDialog();
     } catch (error: any) {
@@ -579,9 +579,9 @@ export default function MeetingsList() {
           {(session?.user?.role === "ADMIN" ||
             session?.user?.role === "TQMA_EDITOR" ||
             session?.user?.role === "TSMWA_EDITOR") &&
-          <Button onClick={addNewMeeting}>
-            <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
-          </Button>
+            <Button onClick={addNewMeeting}>
+              <Plus className="mr-2 h-4 w-4" /> Schedule Meeting
+            </Button>
           }
         </CardHeader>
         <CardContent>
@@ -657,7 +657,7 @@ export default function MeetingsList() {
                       key={meeting.meetId}
                       className="hover:bg-muted/50"
                     >
-                      <TableCell 
+                      <TableCell
                         className="font-medium cursor-pointer"
                         onClick={() => viewMeetingDetails(meeting.meetId)}
                       >
@@ -675,7 +675,7 @@ export default function MeetingsList() {
                         <div className="flex items-center">
                           <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
                           <span>
-                            {meeting.startTime && !isNaN(new Date(meeting.startTime).getTime()) 
+                            {meeting.startTime && !isNaN(new Date(meeting.startTime).getTime())
                               ? format(new Date(meeting.startTime), "MMM dd, yyyy 'at' HH:mm")
                               : "Invalid Date"
                             }
@@ -688,8 +688,8 @@ export default function MeetingsList() {
                             meeting.status === "COMPLETED"
                               ? "default"
                               : meeting.status === "SCHEDULED"
-                              ? "secondary"
-                              : "destructive"
+                                ? "secondary"
+                                : "destructive"
                           }
                         >
                           {meeting.status.charAt(0).toUpperCase() +
@@ -702,6 +702,14 @@ export default function MeetingsList() {
                         </span>
                       </TableCell>
                       <TableCell>
+                        <Button variant="ghost" className="h-8 w-8 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            viewMeetingDetails(meeting.meetId);
+                          }}
+                        >
+                          <Eye className=" h-4 w-4" />
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             asChild
@@ -724,86 +732,86 @@ export default function MeetingsList() {
                               <Eye className="mr-1 h-4 w-4" /> View Details
                             </DropdownMenuItem>
                             {(session?.user?.role === "ADMIN" || session?.user?.role === "TSMWA_EDITOR" || session?.user?.role === "TQMA_EDITOR") && (<>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                editMeeting(meeting.meetId);
-                              }}
-                            >
-                              <Edit className="mr-1 h-4 w-4" /> Edit Meeting
-                            </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  editMeeting(meeting.meetId);
+                                }}
+                              >
+                                <Edit className="mr-1 h-4 w-4" /> Edit Meeting
+                              </DropdownMenuItem>
 
-                            {meeting.status?.toUpperCase() === "SCHEDULED" && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSendReminder(meeting.meetId);
-                                }}
-                                disabled={isSendingReminder === meeting.meetId}
-                              >
-                                <Bell className="mr-1 h-4 w-4" /> Send Reminder
-                              </DropdownMenuItem>
-                            )}
-                            
-                            {meeting.status?.toUpperCase() !== "CANCELLED" && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openCancelDialog(meeting.meetId, meeting.title);
-                                }}
-                              >
-                                <XCircle className="mr-1 h-4 w-4" /> Cancel Meeting
-                              </DropdownMenuItem>
-                            )}
+                              {meeting.status?.toUpperCase() === "SCHEDULED" && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSendReminder(meeting.meetId);
+                                  }}
+                                  disabled={isSendingReminder === meeting.meetId}
+                                >
+                                  <Bell className="mr-1 h-4 w-4" /> Send Reminder
+                                </DropdownMenuItem>
+                              )}
+
+                              {meeting.status?.toUpperCase() !== "CANCELLED" && (
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openCancelDialog(meeting.meetId, meeting.title);
+                                  }}
+                                >
+                                  <XCircle className="mr-1 h-4 w-4" /> Cancel Meeting
+                                </DropdownMenuItem>
+                              )}
                             </>)}
                             <DropdownMenuSeparator />
                             {session?.user?.role === "ADMIN" && (<>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onSelect={(e) => e.preventDefault()}
-                                >
-                                  <Trash2 className="mr-1 h-4 w-4" /> Delete Meeting
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle className="flex items-center gap-2">
-                                    <span className="text-destructive">
-                                      ⚠️
-                                    </span>
-                                    Delete Meeting
-                                  </DialogTitle>
-                                  <DialogDescription>
-                                  {meeting.status?.toUpperCase() !== "CANCELLED" ? "Cancel the meeting first in order to delete it." : 
-                                   <> Are you sure you want to delete meeting{" "}
-                                    <span className="font-semibold">
-                                      {meeting.meetId}
-                                    </span>
-                                    ? This action cannot be undone.</>}
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter className="gap-2">
-                                  <DialogClose asChild>
-                                    <Button variant="outline">
-                                      Cancel
-                                    </Button>
-                                  </DialogClose>
-                                  <DialogClose asChild>
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() =>
-                                        handleDeleteMeeting(meeting.meetId)
-                                      }
-                                      disabled={isDeleting || meeting.status?.toUpperCase() !== "CANCELLED"}
-                                    >
-                                      Delete
-                                    </Button>
-                                  </DialogClose>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog></>)}
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onSelect={(e) => e.preventDefault()}
+                                  >
+                                    <Trash2 className="mr-1 h-4 w-4" /> Delete Meeting
+                                  </DropdownMenuItem>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2">
+                                      <span className="text-destructive">
+                                        ⚠️
+                                      </span>
+                                      Delete Meeting
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                      {meeting.status?.toUpperCase() !== "CANCELLED" ? "Cancel the meeting first in order to delete it." :
+                                        <> Are you sure you want to delete meeting{" "}
+                                          <span className="font-semibold">
+                                            {meeting.meetId}
+                                          </span>
+                                          ? This action cannot be undone.</>}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter className="gap-2">
+                                    <DialogClose asChild>
+                                      <Button variant="outline">
+                                        Cancel
+                                      </Button>
+                                    </DialogClose>
+                                    <DialogClose asChild>
+                                      <Button
+                                        variant="destructive"
+                                        onClick={() =>
+                                          handleDeleteMeeting(meeting.meetId)
+                                        }
+                                        disabled={isDeleting || meeting.status?.toUpperCase() !== "CANCELLED"}
+                                      >
+                                        Delete
+                                      </Button>
+                                    </DialogClose>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog></>)}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

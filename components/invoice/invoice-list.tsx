@@ -26,6 +26,7 @@ import {
 
 // Define the invoice type based on API response
 interface ApiInvoice {
+  members: any;
   id: string;
   invoiceId: string;
   membershipId: string;
@@ -322,7 +323,7 @@ export default function InvoiceList() {
     );
   };
 
-    const handleDeleteInvoice = async (invoiceId: string) => {
+  const handleDeleteInvoice = async (invoiceId: string) => {
     if (status !== "authenticated" || !session?.user?.token) {
       toast({
         title: "Authentication Required",
@@ -334,7 +335,7 @@ export default function InvoiceList() {
 
     try {
       setIsDeleting(true);
-      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";     
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
       await axios.delete(
         `${apiUrl}/api/tax_invoice/delete_tax_invoice/${invoiceId}`,
         {
@@ -391,7 +392,7 @@ export default function InvoiceList() {
     try {
       setIsUpdatingStatus(true);
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-      
+
       const payload = {
         invoiceId: invoiceId,
         status: newStatus
@@ -468,12 +469,12 @@ export default function InvoiceList() {
 
       const billingId = invoiceFromList.invoiceId; // This is the billing ID like "INV2025-002"
       console.log("Starting download for invoice ID:", id, "Billing ID:", billingId);
-      
+
       // Fetch complete invoice details including items using the billing ID
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
       console.log("API URL:", apiUrl);
       console.log("Full endpoint:", `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${billingId}`);
-      
+
       const response = await axios.get(
         `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${billingId}`,
         {
@@ -530,11 +531,12 @@ export default function InvoiceList() {
       console.log("Member API response:", member);
 
       console.log("Downloading invoice with data:", { invoice, member });
-      
+
       // Convert API data to the format expected by generateInvoicePDF
       const convertedInvoice = {
         invoiceId: invoice.invoiceId,
         membershipId: invoice.membershipId,
+        membershipFirmName: invoice.members?.firmName,
         invoiceDate: invoice.invoiceDate,
         customerName: invoice.customerName || '',
         gstInNumber: invoice.gstInNumber || '',
@@ -575,11 +577,11 @@ export default function InvoiceList() {
       console.log("Importing PDF generator...");
       const { generateInvoicePDF } = await import("@/lib/generateInvoicePDF");
       console.log("PDF generator imported successfully");
-      
+
       console.log("Generating PDF...");
       await generateInvoicePDF(convertedInvoice, convertedMember);
       console.log("PDF generated successfully");
-      
+
       // Show success toast
       toast({
         title: "PDF Downloaded Successfully!",
@@ -594,10 +596,10 @@ export default function InvoiceList() {
         status: error.response?.status,
         statusText: error.response?.statusText
       });
-      
+
       // Show error toast with detailed message
       let errorMessage = "Failed to generate invoice. Please try again.";
-      
+
       if (error.response?.status === 404) {
         errorMessage = "Invoice not found. Please refresh the page and try again.";
       } else if (error.response?.status === 401 || error.response?.status === 403) {
@@ -607,7 +609,7 @@ export default function InvoiceList() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       toast({
         title: "Download Failed",
         description: errorMessage,
@@ -620,7 +622,7 @@ export default function InvoiceList() {
     // Generate CSV content for API invoices
     const csvHeaders = [
       "Invoice ID",
-      "Membership ID",
+      "Membership Firm Name",
       "Date",
       "CGST %",
       "SGST %",
@@ -634,7 +636,7 @@ export default function InvoiceList() {
       ...filteredInvoices.map((invoice) =>
         [
           invoice.invoiceId,
-          invoice.membershipId,
+          invoice.members.firmName,
           new Date(invoice.invoiceDate).toLocaleDateString(),
           invoice.cGSTInPercent,
           invoice.sGSTInPercent,
@@ -707,7 +709,7 @@ export default function InvoiceList() {
   };
 
   // Check if all current page invoices are selected
-  const allSelected = paginatedInvoices.length > 0 && 
+  const allSelected = paginatedInvoices.length > 0 &&
     paginatedInvoices.every((invoice) => selectedInvoiceIds.includes(invoice.invoiceId));
 
   // Check if some invoices are selected
@@ -731,7 +733,7 @@ export default function InvoiceList() {
   // Confirm and proceed with GST submission (fake API call for now)
   const confirmSubmitGST = async () => {
     setShowGSTConfirmationDialog(false);
-    
+
     // Open dialog and start fake submission process
     setShowGSTDialog(true);
     setGstSubmissionStatus("connecting");
@@ -746,7 +748,7 @@ export default function InvoiceList() {
     setTimeout(() => {
       setGstSubmissionStatus("submitted");
       setIsSubmittingGST(false);
-      
+
       // Close dialog after 2 seconds and clear selection
       setTimeout(() => {
         setShowGSTDialog(false);
@@ -829,12 +831,12 @@ export default function InvoiceList() {
             {(session?.user?.role === "ADMIN" ||
               session?.user?.role === "TQMA_EDITOR" ||
               session?.user?.role === "TSMWA_EDITOR") && (
-              <Button onClick={handleCreateInvoice}>
-                <Plus className="mr-2 h-4 w-4" /> Create Invoice
-              </Button>
-            )}
-            {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR")&& (
-              <Button 
+                <Button onClick={handleCreateInvoice}>
+                  <Plus className="mr-2 h-4 w-4" /> Create Invoice
+                </Button>
+              )}
+            {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
+              <Button
                 onClick={handleSubmitGST}
                 disabled={isSubmittingGST}
                 variant="default"
@@ -986,8 +988,8 @@ export default function InvoiceList() {
                     />
                   </TableHead>
                   <TableHead>Invoice #</TableHead>
+                  <TableHead>Membership Firm Name</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Membership ID</TableHead>
                   <TableHead>CGST %</TableHead>
                   <TableHead>SGST %</TableHead>
                   <TableHead>IGST %</TableHead>
@@ -1004,29 +1006,30 @@ export default function InvoiceList() {
                       key={invoice.id}
                       className="cursor-pointer hover:bg-muted/50"
                     >
-                      <TableCell 
+                      <TableCell
                         className="w-[50px]"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <Checkbox
                           checked={selectedInvoiceIds.includes(invoice.invoiceId)}
-                          onCheckedChange={(checked) => 
+                          onCheckedChange={(checked) =>
                             handleSelectInvoice(invoice.invoiceId, checked as boolean)
                           }
                           onClick={(e) => e.stopPropagation()}
                           aria-label={`Select invoice ${invoice.invoiceId}`}
                         />
                       </TableCell>
-                      <TableCell 
+                      <TableCell
                         className="font-medium"
                         onClick={() => handleViewInvoice(invoice.invoiceId)}
                       >
                         {invoice.invoiceId}
                       </TableCell>
+                      <TableCell>{invoice.members?.firmName}</TableCell>
                       <TableCell>
                         {new Date(invoice.invoiceDate).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{invoice.membershipId}</TableCell>
+
                       <TableCell>{invoice.cGSTInPercent}%</TableCell>
                       <TableCell>{invoice.sGSTInPercent}%</TableCell>
                       <TableCell>{invoice.iGSTInPercent}%</TableCell>
@@ -1046,6 +1049,12 @@ export default function InvoiceList() {
                         )}
                       </TableCell>
                       <TableCell>
+                        <Button variant="ghost" className="h-8 w-8 p-0"  onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewInvoice(invoice.invoiceId);
+                              }}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <DropdownMenu>
                           <DropdownMenuTrigger
                             asChild
@@ -1070,15 +1079,15 @@ export default function InvoiceList() {
                             {(session?.user?.role === "ADMIN" ||
                               session?.user?.role === "TSMWA_EDITOR" ||
                               session?.user?.role === "TQMA_EDITOR") && (
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditInvoice(invoice.invoiceId);
-                                }}
-                              >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                              </DropdownMenuItem>
-                            )}
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditInvoice(invoice.invoiceId);
+                                  }}
+                                >
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                              )}
 
                             <DropdownMenuItem
                               onClick={(e) => {
@@ -1088,7 +1097,7 @@ export default function InvoiceList() {
                             >
                               <Download className="mr-2 h-4 w-4" /> Download
                             </DropdownMenuItem>
-                                                        {session?.user?.role === "ADMIN" && (
+                            {session?.user?.role === "ADMIN" && (
                               <>
                                 {invoice.status === "PENDING" && (
                                   <>
@@ -1269,7 +1278,7 @@ export default function InvoiceList() {
               </div>
             </div>
           )}
-          </CardContent>
+        </CardContent>
       </Card>
 
       {/* GST Confirmation Dialog */}
@@ -1301,8 +1310,8 @@ export default function InvoiceList() {
       </Dialog>
 
       {/* GST Submission Dialog */}
-      <Dialog 
-        open={showGSTDialog} 
+      <Dialog
+        open={showGSTDialog}
         onOpenChange={(open) => {
           // Prevent closing during submission process
           if (!open && (gstSubmissionStatus === "connecting" || gstSubmissionStatus === "submitting")) {

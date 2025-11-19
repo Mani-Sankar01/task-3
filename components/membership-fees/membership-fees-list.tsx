@@ -133,6 +133,7 @@ export default function MembershipFeesList() {
             }
           );
           setFees(response.data);
+          console.log("Fees:", response.data);
         } catch (err) {
           setFees([]);
         } finally {
@@ -763,6 +764,14 @@ export default function MembershipFeesList() {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Button variant="ghost" className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewFeeDetails(fee.billingId);
+                            }}
+                          >
+                            <EyeIcon className=" h-4 w-4" />
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               asChild

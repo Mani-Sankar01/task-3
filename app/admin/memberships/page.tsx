@@ -268,7 +268,7 @@ const page = () => {
   // Update member status (Active/Inactive/Cancelled)
   const handleUpdateMemberStatus = async (memberId: string, newStatus: "ACTIVE" | "INACTIVE" | "CANCELLED") => {
     if (!session?.user?.token) {
-      console.log("Token" +session?.user?.token);
+      console.log("Token" + session?.user?.token);
       toast({
         title: "Authentication Error",
         description: "Authentication required to update member status.",
@@ -280,7 +280,7 @@ const page = () => {
     try {
       setIsProcessing(true);
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-      
+
       const response = await axios.post(
         `${apiUrl}/api/member/update_member`,
         {
@@ -295,19 +295,19 @@ const page = () => {
         }
       );
 
-              if (response.status === 200) {
-          // Refresh the data to get the latest information
-          await fetchMembers(false); // Don't show loading state for refresh
+      if (response.status === 200) {
+        // Refresh the data to get the latest information
+        await fetchMembers(false); // Don't show loading state for refresh
 
-          toast({
-            title: "Status Updated",
-            description: `Member status updated to ${newStatus.toLowerCase()} successfully.`,
-          });
-        }
+        toast({
+          title: "Status Updated",
+          description: `Member status updated to ${newStatus.toLowerCase()} successfully.`,
+        });
+      }
     } catch (error: any) {
       console.error("Error updating member status:", error);
       const errorMessage = error.response?.data?.message || "Failed to update member status. Please try again.";
-      
+
       toast({
         title: "Update Failed",
         description: errorMessage,
@@ -333,7 +333,7 @@ const page = () => {
     try {
       setIsProcessing(true);
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-      
+
       const payload = {
         membershipId: memberId,
         action: "APPROVED"
@@ -360,7 +360,7 @@ const page = () => {
 
       if (response.status === 200) {
         console.log("Approve API call successful, showing toast...");
-        
+
         // Show toast first
         toast({
           title: "Action Completed",
@@ -371,7 +371,7 @@ const page = () => {
         console.log("Refreshing members data after approve...");
         await fetchMembers(false); // Don't show loading state for refresh
         console.log("Members data refreshed successfully after approve");
-        
+
         return true;
       } else {
         console.log("Approve API call failed - status not 200:", response.status);
@@ -385,7 +385,7 @@ const page = () => {
     } catch (error: any) {
       console.error("Error approving member:", error);
       const errorMessage = error.response?.data?.message || "Failed to approve member. Please try again.";
-      
+
       toast({
         title: "Action Failed",
         description: errorMessage,
@@ -412,7 +412,7 @@ const page = () => {
     try {
       setIsProcessing(true);
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-      
+
       const payload = {
         membershipId: memberId,
         action: "DECLINED",
@@ -438,7 +438,7 @@ const page = () => {
 
       if (response.status === 200) {
         console.log("Decline API call successful, showing toast...");
-        
+
         // Show toast first
         toast({
           title: "Action Completed",
@@ -449,7 +449,7 @@ const page = () => {
         console.log("Refreshing members data after decline...");
         await fetchMembers(false); // Don't show loading state for refresh
         console.log("Members data refreshed successfully after decline");
-        
+
         return true;
       } else {
         console.log("Decline API call failed - status not 200:", response.status);
@@ -459,7 +459,7 @@ const page = () => {
     } catch (error: any) {
       console.error("Error declining member:", error);
       const errorMessage = error.response?.data?.message || "Failed to decline member. Please try again.";
-      
+
       setDeclineError(errorMessage);
       return false;
     } finally {
@@ -472,18 +472,18 @@ const page = () => {
     console.log("handleDeclineSubmit called");
     console.log("selectedMember:", selectedMember);
     console.log("declineReason:", declineReason);
-    
+
     if (!selectedMember || !declineReason.trim()) {
       console.log("Validation failed - missing member or reason");
       return;
     }
-    
+
     // Clear any previous errors
     setDeclineError("");
-    
+
     // Use the new handleMemberDeclined function
     const success = await handleMemberDeclined(selectedMember.membershipId, declineReason.trim());
-    
+
     if (success) {
       // Close the dialog and reset state after successful decline
       setShowDeclineDialog(false);
@@ -755,11 +755,11 @@ const page = () => {
                         <TableCell>{member.firmName}</TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge variant="outline">
-                            {member.membershipType === "TSMWA" 
-                              ? "Tandur Stone Merchant" 
-                              : member.membershipType === "TQMWA" 
-                              ? "Tandur Query Mandal" 
-                              : "-"}
+                            {member.membershipType === "TSMWA"
+                              ? "Tandur Stone Merchant"
+                              : member.membershipType === "TQMWA"
+                                ? "Tandur Query Mandal"
+                                : "-"}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
@@ -768,8 +768,8 @@ const page = () => {
                               member.membershipStatus === "ACTIVE"
                                 ? "default"
                                 : member.membershipStatus === "INACTIVE"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {member.membershipStatus.charAt(0).toUpperCase() +
@@ -785,8 +785,8 @@ const page = () => {
                               member.approvalStatus === "APPROVED"
                                 ? "default"
                                 : member.approvalStatus === "DECLINED"
-                                ? "secondary"
-                                : "destructive"
+                                  ? "secondary"
+                                  : "destructive"
                             }
                           >
                             {member.approvalStatus.charAt(0).toUpperCase() +
@@ -794,6 +794,15 @@ const page = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <Button variant="ghost" className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              viewMemberDetails(member.membershipId);
+                            }}
+                          >
+                            <EyeIcon className=" h-4 w-4" />
+
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               asChild
@@ -835,7 +844,7 @@ const page = () => {
                                 <>
                                   {member.membershipStatus === "ACTIVE" && (
                                     <>
-                                      <DropdownMenuItem 
+                                      <DropdownMenuItem
                                         className="cursor-pointer"
                                         onClick={() => handleUpdateMemberStatus(member.membershipId, "INACTIVE")}
                                         disabled={isProcessing}
@@ -843,7 +852,7 @@ const page = () => {
                                         <X className="h-4 w-4 text-red-600" />
                                         Make Inactive
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem 
+                                      <DropdownMenuItem
                                         className="cursor-pointer"
                                         onClick={() => handleUpdateMemberStatus(member.membershipId, "CANCELLED")}
                                         disabled={isProcessing}
@@ -855,7 +864,7 @@ const page = () => {
                                   )}
 
                                   {member.membershipStatus === "INACTIVE" && (
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       className="cursor-pointer"
                                       onClick={() => handleUpdateMemberStatus(member.membershipId, "ACTIVE")}
                                       disabled={isProcessing}
@@ -866,7 +875,7 @@ const page = () => {
                                   )}
 
                                   {member.membershipStatus === "CANCELLED" && (
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       className="cursor-pointer"
                                       onClick={() => handleUpdateMemberStatus(member.membershipId, "ACTIVE")}
                                       disabled={isProcessing}
@@ -878,7 +887,7 @@ const page = () => {
 
                                   {member.approvalStatus === "PENDING" && (
                                     <>
-                                      <DropdownMenuItem 
+                                      <DropdownMenuItem
                                         className="cursor-pointer"
                                         onClick={() => handleMemberApproved(member.membershipId)}
                                         disabled={isProcessing}
@@ -886,7 +895,7 @@ const page = () => {
                                         <CheckCheck className="h-4 w-4 text-green-600" />
                                         Approve
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem 
+                                      <DropdownMenuItem
                                         className="cursor-pointer"
                                         onClick={() => {
                                           setSelectedMember(member);
@@ -902,7 +911,7 @@ const page = () => {
                                   )}
 
                                   {member.approvalStatus === "APPROVED" && (
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       className="cursor-pointer"
                                       onClick={() => {
                                         setSelectedMember(member);
@@ -917,7 +926,7 @@ const page = () => {
                                   )}
 
                                   {member.approvalStatus === "DECLINED" && (
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       className="cursor-pointer"
                                       onClick={() => handleMemberApproved(member.membershipId)}
                                       disabled={isProcessing}
