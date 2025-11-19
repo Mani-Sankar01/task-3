@@ -112,7 +112,7 @@ export default function Step3ComplianceLegal({
         <div className="space-y-6">
           {/* GSTIN */}
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
+            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.gstinNo"
@@ -282,7 +282,7 @@ export default function Step3ComplianceLegal({
 
           {/* Factory License */}
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
+            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.factoryLicenseNo"
@@ -380,7 +380,7 @@ export default function Step3ComplianceLegal({
 
           {/* TSPCB Order */}
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
+            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.tspcbOrderNo"
@@ -487,7 +487,7 @@ export default function Step3ComplianceLegal({
 
           {/* MDL */}
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
+            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.mdlNo"
@@ -594,7 +594,7 @@ export default function Step3ComplianceLegal({
 
           {/* Udyam Certificate */}
           <div className="space-y-4">
-            <div className="flex items-end gap-4">
+            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.udyamCertificateNo"

@@ -240,7 +240,7 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
             {attachmentsArray.fields.map((field, index) => {
               const isExpirable = watch(`documentDetails.additionalAttachments.${index}.isExpirable`);
               return (
-                <div key={field.id} className="flex items-end gap-4">
+                <div key={field.id} className="flex items-center gap-4">
                   <FormField
                     control={control}
                     name={`documentDetails.additionalAttachments.${index}.name`}
