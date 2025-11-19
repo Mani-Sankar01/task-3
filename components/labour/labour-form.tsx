@@ -153,8 +153,8 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           panNumber: labour.panNumber || "",
           esiNumber: labour.esiNumber || "",
           eShramId: labour.eShramId || "",
-          assignedTo: labour.assignedTo || "",
-          branchId: labour.branchId || "",
+          assignedTo: labour.assignedToMemberId || labour.assignedTo || "",
+          branchId: labour.assignedToBranchId ? String(labour.assignedToBranchId) : (labour.branchId || ""),
           labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
           additionalDocs:
             labour.laboursAdditionalDocs?.map((doc: any) => ({
@@ -213,8 +213,8 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         panNumber: labour.panNumber || "",
         esiNumber: labour.esiNumber || "",
         eShramId: labour.eShramId || "",
-        assignedTo: labour.assignedTo || "",
-        branchId: labour.branchId || "",
+        assignedTo: labour.assignedToMemberId || labour.assignedTo || "",
+        branchId: labour.assignedToBranchId ? String(labour.assignedToBranchId) : (labour.branchId || ""),
         labourStatus: (labour.labourStatus || "ACTIVE") as "ACTIVE" | "INACTIVE" | "ON_BENCH",
         additionalDocs:
           labour.laboursAdditionalDocs?.map((doc: any) => ({
@@ -227,6 +227,12 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       form.reset(formData);
       // Store original data for change detection
       originalDataRef.current = formData;
+      
+      // If assignedToMemberId exists and status is ACTIVE, trigger branch fetch
+      if (labour.assignedToMemberId && labour.labourStatus === "ACTIVE") {
+        // Trigger branch fetch by setting the assignedTo field
+        form.setValue("assignedTo", labour.assignedToMemberId || labour.assignedTo || "");
+      }
 
       console.log("Form values after reset:", form.getValues());
     }
@@ -298,7 +304,24 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         )
         .then((response) => {
           const memberData = response.data;
-          setBranches(memberData.branches || []);
+          const fetchedBranches = memberData.branches || [];
+          setBranches(fetchedBranches);
+          
+          // If we're in edit mode and have a branchId, ensure it's set correctly
+          if (isEditMode && labour?.assignedToBranchId) {
+            const branchIdStr = String(labour.assignedToBranchId);
+            const currentBranchId = form.getValues("branchId");
+            // If branchId doesn't match or is empty, set it
+            if (currentBranchId !== branchIdStr) {
+              // Check if the branch exists in the fetched branches
+              const branchExists = fetchedBranches.some(
+                (b: any) => String(b.id) === branchIdStr
+              );
+              if (branchExists) {
+                form.setValue("branchId", branchIdStr);
+              }
+            }
+          }
         })
         .catch((err) => {
           console.error("Error fetching branches:", err);
@@ -308,7 +331,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
     } else {
       setBranches([]);
     }
-  }, [form.watch("assignedTo"), sessionStatus, session?.user?.token]);
+  }, [form.watch("assignedTo"), sessionStatus, session?.user?.token, isEditMode, labour]);
 
   const onSubmit = async (data: FormValues) => {
     console.log("onSubmit function called!");
@@ -458,23 +481,14 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           }
         }
         
-        // Handle assignedTo and branchId with special logic
+        // Handle assignedToMemberId and assignedToBranchId - always include these fields in payload
         const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
-        const newAssignedTo = shouldClearAssignment ? null : (data.assignedTo || "");
-        const originalAssignedTo = original.assignedTo || "";
-        // Compare normalized values (empty string and null are treated as equivalent for comparison)
-        const originalAssignedToNormalized = originalAssignedTo === "" ? null : originalAssignedTo;
-        if (newAssignedTo !== originalAssignedToNormalized) {
-          // Only include assignedTo if it has a value or if we're explicitly clearing it
-          if (shouldClearAssignment || (newAssignedTo && newAssignedTo.trim() !== "")) {
-            payload.assignedTo = newAssignedTo;
-          }
-        }
-        if (changed("branchId")) {
-          if (data.branchId && data.branchId.trim() !== "") {
-            payload.branchId = data.branchId;
-          }
-        }
+        const newAssignedTo = shouldClearAssignment ? "" : (data.assignedTo || "");
+        
+        // Always include assignedToMemberId and assignedToBranchId in the payload (required by API)
+        payload.assignedToMemberId = newAssignedTo || "";
+        // Convert branchId string to number, or null if empty
+        payload.assignedToBranchId = data.branchId && data.branchId.trim() !== "" ? Number(data.branchId) : null;
         if (changed("labourStatus")) payload.labourStatus = data.labourStatus;
 
         // Handle additional documents - only if they changed
@@ -574,7 +588,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       }
 
       // For add mode, send all required fields and only optional fields that have values
-      // If status is ON_BENCH or INACTIVE, set assignedTo to null
+      // If status is ON_BENCH or INACTIVE, set assignedToMemberId to empty string
       const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
       
       const payload: any = {
@@ -589,6 +603,8 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         photoPath: uploadedPhotoPath,
         aadharPath: uploadedAadharPath,
         labourStatus: data.labourStatus,
+        assignedToMemberId: shouldClearAssignment ? "" : (data.assignedTo || ""),
+        assignedToBranchId: data.branchId && data.branchId.trim() !== "" ? Number(data.branchId) : null,
       };
 
       // Add optional fields only if they have values
@@ -603,12 +619,6 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       }
       if (data.eShramId && data.eShramId.trim() !== "") {
         payload.eShramId = data.eShramId;
-      }
-      if (!shouldClearAssignment && data.assignedTo && data.assignedTo.trim() !== "") {
-        payload.assignedTo = data.assignedTo;
-      }
-      if (data.branchId && data.branchId.trim() !== "") {
-        payload.branchId = data.branchId;
       }
 
       // Handle additional documents for add mode

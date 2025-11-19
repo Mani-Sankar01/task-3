@@ -653,7 +653,7 @@ export default function LabourList() {
                           {labour.aadharNumber || "N/A"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          {labour.labourAssignedTo?.firmName || "Not Assigned"}
+                          {labour.labourAssignedToMember?.firmName || "Not Assigned"}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           <Badge

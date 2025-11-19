@@ -393,8 +393,8 @@ export default function LabourDetails({
                   </Badge>
                 </div>
                 <CardDescription>
-                  {labour.labourAssignedTo?.firmName
-                    ? `Currently working at ${labour.labourAssignedTo.firmName}`
+                  {labour.labourAssignedToMember?.firmName
+                    ? `Currently working at ${labour.labourAssignedToMember.firmName}`
                     : "Not currently assigned"}
                 </CardDescription>
               </div>
@@ -486,7 +486,7 @@ export default function LabourDetails({
                       labour.LabourHistory.map((employment: any) => (
                         <TableRow key={employment.Id}>
                           <TableCell className="font-medium">
-                            {employment.assignedTo}
+                            {employment.assignedToMemberId}
                           </TableCell>
                           <TableCell>
                             {new Date(employment.fromDate).toLocaleDateString()}

@@ -121,7 +121,7 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
             }
           );
           const memberLabours = response.data.filter((labour: any) =>
-            labour.assignedTo === memberId
+            labour.assignedToMemberId === memberId
           );
           setLabours(memberLabours);
         } catch (err) {
