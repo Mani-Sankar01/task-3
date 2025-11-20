@@ -481,14 +481,18 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
           }
         }
         
-        // Handle assignedToMemberId and assignedToBranchId - always include these fields in payload
-        const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
-        const newAssignedTo = shouldClearAssignment ? "" : (data.assignedTo || "");
+        // Handle assignedToMemberId and assignedToBranchId - only include if changed
+        if (changed("assignedTo")) {
+          // If assignedTo has changed, include it in payload
+          // Use null instead of empty string for foreign key constraint
+          payload.assignedToMemberId = data.assignedTo && data.assignedTo.trim() !== "" ? data.assignedTo : null;
+        }
         
-        // Always include assignedToMemberId and assignedToBranchId in the payload (required by API)
-        payload.assignedToMemberId = newAssignedTo || "";
-        // Convert branchId string to number, or null if empty
-        payload.assignedToBranchId = data.branchId && data.branchId.trim() !== "" ? Number(data.branchId) : null;
+        if (changed("branchId")) {
+          // If branchId has changed, include it in payload
+          // Convert branchId string to number, or null if empty
+          payload.assignedToBranchId = data.branchId && data.branchId.trim() !== "" ? Number(data.branchId) : null;
+        }
         if (changed("labourStatus")) payload.labourStatus = data.labourStatus;
 
         // Handle additional documents - only if they changed
@@ -588,9 +592,6 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
       }
 
       // For add mode, send all required fields and only optional fields that have values
-      // If status is ON_BENCH or INACTIVE, set assignedToMemberId to empty string
-      const shouldClearAssignment = data.labourStatus === "ON_BENCH" || data.labourStatus === "INACTIVE";
-      
       const payload: any = {
         labourId: labour?.labourId || "",
         fullName: data.fullName,
@@ -603,7 +604,7 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
         photoPath: uploadedPhotoPath,
         aadharPath: uploadedAadharPath,
         labourStatus: data.labourStatus,
-        assignedToMemberId: shouldClearAssignment ? "" : (data.assignedTo || ""),
+        assignedToMemberId: data.assignedTo && data.assignedTo.trim() !== "" ? data.assignedTo : "",
         assignedToBranchId: data.branchId && data.branchId.trim() !== "" ? Number(data.branchId) : null,
       };
 
@@ -766,136 +767,179 @@ export default function LabourForm({ labour, isEditMode }: LabourFormProps) {
             >
               <div className="space-y-6">
                 <h3 className="text-lg font-medium">Assignment Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="assignedTo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel
-                          data-required="false"
-                          data-tooltip="Optional: assign this labour to a member. Leave empty if the worker is not currently assigned."
-                        >
-                          Assign to Member
-                        </FormLabel>
-                        <Select
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            // Clear branch selection when member changes
-                            form.setValue("branchId", "");
-                          }}
-                          value={field.value || ""}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a member" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <Input
-                              placeholder="Search by name or firm..."
-                              value={memberSearchTerm}
-                              onChange={(e) =>
-                                setMemberSearchTerm(e.target.value)
+                <div className={`grid grid-cols-1 ${isEditMode ? 'md:grid-cols-3' : 'md:grid-cols-3'} gap-6`}>
+                  {isEditMode && (
+                    <FormField
+                      control={form.control}
+                      name="labourStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-tooltip="Mandatory: select the current engagement status of the labour.">
+                            Labour Status
+                          </FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              // Clear assignment fields when status is not ACTIVE
+                              if (value !== "ACTIVE") {
+                                form.setValue("assignedTo", "");
+                                form.setValue("branchId", "");
                               }
-                              className="w-full mb-2"
-                            />
-                            {filteredMembers.map((member) => (
-                              <SelectItem
-                                key={member.membershipId}
-                                value={member.membershipId}
-                              >
-                                {(member.applicantName || "Unknown") +
-                                  " - " +
-                                  (member.firmName || "Unknown")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            }}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select labour status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="ACTIVE">Active</SelectItem>
+                              <SelectItem value="INACTIVE">Inactive</SelectItem>
+                              <SelectItem value="ON_BENCH">On Bench</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-                  <FormField
-                    control={form.control}
-                    name="branchId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel
-                          data-required="false"
-                          data-tooltip="Optional: choose a branch for the selected member. Required only when a member is assigned."
-                        >
-                          Branch
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value || ""}
-                          disabled={
-                            !form.watch("assignedTo") || isLoadingBranches
-                          }
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={
-                                  isLoadingBranches
-                                    ? "Loading branches..."
-                                    : "Select a branch"
-                                }
-                              />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {branches.map((branch) => (
-                              <SelectItem
-                                key={branch.id}
-                                value={String(branch.id)}
-                              >
-                                {branch.placeOfBusiness ||
-                                  `Branch ${branch.id}`}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        {!form.watch("assignedTo") && (
-                          <p className="text-xs text-muted-foreground">
-                            Please select a member first to see available
-                            branches.
-                          </p>
+                  {(!isEditMode || form.watch("labourStatus") === "ACTIVE") && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="assignedTo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel
+                              data-required="false"
+                              data-tooltip="Optional: assign this labour to a member. Leave empty if the worker is not currently assigned."
+                            >
+                              Assign to Member
+                            </FormLabel>
+                            <Select
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                                // Clear branch selection when member changes
+                                form.setValue("branchId", "");
+                              }}
+                              value={field.value || ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a member" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <Input
+                                  placeholder="Search by name or firm..."
+                                  value={memberSearchTerm}
+                                  onChange={(e) =>
+                                    setMemberSearchTerm(e.target.value)
+                                  }
+                                  className="w-full mb-2"
+                                />
+                                {filteredMembers.map((member) => (
+                                  <SelectItem
+                                    key={member.membershipId}
+                                    value={member.membershipId}
+                                  >
+                                    {(member.applicantName || "Unknown") +
+                                      " - " +
+                                      (member.firmName || "Unknown")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                      </FormItem>
-                    )}
-                  />
+                      />
 
-                  <FormField
-                    control={form.control}
-                    name="labourStatus"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel data-tooltip="Mandatory: select the current engagement status of the labour.">
-                          Labour Status
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select labour status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="ACTIVE">Active</SelectItem>
-                            <SelectItem value="INACTIVE">Inactive</SelectItem>
-                            <SelectItem value="ON_BENCH">On Bench</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      <FormField
+                        control={form.control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel
+                              data-required="false"
+                              data-tooltip="Optional: choose a branch for the selected member. Required only when a member is assigned."
+                            >
+                              Branch
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                              disabled={
+                                !form.watch("assignedTo") || isLoadingBranches
+                              }
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue
+                                    placeholder={
+                                      isLoadingBranches
+                                        ? "Loading branches..."
+                                        : "Select a branch"
+                                    }
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {branches.map((branch) => (
+                                  <SelectItem
+                                    key={branch.id}
+                                    value={String(branch.id)}
+                                  >
+                                    {branch.placeOfBusiness ||
+                                      `Branch ${branch.id}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            {!form.watch("assignedTo") && (
+                              <p className="text-xs text-muted-foreground">
+                                Please select a member first to see available
+                                branches.
+                              </p>
+                            )}
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+
+                  {!isEditMode && (
+                    <FormField
+                      control={form.control}
+                      name="labourStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-tooltip="Mandatory: select the current engagement status of the labour.">
+                            Labour Status
+                          </FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select labour status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="ACTIVE">Active</SelectItem>
+                              <SelectItem value="INACTIVE">Inactive</SelectItem>
+                              <SelectItem value="ON_BENCH">On Bench</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               </div>
 
