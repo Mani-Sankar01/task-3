@@ -480,7 +480,7 @@ export default function LabourList() {
       </div>
 
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -494,6 +494,7 @@ export default function LabourList() {
             />
           </div>
 
+          <div className="flex items-center space-x-2">
           <Select
             value={selectedStatus}
             onValueChange={(value) => {
@@ -502,10 +503,10 @@ export default function LabourList() {
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="All Statuses" />
+              <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="ACTIVE">Active</SelectItem>
               <SelectItem value="BENCH">Bench</SelectItem>
               <SelectItem value="INACTIVE">Inactive</SelectItem>
@@ -539,6 +540,7 @@ export default function LabourList() {
           <Button variant="outline" onClick={resetFilters}>
             Reset Filters
           </Button>
+          </div>
         </div>
 
         <div className="flex justify-end"></div>
