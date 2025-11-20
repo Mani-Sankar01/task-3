@@ -43,7 +43,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { getVehicleById } from "@/data/vehicles";
 import { renderRoleBasedPath } from "@/lib/utils";
 import {
   Dialog,
@@ -97,6 +96,38 @@ export default function AllTripsList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
+  const [vehicleDetails, setVehicleDetails] = useState<Record<string, any>>({});
+
+  // Function to fetch vehicle details
+  const fetchVehicleDetails = async (vehicleIds: string[]) => {
+    if (!session?.user?.token || vehicleIds.length === 0) return;
+
+    const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+    const vehicleDetailsMap: Record<string, any> = {};
+
+    // Fetch vehicle details for each unique vehicle ID
+    const vehiclePromises = vehicleIds.map(async (vehicleId) => {
+      try {
+        const response = await axios.get(
+          `${apiUrl}/api/vehicle/search_vehicle/${vehicleId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+        if (response.data) {
+          vehicleDetailsMap[vehicleId] = response.data;
+        }
+      } catch (err) {
+        console.error(`Error fetching vehicle details for ${vehicleId}:`, err);
+        // Don't set anything if fetch fails, it will show as Unknown
+      }
+    });
+
+    await Promise.all(vehiclePromises);
+    setVehicleDetails(vehicleDetailsMap);
+  };
 
   // Fetch trips from API
   useEffect(() => {
@@ -144,6 +175,15 @@ export default function AllTripsList() {
         setTrips(responseData);
         console.log("Trips data:", responseData);
         console.log("Number of trips:", responseData.length);
+
+        // Fetch vehicle details for all unique vehicle IDs
+        const vehicleIds: string[] = responseData
+          .map((trip: ApiTrip) => trip.vehicleId)
+          .filter((id: string | undefined): id is string => typeof id === 'string' && !!id);
+        const uniqueVehicleIds = Array.from(new Set(vehicleIds));
+        if (uniqueVehicleIds.length > 0) {
+          await fetchVehicleDetails(uniqueVehicleIds);
+        }
       } catch (err: unknown) {
         console.error("Error fetching trip data:", err);
         if (err instanceof Error) {
@@ -162,14 +202,15 @@ export default function AllTripsList() {
 
   // Filter trips based on search term
   const filteredTrips = trips.filter(
-    (trip) =>
-      trip.tripId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getVehicleById(trip.vehicleId)
-        ?.vehicleNumber.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      getVehicleById(trip.vehicleId)
-        ?.driverName.toLowerCase()
-        .includes(searchTerm.toLowerCase())
+    (trip) => {
+      const vehicle = vehicleDetails[trip.vehicleId];
+      return (
+        trip.tripId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle?.vehicleId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle?.vehicleNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle?.driverName?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
   );
 
   // Sort trips if a sort field is selected
@@ -349,10 +390,9 @@ export default function AllTripsList() {
     }
   };
 
-  // Get vehicle details
+  // Get vehicle details from API data
   const getVehicleDetails = (vehicleId: string) => {
-    const vehicle = getVehicleById(vehicleId);
-    return vehicle ? vehicle : null;
+    return vehicleDetails[vehicleId] || null;
   };
 
   return (
@@ -485,7 +525,7 @@ export default function AllTripsList() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {vehicle?.vehicleNumber || "Unknown"}
+                              {vehicle?.vehicleId || trip?.vehicleId || "Unknown"}
                             </TableCell>
                             <TableCell>
                               {vehicle?.driverName || "Unknown"}

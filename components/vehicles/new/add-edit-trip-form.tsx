@@ -469,21 +469,18 @@ export default function AddEditTripForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Payment Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select payment status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="paid">Paid</SelectItem>
-                          <SelectItem value="partial">Partial</SelectItem>
-                          <SelectItem value="unpaid">Unpaid</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          value={field.value ? field.value.charAt(0).toUpperCase() + field.value.slice(1).toLowerCase() : "Unpaid"}
+                          disabled
+                          readOnly
+                          className="bg-muted cursor-not-allowed"
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Payment status is automatically managed by the system.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
