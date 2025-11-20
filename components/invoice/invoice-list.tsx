@@ -142,6 +142,7 @@ export default function InvoiceList() {
     to: undefined,
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [members, setMembers] = useState<ApiMember[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -287,6 +288,13 @@ export default function InvoiceList() {
       );
     }
 
+    // Filter by status
+    if (statusFilter && statusFilter !== "all") {
+      filtered = filtered.filter(
+        (invoice) => invoice.status === statusFilter
+      );
+    }
+
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
@@ -299,7 +307,7 @@ export default function InvoiceList() {
 
     setFilteredInvoices(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [searchTerm, dateFilterType, dateRange, selectedMemberId, invoices]);
+  }, [searchTerm, dateFilterType, dateRange, selectedMemberId, statusFilter, invoices]);
 
   // Paginate the filtered invoices
   const paginatedInvoices = filteredInvoices.slice(
@@ -691,6 +699,10 @@ export default function InvoiceList() {
     setSelectedMemberId("");
   };
 
+  const clearStatusFilter = () => {
+    setStatusFilter("all");
+  };
+
   // Handle invoice selection
   const handleSelectInvoice = (invoiceId: string, checked: boolean) => {
     if (checked) {
@@ -963,6 +975,29 @@ export default function InvoiceList() {
 
               {dateFilterType !== "all" && (
                 <Button variant="ghost" size="sm" onClick={clearDateFilter}>
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="DECLINED">Declined</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {statusFilter !== "all" && (
+                <Button variant="ghost" size="sm" onClick={clearStatusFilter}>
                   Clear
                 </Button>
               )}
