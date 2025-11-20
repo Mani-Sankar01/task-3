@@ -124,13 +124,7 @@ const data = {
           title: "All Invoices",
           url: "/tsmwa/invoices",
           icon: ClipboardList,
-        },
-        
-        {
-          title: "Add Invoice",
-          url: "/tsmwa/invoices/create",
-          icon: PlusSquare,
-        },
+        }
       ],
     },
     {
@@ -141,12 +135,7 @@ const data = {
           title: "All Meetings",
           url: "/tsmwa/meetings",
           icon: CalendarDays,
-        },
-        {
-          title: "Add Meeting",
-          url: "/tsmwa/meetings/add",
-          icon: PlusSquare,
-        },
+        }
       ],
     },
     {

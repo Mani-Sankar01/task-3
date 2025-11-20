@@ -125,12 +125,7 @@ const data = {
           title: "All Invoices",
           url: "/twwa/invoices",
           icon: ClipboardList,
-        },
-        {
-          title: "Add Invoice",
-          url: "/twwa/invoices/create",
-          icon: PlusSquare,
-        },
+        }
       ],
     },
     {
@@ -141,12 +136,7 @@ const data = {
           title: "All Meetings",
           url: "/twwa/meetings",
           icon: CalendarDays,
-        },
-        {
-          title: "Add Meeting",
-          url: "/twwa/meetings/add",
-          icon: PlusSquare,
-        },
+        }
       ],
     },
     {
