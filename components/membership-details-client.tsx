@@ -2236,7 +2236,7 @@ export default function MembershipDetailsClient({
           >
             <div className="flex items-center gap-2">
               <License className="h-4 w-4" />
-              Licenses
+              Docs & Licenses
             </div>
 
           </TabsTrigger>
@@ -2251,12 +2251,12 @@ export default function MembershipDetailsClient({
 
           </TabsTrigger>
           <TabsTrigger
-            value="documents"
+            value="gst"
 
           >
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Documents
+              GST Filling
             </div>
 
           </TabsTrigger>
@@ -2883,142 +2883,22 @@ export default function MembershipDetailsClient({
           </Card>
         </TabsContent>
 
-        <TabsContent value="documents">
+        <TabsContent value="gst">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Licenses & Documents</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-center">
+              <div className="text-center">
+                <CardTitle>GST Filling</CardTitle>
                 <CardDescription>
-                  All uploaded documents and certificates
+                  All GST filling details for this member
                 </CardDescription>
               </div>
-              {(session?.user?.role === "ADMIN" ||
-                session?.user?.role === "TQMA_EDITOR" ||
-                session?.user?.role === "TSMWA_EDITOR") &&
-                <Button onClick={openAddDoc}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Add Document
-                </Button>
-              }
+              
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Document Name</TableHead>
-                    <TableHead>File Path</TableHead>
-                    <TableHead>Is Expirable</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Expiry Date</TableHead>
-                    {(session?.user?.role === "ADMIN" ||
-                      session?.user?.role === "TQMA_EDITOR" ||
-                      session?.user?.role === "TSMWA_EDITOR") &&
-                      <TableHead>Actions</TableHead>
-                    }
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-
-                  {/* Additional attachments */}
-                  {attachmentsWithExpiry.map((attachment) => {
-                    const isExpirable = !!attachment.expiredAt;
-                    return (
-                    <TableRow key={attachment.id}>
-                      <TableCell className="font-medium">{attachment.documentName}</TableCell>
-                      <TableCell>{attachment.documentPath || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant={isExpirable ? "default" : "secondary"}>
-                          {isExpirable ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {isExpirable && attachment.expiredAt ? (
-                          new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
-                            <Badge variant="default">Active</Badge>
-                          ) : (
-                            <Badge variant="destructive">Expired</Badge>
-                          )
-                        ) : (
-                          <Badge variant="secondary">No Expiry</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{isExpirable && attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
-                      {(session?.user?.role === "ADMIN" ||
-                        session?.user?.role === "TQMA_EDITOR" ||
-                        session?.user?.role === "TSMWA_EDITOR") &&
-                        <TableCell className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
-                          <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
-                        </TableCell>
-                      }
-                    </TableRow>
-                  );
-                  })}
-                </TableBody>
-              </Table>
+              
             </CardContent>
           </Card>
-          {/* Add/Edit Document Dialog */}
-          <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editDoc ? "Edit Document" : "Add Document"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Label>Document Type</Label>
-                <Select value={docType} onValueChange={setDocType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DOCUMENT_TYPES.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {(docType === "additional" || docType === "") && (
-                  <div>
-                    <Label>Document Name</Label>
-                    <Input value={docName} onChange={e => setDocName(e.target.value)} placeholder="Enter document name" />
-                  </div>
-                )}
-                <Label>File</Label>
-                <FileUpload
-                  onFileSelect={setDocFile}
-                  onUploadComplete={() => { }}
-                  onUploadError={setDocError}
-                  subfolder="documents"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  existingFilePath={filePathForUpload ?? undefined}
-                  onDownload={filePath => handleDownloadDocument(filePath)}
-                  onRemoveFile={() => setFilePathForUpload(null)}
-                />
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="docIsExpirable"
-                    checked={docIsExpirable}
-                    onCheckedChange={(checked) => {
-                      setDocIsExpirable(checked as boolean);
-                      if (!checked) setDocExpiry("");
-                    }}
-                  />
-                  <Label htmlFor="docIsExpirable" className="cursor-pointer">Is Expirable</Label>
-                </div>
-                {docIsExpirable && (
-                  <div>
-                    <Label>Expiry Date</Label>
-                    <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} />
-                  </div>
-                )}
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>Cancel</Button>
-                <Button onClick={handleDocSubmit} disabled={docLoading}>{editDoc ? "Save Changes" : "Add Document"}</Button>
-                {docError && <div className="text-red-500 text-sm mt-2">{docError}</div>}
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+         
         </TabsContent>
 
         {/* Other tabs content remains the same */}
@@ -3151,7 +3031,7 @@ export default function MembershipDetailsClient({
                   session?.user?.role === "TQMA_EDITOR" ||
                   session?.user?.role === "TSMWA_EDITOR") &&
                   <Button onClick={openAddLicenseDialog} disabled={getAvailableLicenseTypes().length === 0}>
-                    <Plus className="h-4 w-4 mr-2" />
+                    <Plus className="h-4 w-4" />
                     Add License
                   </Button>
                 }
@@ -3309,6 +3189,143 @@ export default function MembershipDetailsClient({
                 )}
             </CardContent>
           </Card>
+
+          <Card className="mt-4">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Additional Documents</CardTitle>
+                <CardDescription>
+                  All uploaded documents and certificates
+                </CardDescription>
+              </div>
+              {(session?.user?.role === "ADMIN" ||
+                session?.user?.role === "TQMA_EDITOR" ||
+                session?.user?.role === "TSMWA_EDITOR") &&
+                <Button onClick={openAddDoc}>
+                  <Plus className="h-4 w-4" />
+                  Add Document
+                </Button>
+              }
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Document Name</TableHead>
+                    <TableHead>File Path</TableHead>
+                    <TableHead>Is Expirable</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Expiry Date</TableHead>
+                    {(session?.user?.role === "ADMIN" ||
+                      session?.user?.role === "TQMA_EDITOR" ||
+                      session?.user?.role === "TSMWA_EDITOR") &&
+                      <TableHead>Actions</TableHead>
+                    }
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+
+                  {/* Additional attachments */}
+                  {attachmentsWithExpiry.map((attachment) => {
+                    const isExpirable = !!attachment.expiredAt;
+                    return (
+                    <TableRow key={attachment.id}>
+                      <TableCell className="font-medium">{attachment.documentName}</TableCell>
+                      <TableCell>{attachment.documentPath || "-"}</TableCell>
+                      <TableCell>
+                        <Badge variant={isExpirable ? "default" : "secondary"}>
+                          {isExpirable ? "Yes" : "No"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {isExpirable && attachment.expiredAt ? (
+                          new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="destructive">Expired</Badge>
+                          )
+                        ) : (
+                          <Badge variant="secondary">No Expiry</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{isExpirable && attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "TQMA_EDITOR" ||
+                        session?.user?.role === "TSMWA_EDITOR") &&
+                        <TableCell className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
+                          <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
+                        </TableCell>
+                      }
+                    </TableRow>
+                  );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          {/* Add/Edit Document Dialog */}
+          <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editDoc ? "Edit Document" : "Add Document"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Label>Document Type</Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(docType === "additional" || docType === "") && (
+                  <div>
+                    <Label>Document Name</Label>
+                    <Input value={docName} onChange={e => setDocName(e.target.value)} placeholder="Enter document name" />
+                  </div>
+                )}
+                <Label>File</Label>
+                <FileUpload
+                  onFileSelect={setDocFile}
+                  onUploadComplete={() => { }}
+                  onUploadError={setDocError}
+                  subfolder="documents"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  existingFilePath={filePathForUpload ?? undefined}
+                  onDownload={filePath => handleDownloadDocument(filePath)}
+                  onRemoveFile={() => setFilePathForUpload(null)}
+                />
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="docIsExpirable"
+                    checked={docIsExpirable}
+                    onCheckedChange={(checked) => {
+                      setDocIsExpirable(checked as boolean);
+                      if (!checked) setDocExpiry("");
+                    }}
+                  />
+                  <Label htmlFor="docIsExpirable" className="cursor-pointer">Is Expirable</Label>
+                </div>
+                {docIsExpirable && (
+                  <div>
+                    <Label>Expiry Date</Label>
+                    <Input type="date" value={docExpiry} onChange={e => setDocExpiry(e.target.value)} />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeDocDialog} disabled={docLoading}>Cancel</Button>
+                <Button onClick={handleDocSubmit} disabled={docLoading}>{editDoc ? "Save Changes" : "Add Document"}</Button>
+                {docError && <div className="text-red-500 text-sm mt-2">{docError}</div>}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {/* Edit License Dialog */}
           <Dialog open={!!editLicenseType} onOpenChange={val => { if (!val) setEditLicenseType(null); }}>
             <DialogContent>
