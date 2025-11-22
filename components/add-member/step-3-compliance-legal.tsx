@@ -31,8 +31,6 @@ interface Step3ComplianceLegalProps {
   isEditMode?: boolean;
   validationErrors?: {
     gstinNo?: string;
-    gstInUsername?: string;
-    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -40,8 +38,6 @@ interface Step3ComplianceLegalProps {
   };
   validationSuccess?: {
     gstinNo?: string;
-    gstInUsername?: string;
-    gstInPassword?: string;
     factoryLicenseNo?: string;
     tspcbOrderNo?: string;
     mdlNo?: string;
@@ -65,7 +61,6 @@ export default function Step3ComplianceLegal({
   const { control, watch } = useFormContext();
   
   // Watch for isExpirable flags
-  const gstinIsExpirable = watch("complianceDetails.gstinIsExpirable");
   const factoryLicenseIsExpirable = watch("complianceDetails.factoryLicenseIsExpirable");
   const tspcbIsExpirable = watch("complianceDetails.tspcbIsExpirable");
   const mdlIsExpirable = watch("complianceDetails.mdlIsExpirable");
@@ -112,25 +107,35 @@ export default function Step3ComplianceLegal({
         <div className="space-y-6">
           {/* GSTIN */}
           <div className="space-y-4">
-            <div className="flex items-start gap-4">
             <FormField
               control={control}
               name="complianceDetails.gstinNo"
               render={({ field }) => (
-                <FormItem className="flex-1">
+                <FormItem>
                   <FormLabel data-tooltip="GSTIN number should be unique">
                     GSTIN No
                   </FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Enter GSTIN number" 
-                      {...field}
-                      onChange={(e) => {
-                        field.onChange(e);
-                        onFieldChange?.('gstinNo', e.target.value);
-                      }}
-                    />
-                  </FormControl>
+                  <div className="flex gap-2">
+                    <FormControl className="flex-1">
+                      <Input 
+                        placeholder="Enter GSTIN number" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          onFieldChange?.('gstinNo', e.target.value);
+                        }}
+                      />
+                    </FormControl>
+                    <Button
+                      type="button"
+                      variant="default"
+                      onClick={handleGstVerify}
+                      disabled={!field.value}
+                      className="whitespace-nowrap"
+                    >
+                      Verify
+                    </Button>
+                  </div>
                   <FormMessage />
                   {validationErrors?.gstinNo && (
                     <p className="text-sm text-destructive mt-1">{validationErrors.gstinNo}</p>
@@ -138,143 +143,6 @@ export default function Step3ComplianceLegal({
                   {validationSuccess?.gstinNo && (
                     <p className="text-sm text-green-600 mt-1">{validationSuccess.gstinNo}</p>
                   )}
-                </FormItem>
-              )}
-            />
-              <FormField
-                control={control}
-                name="complianceDetails.gstinIsExpirable"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="cursor-pointer">Is Expirable</FormLabel>
-                  </FormItem>
-                )}
-              />
-              {gstinIsExpirable && (
-                <FormField
-                  control={control}
-                  name="complianceDetails.gstinExpiredAt"
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>GSTIN Expiry Date</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="date"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </div>
-            
-            {/* GST Username and Password */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={control}
-                name="complianceDetails.gstInUsername"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel data-tooltip="Enter the registered GST portal username">
-                      GST Username
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter GST username" 
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          onFieldChange?.('gstInUsername', e.target.value);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                    {validationErrors?.gstInUsername && (
-                      <p className="text-sm text-destructive mt-1">{validationErrors.gstInUsername}</p>
-                    )}
-                    {validationSuccess?.gstInUsername && (
-                      <p className="text-sm text-green-600 mt-1">{validationSuccess.gstInUsername}</p>
-                    )}
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={control}
-                name="complianceDetails.gstInPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel data-tooltip="Enter the GST portal password">
-                      GST Password
-                    </FormLabel>
-                    <div className="flex gap-2">
-                      <FormControl>
-                        <Input 
-                          type="password"
-                          placeholder="Enter GST password" 
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            onFieldChange?.('gstInPassword', e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="default"
-                        onClick={handleGstVerify}
-                        disabled={!field.value}
-                        className="whitespace-nowrap"
-                      >
-                        Verify
-                      </Button>
-                    </div>
-                    <FormMessage />
-                    {validationErrors?.gstInPassword && (
-                      <p className="text-sm text-destructive mt-1">{validationErrors.gstInPassword}</p>
-                    )}
-                    {validationSuccess?.gstInPassword && (
-                      <p className="text-sm text-green-600 mt-1">{validationSuccess.gstInPassword}</p>
-                    )}
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <FormField
-              control={control}
-              name="complianceDetails.gstinDoc"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel data-tooltip="Upload the active GSTIN registration certificate">
-                    GSTIN Certificate
-                  </FormLabel>
-                  <FormControl>
-                    <div style={isEditMode ? { display: 'none' } : {}}>
-                      <FileUpload
-                        onFileSelect={(file) => field.onChange(file)}
-                        onUploadComplete={(filePath) => {
-                          // File is already uploaded, just store the file object for later processing
-                        }}
-                        onUploadError={(error) => {
-                          console.error('Upload error:', error);
-                        }}
-                        subfolder="documents"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        existingFilePath={field.value?.existingPath}
-                        onDownload={handleDownload}
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />

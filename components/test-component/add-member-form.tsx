@@ -126,23 +126,10 @@ const formSchema = z.object({
   }),
   complianceDetails: z.object({
     gstinNo: z.string().min(1, "GSTIN number is required"),
-    gstInUsername: z.string().min(1, "GST username is required"),
-    gstInPassword: z.string().min(1, "GST password is required"),
     factoryLicenseNo: z.string().min(1, "Factory License number is required"),
     tspcbOrderNo: z.string().optional(),
     mdlNo: z.string().optional(),
     udyamCertificateNo: z.string().optional(),
-    gstinDoc: z
-      .any()
-      .refine(
-        (file) =>
-          !!file &&
-          (file instanceof File ||
-            (typeof file === "object" && file !== null && "existingPath" in file)),
-        "GSTIN certificate is required"
-      ),
-    gstinIsExpirable: z.boolean().default(false),
-    gstinExpiredAt: z.string().optional(),
     factoryLicenseDoc: z
       .any()
       .refine(
@@ -164,13 +151,6 @@ const formSchema = z.object({
     udyamIsExpirable: z.boolean().default(false),
     udyamCertificateExpiredAt: z.string().optional(),
   }).superRefine((data, ctx) => {
-    if (data.gstinIsExpirable && !data.gstinExpiredAt) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "GSTIN expiry date is required when document is expirable",
-        path: ["gstinExpiredAt"],
-      });
-    }
     if (data.factoryLicenseIsExpirable && !data.factoryLicenseExpiredAt) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -369,9 +349,6 @@ const AddMemberForm = () => {
         tspcbOrderNo: "",
         mdlNo: "",
         udyamCertificateNo: "",
-        gstinDoc: null,
-        gstinIsExpirable: false,
-        gstinExpiredAt: undefined,
         factoryLicenseDoc: null,
         factoryLicenseIsExpirable: false,
         factoryLicenseExpiredAt: undefined,
@@ -507,23 +484,6 @@ const AddMemberForm = () => {
       const uploadedFiles: Record<string, string> = {};
 
       // Upload compliance documents from step 3
-      if (data.complianceDetails.gstinDoc) {
-        const result = await uploadFile(
-          data.complianceDetails.gstinDoc,
-          "documents"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.gstinDoc = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload GSTIN Certificate: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-
       if (data.complianceDetails.factoryLicenseDoc) {
         const result = await uploadFile(
           data.complianceDetails.factoryLicenseDoc,
@@ -666,19 +626,14 @@ const AddMemberForm = () => {
       const shouldSendCompliance = Boolean(
         data.communicationDetails.fullAddress?.trim() ||
           data.complianceDetails.gstinNo?.trim() ||
-          data.complianceDetails.gstInUsername?.trim() ||
-          data.complianceDetails.gstInPassword?.trim() ||
           data.complianceDetails.factoryLicenseNo?.trim() ||
           data.complianceDetails.tspcbOrderNo?.trim() ||
           data.complianceDetails.mdlNo?.trim() ||
           data.complianceDetails.udyamCertificateNo?.trim() ||
-          data.complianceDetails.gstinExpiredAt ||
           data.complianceDetails.factoryLicenseExpiredAt ||
           data.complianceDetails.tspcbExpiredAt ||
           data.complianceDetails.mdlExpiredAt ||
           data.complianceDetails.udyamCertificateExpiredAt ||
-          uploadedFiles.gstinDoc ||
-          resolveExistingPath(data.complianceDetails.gstinDoc) ||
           uploadedFiles.factoryLicenseDoc ||
           resolveExistingPath(data.complianceDetails.factoryLicenseDoc) ||
           uploadedFiles.tspcbOrderDoc ||
@@ -816,27 +771,6 @@ const AddMemberForm = () => {
         if (data.complianceDetails.gstinNo?.trim()) {
           complianceDetails.gstInNumber = data.complianceDetails.gstinNo.trim();
         }
-        if (data.complianceDetails.gstInUsername?.trim()) {
-          complianceDetails.gstInUsername =
-            data.complianceDetails.gstInUsername.trim();
-        }
-        if (data.complianceDetails.gstInPassword?.trim()) {
-          complianceDetails.gstInPassword =
-            data.complianceDetails.gstInPassword.trim();
-        }
-
-        const gstCertificatePath =
-          uploadedFiles.gstinDoc ||
-          resolveExistingPath(data.complianceDetails.gstinDoc);
-        if (gstCertificatePath) {
-          complianceDetails.gstInCertificatePath = gstCertificatePath;
-        }
-        if (data.complianceDetails.gstinIsExpirable && data.complianceDetails.gstinExpiredAt) {
-          complianceDetails.gstExpiredAt = new Date(
-            data.complianceDetails.gstinExpiredAt
-          ).toISOString();
-        }
-
         const primaryPartner = data.representativeDetails.partners?.[0];
         if (primaryPartner?.name) {
           complianceDetails.partnerName = primaryPartner.name;
