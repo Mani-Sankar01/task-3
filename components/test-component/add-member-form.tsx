@@ -343,8 +343,6 @@ const AddMemberForm = () => {
       },
       complianceDetails: {
         gstinNo: "",
-        gstInUsername: "",
-        gstInPassword: "",
         factoryLicenseNo: "",
         tspcbOrderNo: "",
         mdlNo: "",
