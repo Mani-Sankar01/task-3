@@ -239,7 +239,9 @@ export default function MembershipFeesList() {
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) ||
           (fee.notes &&
-            fee.notes.toLowerCase().includes(searchTerm.toLowerCase()))
+            fee.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (fee.members.firmName &&
+            fee.members.firmName.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -720,7 +722,7 @@ export default function MembershipFeesList() {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => viewFeeDetails(fee.billingId)}
                       >
-                        <TableCell>{fee.membershipId}</TableCell>
+                        <TableCell>{fee.members.firmName || fee.membershipId}</TableCell>
                         <TableCell>
                           <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
