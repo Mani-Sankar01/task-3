@@ -40,6 +40,7 @@ interface ApiInvoice {
   cGSTInPercent: number;
   sGSTInPercent: number;
   iGSTInPercent: number;
+  gstStatus: string;
   subTotal: string;
   total: string;
   status: string;
@@ -126,7 +127,7 @@ import {
 } from "@/components/ui/dialog";
 import { renderRoleBasedPath } from "@/lib/utils";
 
-export default function InvoiceList() {
+export default function GSTList() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { toast } = useToast();
@@ -291,7 +292,7 @@ export default function InvoiceList() {
     // Filter by status
     if (statusFilter && statusFilter !== "all") {
       filtered = filtered.filter(
-        (invoice) => invoice.status === statusFilter
+        (invoice) => invoice.gstStatus === statusFilter
       );
     }
 
@@ -703,6 +704,119 @@ export default function InvoiceList() {
     setStatusFilter("all");
   };
 
+  // Handle invoice selection
+  const handleSelectInvoice = (invoiceId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedInvoiceIds((prev) => [...prev, invoiceId]);
+    } else {
+      setSelectedInvoiceIds((prev) => prev.filter((id) => id !== invoiceId));
+    }
+  };
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedInvoiceIds(paginatedInvoices.map((invoice) => invoice.invoiceId));
+    } else {
+      setSelectedInvoiceIds([]);
+    }
+  };
+
+  // Check if all current page invoices are selected
+  const allSelected = paginatedInvoices.length > 0 &&
+    paginatedInvoices.every((invoice) => selectedInvoiceIds.includes(invoice.invoiceId));
+
+  // Check if some invoices are selected
+  const someSelected = selectedInvoiceIds.length > 0 && !allSelected;
+
+  // Handle GST submission - show confirmation first
+  const handleSubmitGST = () => {
+    if (selectedInvoiceIds.length === 0) {
+      toast({
+        title: "No Invoices Selected",
+        description: "Please select at least one invoice to submit for GST.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Show confirmation dialog first
+    setShowGSTConfirmationDialog(true);
+  };
+
+  // Confirm and proceed with GST submission (fake API call for now)
+  const confirmSubmitGST = async () => {
+    setShowGSTConfirmationDialog(false);
+
+    // Open dialog and start fake submission process
+    setShowGSTDialog(true);
+    setGstSubmissionStatus("connecting");
+    setIsSubmittingGST(true);
+
+    // Simulate connecting to GST
+    setTimeout(() => {
+      setGstSubmissionStatus("submitting");
+    }, 1500);
+
+    // Simulate submitting
+    setTimeout(() => {
+      setGstSubmissionStatus("submitted");
+      setIsSubmittingGST(false);
+
+      // Close dialog after 2 seconds and clear selection
+      setTimeout(() => {
+        setShowGSTDialog(false);
+        setGstSubmissionStatus(null);
+        setSelectedInvoiceIds([]);
+        toast({
+          title: "GST Submitted Successfully",
+          description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
+        });
+      }, 2000);
+    }, 3000);
+
+    // Fake API call (commented out for now)
+    /*
+    if (status !== "authenticated" || !session?.user?.token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to submit GST.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsSubmittingGST(true);
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const response = await axios.post(
+        `${apiUrl}/api/gst/submitByID`,
+        { invoicesId: selectedInvoiceIds },
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      toast({
+        title: "GST Submitted Successfully",
+        description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
+      });
+
+      setSelectedInvoiceIds([]);
+    } catch (error: any) {
+      console.error("Error submitting GST:", error);
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to submit GST. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingGST(false);
+    }
+    */
+  };
 
   if (isLoading || status === "loading") {
     return (
@@ -724,17 +838,27 @@ export default function InvoiceList() {
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
           <div>
-            <CardTitle className="text-2xl">Invoices</CardTitle>
-            <CardDescription>Manage all invoices</CardDescription>
+            <CardTitle className="text-2xl">GST Filling</CardTitle>
+            <CardDescription>Manage all GST filling</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {(session?.user?.role === "ADMIN" ||
-              session?.user?.role === "TQMA_EDITOR" ||
-              session?.user?.role === "TSMWA_EDITOR") && (
-                <Button onClick={handleCreateInvoice}>
-                  <Plus className="mr-2 h-4 w-4" /> Create Invoice
-                </Button>
-              )}
+            {selectedInvoiceIds.length > 0 && selectedMemberId !== "" && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
+              <Button
+                onClick={handleSubmitGST}
+                disabled={isSubmittingGST}
+                variant="default"
+              >
+                {isSubmittingGST ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  <>
+                    Submit GST ({selectedInvoiceIds.length})
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -776,8 +900,8 @@ export default function InvoiceList() {
                 </SelectContent>
               </Select>
               {selectedMemberId && (
-                <Button variant="ghost" size="sm" onClick={clearMemberFilter}>
-                  Clear
+                <Button variant="outline" size="sm" onClick={clearMemberFilter}>
+                  <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               )}
             </div>
@@ -861,8 +985,9 @@ export default function InvoiceList() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="DECLINED">Declined</SelectItem>
+                  <SelectItem value="READY_TO_FILE">Ready to File</SelectItem>
+                  <SelectItem value="SUBMITTED">Submitted</SelectItem>
+                  <SelectItem value="FILED">Filed</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -886,7 +1011,13 @@ export default function InvoiceList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={allSelected || someSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Membership Firm Name</TableHead>
                   <TableHead>Date</TableHead>
@@ -895,6 +1026,7 @@ export default function InvoiceList() {
                   <TableHead>IGST %</TableHead>
                   <TableHead>Sub Total</TableHead>
                   <TableHead>Total</TableHead>
+                  <TableHead>GST Status</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -906,7 +1038,19 @@ export default function InvoiceList() {
                       key={invoice.id}
                       className="cursor-pointer hover:bg-muted/50"
                     >
-                      
+                      <TableCell
+                        className="w-[50px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={selectedInvoiceIds.includes(invoice.invoiceId)}
+                          onCheckedChange={(checked) =>
+                            handleSelectInvoice(invoice.invoiceId, checked as boolean)
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select invoice ${invoice.invoiceId}`}
+                        />
+                      </TableCell>
                       <TableCell
                         className="font-medium"
                         onClick={() => handleViewInvoice(invoice.invoiceId)}
@@ -926,6 +1070,17 @@ export default function InvoiceList() {
                       </TableCell>
                       <TableCell>
                         ₹{parseFloat(invoice.total).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {invoice.gstStatus === "FILED" ? (
+                          <Badge variant="outline">Filed</Badge>
+                        ) : invoice.gstStatus === "READY_TO_FILE" ? (
+                          <Badge variant="secondary">Ready to File</Badge>
+                        ) : invoice.gstStatus === "SUBMITTED" ? (
+                          <Badge variant="default">Submitted</Badge>
+                        ) : (
+                          <Badge variant="destructive">Pending</Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {invoice.status === "APPROVED" ? (
@@ -967,6 +1122,7 @@ export default function InvoiceList() {
                             {(session?.user?.role === "ADMIN" ||
                               session?.user?.role === "TSMWA_EDITOR" ||
                               session?.user?.role === "TQMA_EDITOR") && (
+                                <>
                                 <DropdownMenuItem
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -975,6 +1131,17 @@ export default function InvoiceList() {
                                 >
                                   <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
+
+                                {invoice.status === "APPROVED" && (
+                                  <DropdownMenuItem
+                                    
+                                  >
+                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                    Submit GST
+                                  </DropdownMenuItem>
+                                )}
+                                </>
+
                               )}
 
                             <DropdownMenuItem
@@ -1168,6 +1335,34 @@ export default function InvoiceList() {
           )}
         </CardContent>
       </Card>
+
+      {/* GST Confirmation Dialog */}
+      <Dialog open={showGSTConfirmationDialog} onOpenChange={setShowGSTConfirmationDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm GST Submission</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to submit {selectedInvoiceIds.length} invoice(s) for GST?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              This action will submit the selected invoices to the GST portal. Please ensure all information is correct before proceeding.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowGSTConfirmationDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmSubmitGST}>
+              Confirm & Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* GST Submission Dialog */}
       <Dialog

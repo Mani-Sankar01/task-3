@@ -143,6 +143,11 @@ const data = {
           icon: ClipboardList,
         },
         {
+          title: "GST Filling",
+          url: "/admin/gst",
+          icon: FileText,
+        },
+        {
           title: "Add Invoice",
           url: "/admin/invoices/create",
           icon: PlusSquare,

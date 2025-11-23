@@ -2,8 +2,9 @@
 
 import { useFormContext } from "react-hook-form";
 import { useFieldArray } from "react-hook-form";
-import { Plus, Trash2, CheckCircle } from "lucide-react";
+import { Plus, Trash2, CheckCircle, Loader2 } from "lucide-react";
 import { useState } from "react";
+import axios from "axios";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,12 +54,79 @@ export default function Step3ComplianceLegal({
   onFieldChange 
 }: Step3ComplianceLegalProps) {
   const [showVerifyDialog, setShowVerifyDialog] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [gstDetails, setGstDetails] = useState<{
+    name: string;
+    address: string;
+  } | null>(null);
+  const [gstError, setGstError] = useState<string | null>(null);
 
-  const handleGstVerify = () => {
-    // For demo purposes, show success dialog
-    setShowVerifyDialog(true);
-  };
   const { control, watch } = useFormContext();
+  const gstinNo = watch("complianceDetails.gstinNo");
+
+  const handleGstVerify = async () => {
+    if (!gstinNo?.trim()) {
+      setGstError("Please enter GSTIN number");
+      return;
+    }
+
+    setIsVerifying(true);
+    setGstError(null);
+    setGstDetails(null);
+    setShowVerifyDialog(true);
+
+    try {
+      // In Next.js, client components can only access NEXT_PUBLIC_ prefixed env variables
+      const gstBackendUrl = process.env.NEXT_PUBLIC_GST_BACKEND_URL || "";
+      if (!gstBackendUrl) {
+        throw new Error("GST Backend URL is not configured.");
+      }
+
+      const apiUrl = `${gstBackendUrl}/search?gstin=${encodeURIComponent(gstinNo.trim())}`;
+      console.log("Calling GST API:", apiUrl);
+
+      const response = await axios.get(apiUrl);
+
+      console.log("GST API Response:", response.data);
+
+      if (response.data?.result?.status_cd === "1" && response.data?.result?.data) {
+        const data = response.data.result.data;
+        
+        // Extract name
+        const name = data.lgnm || "N/A";
+        
+        // Format address from pradr.addr
+        const addr = data.pradr?.addr;
+        let address = "N/A";
+        if (addr) {
+          const addressParts = [
+            addr.bno,
+            addr.bnm,
+            addr.st,
+            addr.loc,
+            addr.locality,
+            addr.dst,
+            addr.stcd,
+            addr.pncd
+          ].filter(Boolean);
+          address = addressParts.join(", ");
+        }
+
+        setGstDetails({ name, address });
+      } else {
+        throw new Error(response.data?.result?.status_desc || "Failed to fetch GST details");
+      }
+    } catch (error: any) {
+      console.error("GST Verification Error:", error);
+      setGstError(
+        error.response?.data?.result?.status_desc ||
+        error.message ||
+        "Failed to verify GSTIN. Please try again."
+      );
+    } finally {
+      setIsVerifying(false);
+    }
+  };
   
   // Watch for isExpirable flags
   const factoryLicenseIsExpirable = watch("complianceDetails.factoryLicenseIsExpirable");
@@ -721,21 +789,72 @@ export default function Step3ComplianceLegal({
       </div>
 
       {/* GST Verify Dialog */}
-      <Dialog open={showVerifyDialog} onOpenChange={setShowVerifyDialog}>
+      <Dialog open={showVerifyDialog} onOpenChange={(open) => {
+        setShowVerifyDialog(open);
+        if (!open) {
+          setGstError(null);
+          setGstDetails(null);
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              Verification Successful
+              {isVerifying ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  Fetching Details
+                </>
+              ) : gstDetails ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  GST Details
+                </>
+              ) : (
+                "GST Verification"
+              )}
             </DialogTitle>
             <DialogDescription>
-              This is for demo purposes. In a real implementation, this would verify the GST credentials with the GST API.
+              {isVerifying
+                ? "Please wait while we fetch GST details..."
+                : gstError
+                ? "There was an error verifying the GSTIN."
+                : gstDetails
+                ? "GST details retrieved successfully."
+                : ""}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end">
-            <Button onClick={() => setShowVerifyDialog(false)}>
-              Close
-            </Button>
+          <div className="space-y-4">
+            {isVerifying ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              </div>
+            ) : gstError ? (
+              <div className="rounded-md bg-destructive/10 p-4">
+                <p className="text-sm text-destructive">{gstError}</p>
+              </div>
+            ) : gstDetails ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <p className="mt-1 text-sm font-medium">{gstDetails.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Address</label>
+                  <p className="mt-1 text-sm">{gstDetails.address}</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          <div className="flex justify-end gap-2">
+            {isVerifying ? null : (
+              <Button onClick={() => {
+                setShowVerifyDialog(false);
+                setGstError(null);
+                setGstDetails(null);
+              }}>
+                {gstDetails || gstError ? "Close" : "Cancel"}
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
