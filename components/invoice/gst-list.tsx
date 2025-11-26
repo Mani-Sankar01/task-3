@@ -84,6 +84,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -153,7 +154,20 @@ export default function GSTList() {
   const [isSubmittingGST, setIsSubmittingGST] = useState(false);
   const [showGSTConfirmationDialog, setShowGSTConfirmationDialog] = useState(false);
   const [showGSTDialog, setShowGSTDialog] = useState(false);
-  const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"connecting" | "submitting" | "submitted" | null>(null);
+  const [showMultipleMembersErrorDialog, setShowMultipleMembersErrorDialog] = useState(false);
+  const [showApprovalErrorDialog, setShowApprovalErrorDialog] = useState(false);
+  const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"submitting" | "submitted" | null>(null);
+  const [gstSubmissionMessage, setGstSubmissionMessage] = useState<string>("");
+  
+  // GST Verification states
+  const [showGstVerificationDialog, setShowGstVerificationDialog] = useState(false);
+  const [currentVerifyingInvoiceId, setCurrentVerifyingInvoiceId] = useState<string | null>(null);
+  const [gstVerificationStep, setGstVerificationStep] = useState<"username" | "otp">("username");
+  const [gstInUserName, setGstInUserName] = useState("");
+  const [gstOtp, setGstOtp] = useState("");
+  const [isVerifyingUsername, setIsVerifyingUsername] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [gstVerificationError, setGstVerificationError] = useState<string>("");
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
 
@@ -744,78 +758,334 @@ export default function GSTList() {
     setShowGSTConfirmationDialog(true);
   };
 
-  // Confirm and proceed with GST submission (fake API call for now)
+  // Function to get client IP address
+  const getClientIP = async (): Promise<string> => {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      return data.ip || "0.0.0.0";
+    } catch (error) {
+      console.error("Error fetching IP:", error);
+      return "0.0.0.0";
+    }
+  };
+
+  // Function to submit GST for invoices
+  const submitGSTForInvoices = async (invoiceIds: string[]) => {
+    if (invoiceIds.length === 0) {
+      throw new Error("No invoices selected");
+    }
+
+    // Get selected invoices data
+    const selectedInvoices = invoices.filter((inv) =>
+      invoiceIds.includes(inv.invoiceId)
+    );
+
+    if (selectedInvoices.length === 0) {
+      throw new Error("Selected invoices not found");
+    }
+
+    // Check if all invoices are approved
+    const unapprovedInvoices = selectedInvoices.filter(
+      (inv) => inv.status !== "APPROVED"
+    );
+
+    if (unapprovedInvoices.length > 0) {
+      throw new Error(
+        "Invoices must need to be approved for GST submission"
+      );
+    }
+
+    // Check if all invoices are from the same member
+    const uniqueMembershipIds = new Set(
+      selectedInvoices.map((inv) => inv.membershipId).filter(Boolean)
+    );
+
+    if (uniqueMembershipIds.size > 1) {
+      throw new Error(
+        "Multiple Members are not allowed. Only single member's GST Invoices are allowed."
+      );
+    }
+
+    // Get GST number from members.complianceDetails.gstInNumber
+    const gstInNumber =
+      selectedInvoices[0]?.members?.complianceDetails?.gstInNumber;
+    if (!gstInNumber) {
+      throw new Error("GST number not found in selected invoices");
+    }
+
+    // Get ret_period from invoice date (use first invoice's date or current date)
+    const invoiceDate = selectedInvoices[0]?.invoiceDate
+      ? new Date(selectedInvoices[0].invoiceDate)
+      : new Date();
+    const ret_period = format(invoiceDate, "yyyy-MM-dd");
+
+    // Get client IP
+    const ip = await getClientIP();
+
+    // Prepare invoices array
+    const invoicesPayload = selectedInvoices.map((inv) => ({
+      invoiceNumber: inv.invoiceId,
+    }));
+
+    // Prepare payload
+    const payload = {
+      gstInNumber,
+      ret_period,
+      ip,
+      invoices: invoicesPayload,
+    };
+
+    console.log("Submitting GST with payload:", payload);
+
+    // Call GST API
+    const gstApiUrl = "https://gst.tsmwa.online/api/ret_save";
+    const response = await axios.post(gstApiUrl, payload, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  };
+
+  // Confirm and proceed with GST submission
   const confirmSubmitGST = async () => {
     setShowGSTConfirmationDialog(false);
 
-    // Open dialog and start fake submission process
+    // Open dialog and start submission process
     setShowGSTDialog(true);
-    setGstSubmissionStatus("connecting");
+    setGstSubmissionStatus("submitting");
     setIsSubmittingGST(true);
+    setGstSubmissionMessage("");
 
-    // Simulate connecting to GST
-    setTimeout(() => {
-      setGstSubmissionStatus("submitting");
-    }, 1500);
+    try {
+      // Submit to GST API
+      const response = await submitGSTForInvoices(selectedInvoiceIds);
 
-    // Simulate submitting
-    setTimeout(() => {
+      // Get success message from API response or use default
+      const successMessage =
+        response?.message ||
+        `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`;
+
       setGstSubmissionStatus("submitted");
+      setGstSubmissionMessage(successMessage);
       setIsSubmittingGST(false);
 
-      // Close dialog after 2 seconds and clear selection
-      setTimeout(() => {
-        setShowGSTDialog(false);
-        setGstSubmissionStatus(null);
-        setSelectedInvoiceIds([]);
-        toast({
-          title: "GST Submitted Successfully",
-          description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
-        });
-      }, 2000);
-    }, 3000);
+      // Clear selection after showing success
+      setSelectedInvoiceIds([]);
+    } catch (error: any) {
+      console.error("Error submitting GST:", error);
+      setIsSubmittingGST(false);
+      setShowGSTDialog(false);
+      setGstSubmissionStatus(null);
+      setGstSubmissionMessage("");
 
-    // Fake API call (commented out for now)
-    /*
-    if (status !== "authenticated" || !session?.user?.token) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to submit GST.",
-        variant: "destructive",
-      });
+      // Check if it's a multiple members error
+      if (
+        error.message &&
+        error.message.includes("Multiple Members are not allowed")
+      ) {
+        setShowMultipleMembersErrorDialog(true);
+      } else if (
+        error.message &&
+        error.message.includes("Invoices must need to be approved")
+      ) {
+        setShowApprovalErrorDialog(true);
+      } else {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to submit GST. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Handle GST username verification
+  const handleGstUsernameVerification = async () => {
+    if (!currentVerifyingInvoiceId || !gstInUserName || gstInUserName.length < 3) {
+      setGstVerificationError("Username must be at least 3 characters");
       return;
     }
 
     try {
-      setIsSubmittingGST(true);
-      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      setIsVerifyingUsername(true);
+      setGstVerificationError("");
+
+      // Get the invoice to find GST number
+      const invoice = invoices.find((inv) => inv.invoiceId === currentVerifyingInvoiceId);
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
+
+      const gstInNumber = invoice.members?.complianceDetails?.gstInNumber;
+      if (!gstInNumber) {
+        throw new Error("GST number not found");
+      }
+
+      // Get client IP
+      const clientIP = await getClientIP();
+
+      // Check if session has token
+      if (!session?.user?.token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call verify_username API
+      const verifyUrl = `${process.env.NEXT_PUBLIC_GST_BACKEND_URL}/api/verify_username`;
       const response = await axios.post(
-        `${apiUrl}/api/gst/submitByID`,
-        { invoicesId: selectedInvoiceIds },
+        verifyUrl,
+        {
+          gstInNumber,
+          gstInUserName,
+        },
         {
           headers: {
+            "Content-Type": "application/json",
             Authorization: `Bearer ${session.user.token}`,
+            "x-client-ip": clientIP,
           },
         }
       );
 
-      toast({
-        title: "GST Submitted Successfully",
-        description: `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`,
-      });
+      if (response.data.success) {
+        // Move to OTP step
+        setGstVerificationStep("otp");
+        setGstVerificationError("");
+      } else {
+        throw new Error(response.data.message || "Failed to verify username");
+      }
+    } catch (error: any) {
+      console.error("Error verifying GST username:", error);
+      setGstVerificationError(
+        error.response?.data?.message || error.message || "Failed to verify username. Please try again."
+      );
+    } finally {
+      setIsVerifyingUsername(false);
+    }
+  };
 
-      setSelectedInvoiceIds([]);
+  // Handle GST OTP verification
+  const handleGstOtpVerification = async () => {
+    if (!gstOtp || gstOtp.length !== 6 || !/^\d{6}$/.test(gstOtp)) {
+      setGstVerificationError("OTP must be exactly 6 digits");
+      return;
+    }
+
+    try {
+      setIsVerifyingOtp(true);
+      setGstVerificationError("");
+
+      // Get client IP
+      const clientIP = await getClientIP();
+
+      // Check if session has token
+      if (!session?.user?.token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call verify_username_otp API
+      const verifyOtpUrl = "https://gst.tsmwa.online/api/verify_username_otp";
+      const response = await axios.post(
+        verifyOtpUrl,
+        {
+          gstInUserName,
+          otp: gstOtp,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.token}`,
+            "x-client-ip": clientIP,
+          },
+        }
+      );
+
+      if (response.data.success) {
+        // Close verification dialog
+        setShowGstVerificationDialog(false);
+        setGstVerificationStep("username");
+        setGstInUserName("");
+        setGstOtp("");
+        setGstVerificationError("");
+
+        // Show success message
+        toast({
+          title: "Success",
+          description: response.data.message || "GST verified successfully",
+        });
+
+        // Proceed with GST submission
+        if (currentVerifyingInvoiceId) {
+          handleSingleInvoiceGSTSubmit(currentVerifyingInvoiceId);
+        }
+
+        setCurrentVerifyingInvoiceId(null);
+      } else {
+        throw new Error(response.data.message || "Failed to verify OTP");
+      }
+    } catch (error: any) {
+      console.error("Error verifying GST OTP:", error);
+      setGstVerificationError(
+        error.response?.data?.message || error.message || "Failed to verify OTP. Please try again."
+      );
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  // Handle single invoice GST submission from dropdown
+  const handleSingleInvoiceGSTSubmit = async (invoiceId: string) => {
+    try {
+      setIsSubmittingGST(true);
+      setShowGSTDialog(true);
+      setGstSubmissionStatus("submitting");
+      setGstSubmissionMessage("");
+
+      // Submit single invoice
+      const response = await submitGSTForInvoices([invoiceId]);
+
+      // Get success message from API response or use default
+      const successMessage =
+        response?.message ||
+        `Invoice ${invoiceId} has been submitted for GST.`;
+
+      setGstSubmissionStatus("submitted");
+      setGstSubmissionMessage(successMessage);
+      setIsSubmittingGST(false);
     } catch (error: any) {
       console.error("Error submitting GST:", error);
-      toast({
-        title: "Error",
-        description: error.response?.data?.message || "Failed to submit GST. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
       setIsSubmittingGST(false);
+      setShowGSTDialog(false);
+      setGstSubmissionStatus(null);
+      setGstSubmissionMessage("");
+
+      // Check if it's a multiple members error
+      if (
+        error.message &&
+        error.message.includes("Multiple Members are not allowed")
+      ) {
+        setShowMultipleMembersErrorDialog(true);
+      } else if (
+        error.message &&
+        error.message.includes("Invoices must need to be approved")
+      ) {
+        setShowApprovalErrorDialog(true);
+      } else {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to submit GST. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
-    */
   };
 
   if (isLoading || status === "loading") {
@@ -842,7 +1112,7 @@ export default function GSTList() {
             <CardDescription>Manage all GST filling</CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {selectedInvoiceIds.length > 0 && selectedMemberId !== "" && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
+            {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
               <Button
                 onClick={handleSubmitGST}
                 disabled={isSubmittingGST}
@@ -1078,6 +1348,8 @@ export default function GSTList() {
                           <Badge variant="secondary">Ready to File</Badge>
                         ) : invoice.gstStatus === "SUBMITTED" ? (
                           <Badge variant="default">Submitted</Badge>
+                        ) : invoice.gstStatus === "DECLINED" ? (
+                          <Badge variant="destructive">Declined</Badge>
                         ) : (
                           <Badge variant="destructive">Pending</Badge>
                         )}
@@ -1133,12 +1405,36 @@ export default function GSTList() {
                                 </DropdownMenuItem>
 
                                 {invoice.status === "APPROVED" && (
-                                  <DropdownMenuItem
-                                    
-                                  >
-                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                    Submit GST
-                                  </DropdownMenuItem>
+                                  <>
+                                    {invoice.members?.complianceDetails?.isGstVerified === "TRUE" ? (
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleSingleInvoiceGSTSubmit(invoice.invoiceId);
+                                        }}
+                                        disabled={isSubmittingGST}
+                                      >
+                                        <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                        Submit GST
+                                      </DropdownMenuItem>
+                                    ) : (
+                                      <DropdownMenuItem
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setCurrentVerifyingInvoiceId(invoice.invoiceId);
+                                          setShowGstVerificationDialog(true);
+                                          setGstVerificationStep("username");
+                                          setGstInUserName("");
+                                          setGstOtp("");
+                                          setGstVerificationError("");
+                                        }}
+                                        disabled={isSubmittingGST || isVerifyingUsername || isVerifyingOtp}
+                                      >
+                                        <CircleCheck className="mr-2 h-4 w-4 text-blue-500" />
+                                        Verify GST
+                                      </DropdownMenuItem>
+                                    )}
+                                  </>
                                 )}
                                 </>
 
@@ -1180,7 +1476,7 @@ export default function GSTList() {
                                 )}
                                 {invoice.status === "APPROVED" && (
                                   <>
-                                    <DropdownMenuItem
+                                    {/* <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleStatusUpdate(invoice.invoiceId, "PENDING");
@@ -1189,7 +1485,7 @@ export default function GSTList() {
                                     >
                                       <Clock className="mr-2 h-4 w-4 text-yellow-500" />
                                       Pending
-                                    </DropdownMenuItem>
+                                    </DropdownMenuItem> */}
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1369,26 +1665,28 @@ export default function GSTList() {
         open={showGSTDialog}
         onOpenChange={(open) => {
           // Prevent closing during submission process
-          if (!open && (gstSubmissionStatus === "connecting" || gstSubmissionStatus === "submitting")) {
+          if (!open && gstSubmissionStatus === "submitting") {
             return;
           }
           setShowGSTDialog(open);
+          if (!open) {
+            setGstSubmissionStatus(null);
+            setGstSubmissionMessage("");
+          }
         }}
       >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Submitting GST</DialogTitle>
             <DialogDescription>
-              Please wait while we process your GST submission.
+              {gstSubmissionStatus === "submitting"
+                ? "Please wait while we process your GST submission."
+                : gstSubmissionStatus === "submitted"
+                ? "GST submission completed."
+                : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
-            {gstSubmissionStatus === "connecting" && (
-              <>
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg font-medium">Connecting to GST...</p>
-              </>
-            )}
             {gstSubmissionStatus === "submitting" && (
               <>
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1402,23 +1700,194 @@ export default function GSTList() {
               </>
             )}
             <p className="text-sm text-muted-foreground text-center">
-              {gstSubmissionStatus === "connecting" && "Establishing connection to GST portal..."}
-              {gstSubmissionStatus === "submitting" && `Submitting ${selectedInvoiceIds.length} invoice(s)...`}
-              {gstSubmissionStatus === "submitted" && "Your invoices have been successfully submitted for GST."}
+              {gstSubmissionStatus === "submitting" &&
+                `Submitting ${selectedInvoiceIds.length} invoice(s)...`}
+              {gstSubmissionStatus === "submitted" &&
+                (gstSubmissionMessage ||
+                  "Your invoices have been successfully submitted for GST.")}
             </p>
           </div>
           {gstSubmissionStatus === "submitted" && (
             <DialogFooter>
               <DialogClose asChild>
-                <Button onClick={() => {
-                  setShowGSTDialog(false);
-                  setGstSubmissionStatus(null);
-                }}>
+                <Button
+                  onClick={() => {
+                    setShowGSTDialog(false);
+                    setGstSubmissionStatus(null);
+                    setGstSubmissionMessage("");
+                  }}
+                >
                   Close
                 </Button>
               </DialogClose>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Multiple Members Error Dialog */}
+      <Dialog
+        open={showMultipleMembersErrorDialog}
+        onOpenChange={setShowMultipleMembersErrorDialog}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <CircleX className="h-5 w-5" />
+              Multiple Members Not Allowed
+            </DialogTitle>
+            <DialogDescription>
+              Multiple Members are not allowed. Only single member's GST Invoices
+              are allowed.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowMultipleMembersErrorDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval Error Dialog */}
+      <Dialog
+        open={showApprovalErrorDialog}
+        onOpenChange={setShowApprovalErrorDialog}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <CircleX className="h-5 w-5" />
+              Invoices Not Approved
+            </DialogTitle>
+            <DialogDescription>
+              Invoices must need to be approved for GST submission.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowApprovalErrorDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GST Verification Dialog */}
+      <Dialog
+        open={showGstVerificationDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowGstVerificationDialog(false);
+            setGstVerificationStep("username");
+            setGstInUserName("");
+            setGstOtp("");
+            setGstVerificationError("");
+            setCurrentVerifyingInvoiceId(null);
+          } else {
+            setShowGstVerificationDialog(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Verify GST</DialogTitle>
+            <DialogDescription>
+              {gstVerificationStep === "username"
+                ? "Enter your GST username to receive an OTP"
+                : "Enter the OTP sent to your registered mobile number"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {gstVerificationStep === "username" ? (
+              <div className="space-y-2">
+                <Label htmlFor="gst-username">GST Username</Label>
+                <Input
+                  id="gst-username"
+                  placeholder="Enter GST username"
+                  value={gstInUserName}
+                  onChange={(e) => {
+                    setGstInUserName(e.target.value);
+                    setGstVerificationError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && gstInUserName.length >= 3) {
+                      handleGstUsernameVerification();
+                    }
+                  }}
+                  disabled={isVerifyingUsername}
+                />
+                {gstVerificationError && (
+                  <p className="text-sm text-destructive">{gstVerificationError}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="gst-otp">OTP</Label>
+                <Input
+                  id="gst-otp"
+                  placeholder="Enter 6-digit OTP"
+                  value={gstOtp}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setGstOtp(value);
+                    setGstVerificationError("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && gstOtp.length === 6) {
+                      handleGstOtpVerification();
+                    }
+                  }}
+                  disabled={isVerifyingOtp}
+                  maxLength={6}
+                />
+                {gstVerificationError && (
+                  <p className="text-sm text-destructive">{gstVerificationError}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            {gstVerificationStep === "otp" && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setGstVerificationStep("username");
+                  setGstOtp("");
+                  setGstVerificationError("");
+                }}
+                disabled={isVerifyingOtp}
+              >
+                Back
+              </Button>
+            )}
+            <Button
+              onClick={() => {
+                if (gstVerificationStep === "username") {
+                  handleGstUsernameVerification();
+                } else {
+                  handleGstOtpVerification();
+                }
+              }}
+              disabled={
+                gstVerificationStep === "username"
+                  ? isVerifyingUsername || gstInUserName.length < 3
+                  : isVerifyingOtp || gstOtp.length !== 6
+              }
+            >
+              {isVerifyingUsername || isVerifyingOtp ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {gstVerificationStep === "username" ? "Verifying..." : "Verifying OTP..."}
+                </>
+              ) : gstVerificationStep === "username" ? (
+                "Send OTP"
+              ) : (
+                "Verify OTP"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
