@@ -422,7 +422,7 @@ export default function GSTList() {
         status: newStatus
       };
 
-      await axios.post(
+      const response = await axios.post(
         `${apiUrl}/api/tax_invoice/update_tax_invoice`,
         payload,
         {
@@ -433,17 +433,68 @@ export default function GSTList() {
         }
       );
 
-      // Update local state after successful API call
-      setInvoices((prevInvoices) =>
-        prevInvoices.map((inv) =>
-          inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
-        )
-      );
-      setFilteredInvoices((prevInvoices) =>
-        prevInvoices.map((inv) =>
-          inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
-        )
-      );
+      // Fetch updated invoice data to get the latest GST status
+      try {
+        const updatedInvoiceResponse = await axios.get(
+          `${apiUrl}/api/tax_invoice/get_tax_invoice_id/${invoiceId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.user.token}`,
+            },
+          }
+        );
+
+        // Handle response structure
+        let updatedInvoice: ApiInvoice | null = null;
+        if (
+          updatedInvoiceResponse.data &&
+          updatedInvoiceResponse.data.taxInvoice &&
+          Array.isArray(updatedInvoiceResponse.data.taxInvoice)
+        ) {
+          updatedInvoice = updatedInvoiceResponse.data.taxInvoice[0];
+        } else if (updatedInvoiceResponse.data && !updatedInvoiceResponse.data.taxInvoice) {
+          updatedInvoice = updatedInvoiceResponse.data;
+        }
+
+        if (updatedInvoice) {
+          // Update local state with the complete updated invoice data
+          setInvoices((prevInvoices) =>
+            prevInvoices.map((inv) =>
+              inv.invoiceId === invoiceId ? { ...inv, ...updatedInvoice, status: newStatus } : inv
+            )
+          );
+          setFilteredInvoices((prevInvoices) =>
+            prevInvoices.map((inv) =>
+              inv.invoiceId === invoiceId ? { ...inv, ...updatedInvoice, status: newStatus } : inv
+            )
+          );
+        } else {
+          // Fallback: Update only status if we can't fetch updated data
+          setInvoices((prevInvoices) =>
+            prevInvoices.map((inv) =>
+              inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+            )
+          );
+          setFilteredInvoices((prevInvoices) =>
+            prevInvoices.map((inv) =>
+              inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+            )
+          );
+        }
+      } catch (fetchError) {
+        console.error("Error fetching updated invoice:", fetchError);
+        // Fallback: Update only status if fetch fails
+        setInvoices((prevInvoices) =>
+          prevInvoices.map((inv) =>
+            inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+          )
+        );
+        setFilteredInvoices((prevInvoices) =>
+          prevInvoices.map((inv) =>
+            inv.invoiceId === invoiceId ? { ...inv, status: newStatus } : inv
+          )
+        );
+      }
 
       toast({
         title: "Status Updated",
@@ -872,6 +923,27 @@ export default function GSTList() {
       setGstSubmissionMessage(successMessage);
       setIsSubmittingGST(false);
 
+      // Refresh invoice data to get updated GST status
+      try {
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+
+        const updatedResponse = await axios.get(fullUrl, {
+          headers: {
+            Authorization: `Bearer ${session?.user?.token}`,
+          },
+        });
+
+        if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
+          setInvoices(updatedResponse.data);
+        } else if (updatedResponse.data && updatedResponse.data.taxInvoice && Array.isArray(updatedResponse.data.taxInvoice)) {
+          setInvoices(updatedResponse.data.taxInvoice);
+        }
+      } catch (refreshError) {
+        console.error("Error refreshing invoice data:", refreshError);
+        // Don't show error to user as submission was successful
+      }
+
       // Clear selection after showing success
       setSelectedInvoiceIds([]);
     } catch (error: any) {
@@ -1057,6 +1129,27 @@ export default function GSTList() {
       setGstSubmissionStatus("submitted");
       setGstSubmissionMessage(successMessage);
       setIsSubmittingGST(false);
+
+      // Refresh invoice data to get updated GST status
+      try {
+        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+
+        const updatedResponse = await axios.get(fullUrl, {
+          headers: {
+            Authorization: `Bearer ${session?.user?.token}`,
+          },
+        });
+
+        if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
+          setInvoices(updatedResponse.data);
+        } else if (updatedResponse.data && updatedResponse.data.taxInvoice && Array.isArray(updatedResponse.data.taxInvoice)) {
+          setInvoices(updatedResponse.data.taxInvoice);
+        }
+      } catch (refreshError) {
+        console.error("Error refreshing invoice data:", refreshError);
+        // Don't show error to user as submission was successful
+      }
     } catch (error: any) {
       console.error("Error submitting GST:", error);
       setIsSubmittingGST(false);
@@ -1297,7 +1390,7 @@ export default function GSTList() {
                   <TableHead>Sub Total</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>GST Status</TableHead>
-                  <TableHead>Status</TableHead>
+                 
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1351,18 +1444,10 @@ export default function GSTList() {
                         ) : invoice.gstStatus === "DECLINED" ? (
                           <Badge variant="destructive">Declined</Badge>
                         ) : (
-                          <Badge variant="destructive">Pending</Badge>
+                          <Badge variant="destructive">Approval Pending</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {invoice.status === "APPROVED" ? (
-                          <Badge variant="default">Approved</Badge>
-                        ) : invoice.status === "PENDING" ? (
-                          <Badge variant="outline">Pending</Badge>
-                        ) : (
-                          <Badge variant="destructive">DECLINED</Badge>
-                        )}
-                      </TableCell>
+                     
                       <TableCell>
                         <Button variant="ghost" className="h-8 w-8 p-0"  onClick={(e) => {
                                 e.stopPropagation();
@@ -1450,66 +1535,8 @@ export default function GSTList() {
                             </DropdownMenuItem>
                             {session?.user?.role === "ADMIN" && (
                               <>
-                                {invoice.status === "PENDING" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStatusUpdate(invoice.invoiceId, "APPROVED");
-                                      }}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                      Approve
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStatusUpdate(invoice.invoiceId, "DECLINED");
-                                      }}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                      Decline
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {invoice.status === "APPROVED" && (
-                                  <>
-                                    {/* <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStatusUpdate(invoice.invoiceId, "PENDING");
-                                      }}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      <Clock className="mr-2 h-4 w-4 text-yellow-500" />
-                                      Pending
-                                    </DropdownMenuItem> */}
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStatusUpdate(invoice.invoiceId, "DECLINED");
-                                      }}
-                                      disabled={isUpdatingStatus}
-                                    >
-                                      <CircleX className="mr-2 h-4 w-4 text-red-500" />
-                                      Declined
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {invoice.status === "DECLINED" && (
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStatusUpdate(invoice.invoiceId, "APPROVED");
-                                    }}
-                                    disabled={isUpdatingStatus}
-                                  >
-                                    <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                )}
+                               
+                               
                                 <DropdownMenuSeparator />
                                 <Dialog>
                                   <DialogTrigger asChild>
