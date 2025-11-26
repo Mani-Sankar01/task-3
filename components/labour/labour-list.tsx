@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
   ArrowUpDown,
+  ChevronsUpDown,
   MoreHorizontal,
   Plus,
   Search,
@@ -65,6 +66,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { renderRoleBasedPath } from "@/lib/utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export default function LabourList() {
   const router = useRouter();
@@ -77,6 +91,7 @@ export default function LabourList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [selectedMember, setSelectedMember] = useState<string>("all");
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [allMembers, setAllMembers] = useState<any[]>([]);
@@ -175,7 +190,10 @@ export default function LabourList() {
     // Filter by member/industry
     if (selectedMember && selectedMember !== "all") {
       filtered = filtered.filter(
-        (labour) => labour.assignedTo === selectedMember
+        (labour) => 
+          labour.assignedToMemberId === selectedMember ||
+          labour.labourAssignedToMember?.membershipId === selectedMember ||
+          labour.assignedTo === selectedMember
       );
     }
 
@@ -513,30 +531,63 @@ export default function LabourList() {
             </SelectContent>
           </Select>
 
-          <Select
-            value={selectedMember}
-            onValueChange={(value) => {
-              setSelectedMember(value);
-              setCurrentPage(1);
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="All Members" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Members</SelectItem>
-              {allMembers.map((member) => (
-                <SelectItem
-                  key={member.membershipId}
-                  value={member.membershipId}
-                >
-                  {(member.applicantName || "Unknown") +
-                    " - " +
-                    (member.firmName || "Unknown")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={memberDropdownOpen} onOpenChange={setMemberDropdownOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={memberDropdownOpen}
+                className="w-full justify-between"
+              >
+                {selectedMember === "all"
+                  ? "All Members"
+                  : (() => {
+                      const selectedMemberData = allMembers.find(
+                        (member) => member.membershipId === selectedMember
+                      );
+                      return selectedMemberData
+                        ? `${selectedMemberData.applicantName || "Unknown"} - ${selectedMemberData.firmName || "Unknown"}`
+                        : "All Members";
+                    })()}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search members..." />
+                <CommandList>
+                  <CommandEmpty>No members found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all"
+                      onSelect={() => {
+                        setSelectedMember("all");
+                        setMemberDropdownOpen(false);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      All Members
+                    </CommandItem>
+                    {allMembers.map((member) => (
+                      <CommandItem
+                        key={member.membershipId}
+                        value={`${member.applicantName || ""} ${member.firmName || ""} ${member.membershipId || ""}`}
+                        onSelect={() => {
+                          setSelectedMember(member.membershipId);
+                          setMemberDropdownOpen(false);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        {(member.applicantName || "Unknown") +
+                          " - " +
+                          (member.firmName || "Unknown")}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" onClick={resetFilters}>
             Reset Filters
           </Button>

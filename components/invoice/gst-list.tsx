@@ -836,11 +836,18 @@ export default function GSTList() {
 
     console.log("Submitting GST with payload:", payload);
 
+    // Check if session has token
+    if (!session?.user?.token) {
+      throw new Error("Not authenticated");
+    }
+
     // Call GST API
     const gstApiUrl = "https://gst.tsmwa.online/api/ret_save";
     const response = await axios.post(gstApiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Bearer ${session.user.token}`,
+        "x-client-ip": ip,
       },
     });
 

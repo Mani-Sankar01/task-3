@@ -276,6 +276,8 @@ export default function DashboardOverview() {
         }
       );
 
+      console.log("Invoices response:", invoicesResponse.data);
+
       // Handle different response structures for invoices
       let allInvoices = [];
       if (invoicesResponse.data && Array.isArray(invoicesResponse.data)) {
@@ -352,7 +354,7 @@ export default function DashboardOverview() {
 
   // Approval/Decline functions
   const handleMemberApproved = async (memberId: string) => {
-    if (status !== "authenticated" || !session?.user?.token) {
+    if (!session?.user?.token) {
       toast({
         title: "Error",
         description: "Authentication required",
@@ -394,7 +396,7 @@ export default function DashboardOverview() {
   };
 
   const handleMemberDeclined = async (memberId: string, declineReason: string) => {
-    if (status !== "authenticated" || !session?.user?.token) {
+    if (!session?.user?.token) {
       toast({
         title: "Error",
         description: "Authentication required",
@@ -436,7 +438,7 @@ export default function DashboardOverview() {
   };
 
   const handleInvoiceApproved = async (invoiceId: string) => {
-    if (status !== "authenticated" || !session?.user?.token) {
+    if (!session?.user?.token) {
       toast({
         title: "Error",
         description: "Authentication required",
@@ -479,7 +481,7 @@ export default function DashboardOverview() {
   };
 
   const handleInvoiceDeclined = async (invoiceId: string, declineNote: string) => {
-    if (status !== "authenticated" || !session?.user?.token) {
+    if (!session?.user?.token) {
       toast({
         title: "Error",
         description: "Authentication required",
