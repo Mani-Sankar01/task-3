@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from "date-fns";
+import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { useToast } from "@/hooks/use-toast";
@@ -10,13 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import {
   CalendarIcon,
   CheckCircle2,
+  ChevronsUpDown,
   CircleCheck,
   CircleX,
   Clock,
   Download,
   Edit,
   Eye,
-  FileDown,
   Loader2,
   MoreHorizontal,
   Plus,
@@ -127,6 +127,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { renderRoleBasedPath } from "@/lib/utils";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export default function GSTList() {
   const router = useRouter();
@@ -135,7 +143,7 @@ export default function GSTList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [invoices, setInvoices] = useState<ApiInvoice[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<ApiInvoice[]>([]);
-  const [dateFilterType, setDateFilterType] = useState<"all" | "today" | "lastMonth" | "custom">("all");
+  const [dateFilterType, setDateFilterType] = useState<"lastMonth" | "thisYear" | "custom">("lastMonth");
   const [dateRange, setDateRange] = useState<{
     from: Date | undefined;
     to: Date | undefined;
@@ -144,10 +152,11 @@ export default function GSTList() {
     to: undefined,
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [members, setMembers] = useState<ApiMember[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [memberDropdownOpen, setMemberDropdownOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
@@ -158,7 +167,7 @@ export default function GSTList() {
   const [showApprovalErrorDialog, setShowApprovalErrorDialog] = useState(false);
   const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"submitting" | "submitted" | null>(null);
   const [gstSubmissionMessage, setGstSubmissionMessage] = useState<string>("");
-  
+
   // GST Verification states
   const [showGstVerificationDialog, setShowGstVerificationDialog] = useState(false);
   const [currentVerifyingInvoiceId, setCurrentVerifyingInvoiceId] = useState<string | null>(null);
@@ -171,79 +180,76 @@ export default function GSTList() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
 
-  // Fetch invoices from API
-  useEffect(() => {
-    console.log("Status:", status);
-    console.log("Session:", session);
-    console.log("BACKEND_API_URL:", process.env.BACKEND_API_URL);
-
+  // Fetch invoices function (called on search)
+  const fetchInvoices = async () => {
     if (status !== "authenticated" || !session?.user?.token) {
-      console.log("Not authenticated or no token");
       return;
     }
 
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+    if (!selectedMemberId) {
+      toast({
+        title: "Member Required",
+        description: "Please select a member to search",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        console.log("API URL:", fullUrl);
-        console.log("Token:", session.user.token ? "Token exists" : "No token");
+    if (dateFilterType === "custom" && (!dateRange.from || !dateRange.to)) {
+      toast({
+        title: "Date Range Required",
+        description: "Please select a date range for custom filter",
+        variant: "destructive"
+      });
+      return;
+    }
 
-        const response = await axios.get(fullUrl, {
-          headers: {
-            Authorization: `Bearer ${session.user.token}`,
-          },
-        });
+    setIsLoading(true);
+    setHasSearched(true);
+    try {
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
 
-        console.log("Full API response:", response.data);
-        console.log("Response status:", response.status);
+      const response = await axios.get(fullUrl, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      });
 
-        // Handle different possible response structures
-        let responseData;
-        if (response.data && Array.isArray(response.data)) {
-          responseData = response.data;
-        } else if (
-          response.data &&
-          response.data.taxInvoices &&
-          Array.isArray(response.data.taxInvoices)
-        ) {
-          responseData = response.data.taxInvoices;
-        } else if (
-          response.data &&
-          response.data.data &&
-          Array.isArray(response.data.data)
-        ) {
-          responseData = response.data.data;
-        } else {
-          responseData = [];
-        }
-
-        setInvoices(responseData);
-        setFilteredInvoices(responseData);
-        console.log("Invoices data:", responseData);
-        console.log("Number of invoices:", responseData.length);
-      } catch (err: unknown) {
-        console.error("Error fetching invoice data:", err);
-        if (err instanceof Error) {
-          console.error("Error message:", err.message);
-          console.error("Error stack:", err.stack);
-        }
-        toast({
-          title: "Error",
-          description: "Failed to load invoice data",
-          variant: "destructive"
-        });
-        setInvoices([]);
-        setFilteredInvoices([]);
-      } finally {
-        setIsLoading(false);
+      // Handle different possible response structures
+      let responseData;
+      if (response.data && Array.isArray(response.data)) {
+        responseData = response.data;
+      } else if (
+        response.data &&
+        response.data.taxInvoices &&
+        Array.isArray(response.data.taxInvoices)
+      ) {
+        responseData = response.data.taxInvoices;
+      } else if (
+        response.data &&
+        response.data.data &&
+        Array.isArray(response.data.data)
+      ) {
+        responseData = response.data.data;
+      } else {
+        responseData = [];
       }
-    };
 
-    fetchData();
-  }, [status, session?.user?.token]);
+      setInvoices(responseData);
+    } catch (err: unknown) {
+      console.error("Error fetching invoice data:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice data",
+        variant: "destructive"
+      });
+      setInvoices([]);
+      setFilteredInvoices([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Load members from API
   useEffect(() => {
@@ -267,22 +273,40 @@ export default function GSTList() {
     fetchMembers();
   }, [status, session?.user?.token]);
 
+  // Set default date range to last month on component mount
+  useEffect(() => {
+    if (dateFilterType === "lastMonth" && !dateRange.from && !dateRange.to) {
+      const lastMonth = subMonths(new Date(), 1);
+      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+    } else if (dateFilterType === "thisYear" && !dateRange.from && !dateRange.to) {
+      const now = new Date();
+      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
+    }
+  }, [dateFilterType]);
+
   useEffect(() => {
     let filtered = invoices;
 
+    // Filter by member (required, already applied via search)
+    if (selectedMemberId) {
+      filtered = filtered.filter(
+        (invoice) => invoice.membershipId === selectedMemberId
+      );
+    }
+
     // Filter by date range based on filter type
-    if (dateFilterType === "today") {
-      const today = new Date();
-      const start = startOfDay(today);
-      const end = endOfDay(today);
+    if (dateFilterType === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      const start = startOfMonth(lastMonth);
+      const end = endOfMonth(lastMonth);
       filtered = filtered.filter((invoice) => {
         const invoiceDate = new Date(invoice.invoiceDate);
         return invoiceDate >= start && invoiceDate <= end;
       });
-    } else if (dateFilterType === "lastMonth") {
-      const lastMonth = subMonths(new Date(), 1);
-      const start = startOfMonth(lastMonth);
-      const end = endOfMonth(lastMonth);
+    } else if (dateFilterType === "thisYear") {
+      const now = new Date();
+      const start = startOfYear(now);
+      const end = endOfYear(now);
       filtered = filtered.filter((invoice) => {
         const invoiceDate = new Date(invoice.invoiceDate);
         return invoiceDate >= start && invoiceDate <= end;
@@ -294,20 +318,6 @@ export default function GSTList() {
         const end = endOfDay(dateRange.to!);
         return invoiceDate >= start && invoiceDate <= end;
       });
-    }
-
-    // Filter by member
-    if (selectedMemberId) {
-      filtered = filtered.filter(
-        (invoice) => invoice.membershipId === selectedMemberId
-      );
-    }
-
-    // Filter by status
-    if (statusFilter && statusFilter !== "all") {
-      filtered = filtered.filter(
-        (invoice) => invoice.gstStatus === statusFilter
-      );
     }
 
     // Filter by search term
@@ -322,7 +332,7 @@ export default function GSTList() {
 
     setFilteredInvoices(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [searchTerm, dateFilterType, dateRange, selectedMemberId, statusFilter, invoices]);
+  }, [searchTerm, dateFilterType, dateRange, selectedMemberId, invoices]);
 
   // Paginate the filtered invoices
   const paginatedInvoices = filteredInvoices.slice(
@@ -693,80 +703,17 @@ export default function GSTList() {
     }
   };
 
-  const handleExportCSV = () => {
-    // Generate CSV content for API invoices
-    const csvHeaders = [
-      "Invoice ID",
-      "Membership Firm Name",
-      "Date",
-      "CGST %",
-      "SGST %",
-      "IGST %",
-      "Sub Total",
-      "Total",
-    ];
 
-    const csvContent = [
-      csvHeaders.join(","),
-      ...filteredInvoices.map((invoice) =>
-        [
-          invoice.invoiceId,
-          invoice.members.firmName,
-          new Date(invoice.invoiceDate).toLocaleDateString(),
-          invoice.cGSTInPercent,
-          invoice.sGSTInPercent,
-          invoice.iGSTInPercent,
-          invoice.subTotal,
-          invoice.total,
-        ].join(",")
-      ),
-    ].join("\n");
-
-    // Create a Blob with the CSV content
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-
-    // Create a download link
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-
-    // Set link properties
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `invoices_export_${new Date().toISOString().split("T")[0]}.csv`
-    );
-
-    // Append to body, click and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const clearDateFilter = () => {
-    setDateFilterType("all");
-    setDateRange({ from: undefined, to: undefined });
-  };
-
-  const handleDateFilterTypeChange = (value: "all" | "today" | "lastMonth" | "custom") => {
+  const handleDateFilterTypeChange = (value: "lastMonth" | "thisYear" | "custom") => {
     setDateFilterType(value);
-    if (value === "today") {
-      const today = new Date();
-      setDateRange({ from: startOfDay(today), to: endOfDay(today) });
-    } else if (value === "lastMonth") {
+    if (value === "lastMonth") {
       const lastMonth = subMonths(new Date(), 1);
       setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
-    } else if (value === "all") {
-      setDateRange({ from: undefined, to: undefined });
+    } else if (value === "thisYear") {
+      const now = new Date();
+      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
     }
     // For "custom", don't change dateRange - let user select manually
-  };
-
-  const clearMemberFilter = () => {
-    setSelectedMemberId("");
-  };
-
-  const clearStatusFilter = () => {
-    setStatusFilter("all");
   };
 
   // Handle invoice selection
@@ -1199,460 +1146,492 @@ export default function GSTList() {
   return (
     <div className="p-6">
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0">
-          <div>
-            <CardTitle className="text-2xl">GST Filling</CardTitle>
-            <CardDescription>Manage all GST filling</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
-              <Button
-                onClick={handleSubmitGST}
-                disabled={isSubmittingGST}
-                variant="default"
-              >
-                {isSubmittingGST ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-                  </>
-                ) : (
-                  <>
-                    Submit GST ({selectedInvoiceIds.length})
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by invoice number, member or firm..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <Card className="m-6">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Search GST Invoices</CardTitle>
+                <CardDescription>
+                  Select a member and date range to search for invoices
+                </CardDescription>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <Select
-                value={selectedMemberId}
-                onValueChange={(v) => {
-                  if (v == "all") {
-                    setSelectedMemberId("");
-                  } else {
-                    setSelectedMemberId(v);
-                  }
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by member" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Members</SelectItem>
-                  {members.map((member) => (
-                    <SelectItem
-                      key={member.membershipId}
-                      value={member.membershipId}
-                    >
-                      {member.applicantName} - {member.firmName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {selectedMemberId && (
-                <Button variant="outline" size="sm" onClick={clearMemberFilter}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Select
-                value={dateFilterType}
-                onValueChange={(value) => handleDateFilterTypeChange(value as "all" | "today" | "lastMonth" | "custom")}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Date filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Dates</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="lastMonth">Last Month</SelectItem>
-                  <SelectItem value="custom">Custom Range</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {dateFilterType === "custom" && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-[240px] justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateRange.from ? (
-                        dateRange.to ? (
-                          <>
-                            {format(dateRange.from, "LLL dd, y")} -{" "}
-                            {format(dateRange.to, "LLL dd, y")}
-                          </>
-                        ) : (
-                          format(dateRange.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={dateRange.from}
-                      selected={{
-                        from: dateRange.from,
-                        to: dateRange.to,
-                      }}
-                      onSelect={(range) => {
-                        if (range) {
-                          setDateRange({
-                            from: range.from,
-                            to: range.to,
-                          });
-                        }
-                      }}
-                      numberOfMonths={2}
-                    />
-                  </PopoverContent>
-                </Popover>
-              )}
-
-              {dateFilterType !== "all" && (
-                <Button variant="ghost" size="sm" onClick={clearDateFilter}>
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Select
-                value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value)}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="PENDING">Pending</SelectItem>
-                  <SelectItem value="READY_TO_FILE">Ready to File</SelectItem>
-                  <SelectItem value="SUBMITTED">Submitted</SelectItem>
-                  <SelectItem value="FILED">Filed</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {statusFilter !== "all" && (
-                <Button variant="ghost" size="sm" onClick={clearStatusFilter}>
-                  Clear
-                </Button>
-              )}
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={handleExportCSV}
-              disabled={filteredInvoices.length === 0}
-            >
-              <FileDown className="mr-2 h-4 w-4" /> Export CSV
-            </Button>
-          </div>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={allSelected || someSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Membership Firm Name</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>CGST %</TableHead>
-                  <TableHead>SGST %</TableHead>
-                  <TableHead>IGST %</TableHead>
-                  <TableHead>Sub Total</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>GST Status</TableHead>
-                 
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedInvoices.length > 0 ? (
-                  paginatedInvoices.map((invoice) => (
-                    <TableRow
-                      key={invoice.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                    >
-                      <TableCell
-                        className="w-[50px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Checkbox
-                          checked={selectedInvoiceIds.includes(invoice.invoiceId)}
-                          onCheckedChange={(checked) =>
-                            handleSelectInvoice(invoice.invoiceId, checked as boolean)
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={`Select invoice ${invoice.invoiceId}`}
-                        />
-                      </TableCell>
-                      <TableCell
-                        className="font-medium"
-                        onClick={() => handleViewInvoice(invoice.invoiceId)}
-                      >
-                        {invoice.invoiceId}
-                      </TableCell>
-                      <TableCell>{invoice.members?.firmName}</TableCell>
-                      <TableCell>
-                        {new Date(invoice.invoiceDate).toLocaleDateString()}
-                      </TableCell>
-
-                      <TableCell>{invoice.cGSTInPercent}%</TableCell>
-                      <TableCell>{invoice.sGSTInPercent}%</TableCell>
-                      <TableCell>{invoice.iGSTInPercent}%</TableCell>
-                      <TableCell>
-                        ₹{parseFloat(invoice.subTotal).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        ₹{parseFloat(invoice.total).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        {invoice.gstStatus === "FILED" ? (
-                          <Badge variant="outline">Filed</Badge>
-                        ) : invoice.gstStatus === "READY_TO_FILE" ? (
-                          <Badge variant="secondary">Ready to File</Badge>
-                        ) : invoice.gstStatus === "SUBMITTED" ? (
-                          <Badge variant="default">Submitted</Badge>
-                        ) : invoice.gstStatus === "DECLINED" ? (
-                          <Badge variant="destructive">Declined</Badge>
-                        ) : (
-                          <Badge variant="destructive">Approval Pending</Badge>
-                        )}
-                      </TableCell>
-                     
-                      <TableCell>
-                        <Button variant="ghost" className="h-8 w-8 p-0"  onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewInvoice(invoice.invoiceId);
-                              }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            asChild
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewInvoice(invoice.invoiceId);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" /> View
-                            </DropdownMenuItem>
-                            {(session?.user?.role === "ADMIN" ||
-                              session?.user?.role === "TSMWA_EDITOR" ||
-                              session?.user?.role === "TQMA_EDITOR") && (
-                                <>
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditInvoice(invoice.invoiceId);
-                                  }}
-                                >
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                                </DropdownMenuItem>
-
-                                {invoice.status === "APPROVED" && (
-                                  <>
-                                    {invoice.members?.complianceDetails?.isGstVerified === "TRUE" ? (
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleSingleInvoiceGSTSubmit(invoice.invoiceId);
-                                        }}
-                                        disabled={isSubmittingGST}
-                                      >
-                                        <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                        Submit GST
-                                      </DropdownMenuItem>
-                                    ) : (
-                                      <DropdownMenuItem
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setCurrentVerifyingInvoiceId(invoice.invoiceId);
-                                          setShowGstVerificationDialog(true);
-                                          setGstVerificationStep("username");
-                                          setGstInUserName("");
-                                          setGstOtp("");
-                                          setGstVerificationError("");
-                                        }}
-                                        disabled={isSubmittingGST || isVerifyingUsername || isVerifyingOtp}
-                                      >
-                                        <CircleCheck className="mr-2 h-4 w-4 text-blue-500" />
-                                        Verify GST
-                                      </DropdownMenuItem>
-                                    )}
-                                  </>
-                                )}
-                                </>
-
-                              )}
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDownloadInvoice(invoice.id);
-                              }}
-                            >
-                              <Download className="mr-2 h-4 w-4" /> Download
-                            </DropdownMenuItem>
-                            {session?.user?.role === "ADMIN" && (
-                              <>
-                               
-                               
-                                <DropdownMenuSeparator />
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onSelect={(e) => e.preventDefault()}
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                  </DialogTrigger>
-                                  <DialogContent className="sm:max-w-md">
-                                    <DialogHeader>
-                                      <DialogTitle className="flex items-center gap-2">
-                                        <span className="text-destructive">
-                                          ⚠️
-                                        </span>
-                                        Delete Invoice
-                                      </DialogTitle>
-                                      <DialogDescription>
-                                        Are you sure you want to delete invoice{" "}
-                                        <span className="font-semibold">
-                                          {invoice.invoiceId}
-                                        </span>
-                                        ? This action cannot be undone.
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <DialogFooter className="gap-2">
-                                      <DialogClose asChild>
-                                        <Button variant="outline">
-                                          Cancel
-                                        </Button>
-                                      </DialogClose>
-                                      <DialogClose asChild>
-                                        <Button
-                                          variant="destructive"
-                                          onClick={() =>
-                                            handleDeleteInvoice(invoice.invoiceId)
-                                          }
-                                          disabled={isDeleting}
-                                        >
-                                          Delete
-                                        </Button>
-                                      </DialogClose>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
-                      No invoices found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {filteredInvoices.length > 0 && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Showing {paginatedInvoices.length} of {filteredInvoices.length} invoices
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Rows per page</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}
+              <div className="flex items-center gap-2">
+                {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
+                  <Button
+                    onClick={handleSubmitGST}
+                    disabled={isSubmittingGST}
+                    variant="default"
                   >
-                    <SelectTrigger className="h-8 w-16">
-                      <SelectValue />
+                    {isSubmittingGST ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                      </>
+                    ) : (
+                      <>
+                        Submit GST ({selectedInvoiceIds.length})
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="member-select" className="mb-2 block">
+                    Select Member *
+                  </Label>
+                  <Popover open={memberDropdownOpen} onOpenChange={setMemberDropdownOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id="member-select"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={memberDropdownOpen}
+                        className="w-full justify-between"
+                      >
+                        {selectedMemberId
+                          ? (() => {
+                              const selectedMember = members.find(
+                                (member) => member.membershipId === selectedMemberId
+                              );
+                              return selectedMember
+                                ? `${selectedMember.applicantName} - ${selectedMember.firmName}`
+                                : "Select a member";
+                            })()
+                          : "Select a member"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search members..." />
+                        <CommandList>
+                          <CommandEmpty>No members found.</CommandEmpty>
+                          <CommandGroup>
+                            {members.map((member) => (
+                              <CommandItem
+                                key={member.membershipId}
+                                value={`${member.applicantName} ${member.firmName} ${member.membershipId}`}
+                                onSelect={() => {
+                                  setSelectedMemberId(member.membershipId);
+                                  setMemberDropdownOpen(false);
+                                }}
+                              >
+                                {member.applicantName} - {member.firmName}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div className="flex-1">
+                  <Label htmlFor="date-select" className="mb-2 block">
+                    Select Date *
+                  </Label>
+                  <Select
+                    value={dateFilterType}
+                    onValueChange={(value) => handleDateFilterTypeChange(value as "lastMonth" | "thisYear" | "custom")}
+                  >
+                    <SelectTrigger id="date-select">
+                      <SelectValue placeholder="Select date range" />
                     </SelectTrigger>
                     <SelectContent>
-                      {pageSizeOptions.map((size) => (
-                        <SelectItem key={size} value={size.toString()}>
-                          {size}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="lastMonth">Last Month</SelectItem>
+                      <SelectItem value="thisYear">This Year</SelectItem>
+                      <SelectItem value="custom">Custom Range</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <div className="flex items-center justify-center text-sm font-medium">
-                  Page {currentPage} of {totalPages || 1}
+
+                {dateFilterType === "custom" && (
+                  <div className="flex-1">
+                    <Label htmlFor="date-range" className="mb-2 block">
+                      Date Range *
+                    </Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="date-range"
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateRange.from ? (
+                            dateRange.to ? (
+                              <>
+                                {format(dateRange.from, "LLL dd, y")} -{" "}
+                                {format(dateRange.to, "LLL dd, y")}
+                              </>
+                            ) : (
+                              format(dateRange.from, "LLL dd, y")
+                            )
+                          ) : (
+                            <span>Pick a date range</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={dateRange.from}
+                          selected={{
+                            from: dateRange.from,
+                            to: dateRange.to,
+                          }}
+                          onSelect={(range) => {
+                            if (range) {
+                              setDateRange({
+                                from: range.from,
+                                to: range.to,
+                              });
+                            }
+                          }}
+                          numberOfMonths={2}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={fetchInvoices}
+                    disabled={isLoading || !selectedMemberId || (dateFilterType === "custom" && (!dateRange.from || !dateRange.to))}
+                    className="w-full sm:w-auto"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Search
+                      </>
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
-                  disabled={currentPage === totalPages || totalPages === 0}
-                >
-                  Next
-                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        <CardContent>
+          {/* Search Card */}
+         
+
+         
+
+          {/* Results Table */}
+          {hasSearched ? (
+            <>
+              {isLoading ? (
+                <div className="flex justify-center items-center min-h-[400px]">
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                    <p className="text-muted-foreground">Loading invoices...</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[50px]">
+                          <Checkbox
+                            checked={allSelected || someSelected}
+                            onCheckedChange={handleSelectAll}
+                            aria-label="Select all"
+                          />
+                        </TableHead>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Membership Firm Name</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>CGST %</TableHead>
+                        <TableHead>SGST %</TableHead>
+                        <TableHead>IGST %</TableHead>
+                        <TableHead>Sub Total</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>GST Status</TableHead>
+
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedInvoices.length > 0 ? (
+                        paginatedInvoices.map((invoice) => (
+                          <TableRow
+                            key={invoice.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                          >
+                            <TableCell
+                              className="w-[50px]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Checkbox
+                                checked={selectedInvoiceIds.includes(invoice.invoiceId)}
+                                onCheckedChange={(checked) =>
+                                  handleSelectInvoice(invoice.invoiceId, checked as boolean)
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                aria-label={`Select invoice ${invoice.invoiceId}`}
+                              />
+                            </TableCell>
+                            <TableCell
+                              className="font-medium"
+                              onClick={() => handleViewInvoice(invoice.invoiceId)}
+                            >
+                              {invoice.invoiceId}
+                            </TableCell>
+                            <TableCell>{invoice.members?.firmName}</TableCell>
+                            <TableCell>
+                              {new Date(invoice.invoiceDate).toLocaleDateString()}
+                            </TableCell>
+
+                            <TableCell>{invoice.cGSTInPercent}%</TableCell>
+                            <TableCell>{invoice.sGSTInPercent}%</TableCell>
+                            <TableCell>{invoice.iGSTInPercent}%</TableCell>
+                            <TableCell>
+                              ₹{parseFloat(invoice.subTotal).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              ₹{parseFloat(invoice.total).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              {invoice.gstStatus === "FILED" ? (
+                                <Badge variant="outline">Filed</Badge>
+                              ) : invoice.gstStatus === "READY_TO_FILE" ? (
+                                <Badge variant="secondary">Ready to File</Badge>
+                              ) : invoice.gstStatus === "SUBMITTED" ? (
+                                <Badge variant="default">Submitted</Badge>
+                              ) : invoice.gstStatus === "DECLINED" ? (
+                                <Badge variant="destructive">Declined</Badge>
+                              ) : (
+                                <Badge variant="destructive">Approval Pending</Badge>
+                              )}
+                            </TableCell>
+
+                            <TableCell>
+                              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewInvoice(invoice.invoiceId);
+                              }}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger
+                                  asChild
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewInvoice(invoice.invoiceId);
+                                    }}
+                                  >
+                                    <Eye className="mr-2 h-4 w-4" /> View
+                                  </DropdownMenuItem>
+                                  {(session?.user?.role === "ADMIN" ||
+                                    session?.user?.role === "TSMWA_EDITOR" ||
+                                    session?.user?.role === "TQMA_EDITOR") && (
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditInvoice(invoice.invoiceId);
+                                          }}
+                                        >
+                                          <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+
+                                        {invoice.status === "APPROVED" && (
+                                          <>
+                                            {invoice.members?.complianceDetails?.isGstVerified === "TRUE" ? (
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleSingleInvoiceGSTSubmit(invoice.invoiceId);
+                                                }}
+                                                disabled={isSubmittingGST}
+                                              >
+                                                <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
+                                                Submit GST
+                                              </DropdownMenuItem>
+                                            ) : (
+                                              <DropdownMenuItem
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setCurrentVerifyingInvoiceId(invoice.invoiceId);
+                                                  setShowGstVerificationDialog(true);
+                                                  setGstVerificationStep("username");
+                                                  setGstInUserName("");
+                                                  setGstOtp("");
+                                                  setGstVerificationError("");
+                                                }}
+                                                disabled={isSubmittingGST || isVerifyingUsername || isVerifyingOtp}
+                                              >
+                                                <CircleCheck className="mr-2 h-4 w-4 text-blue-500" />
+                                                Verify GST
+                                              </DropdownMenuItem>
+                                            )}
+                                          </>
+                                        )}
+                                      </>
+
+                                    )}
+
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadInvoice(invoice.id);
+                                    }}
+                                  >
+                                    <Download className="mr-2 h-4 w-4" /> Download
+                                  </DropdownMenuItem>
+                                  {session?.user?.role === "ADMIN" && (
+                                    <>
+
+
+                                      <DropdownMenuSeparator />
+                                      <Dialog>
+                                        <DialogTrigger asChild>
+                                          <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onSelect={(e) => e.preventDefault()}
+                                          >
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                          </DropdownMenuItem>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-md">
+                                          <DialogHeader>
+                                            <DialogTitle className="flex items-center gap-2">
+                                              <span className="text-destructive">
+                                                ⚠️
+                                              </span>
+                                              Delete Invoice
+                                            </DialogTitle>
+                                            <DialogDescription>
+                                              Are you sure you want to delete invoice{" "}
+                                              <span className="font-semibold">
+                                                {invoice.invoiceId}
+                                              </span>
+                                              ? This action cannot be undone.
+                                            </DialogDescription>
+                                          </DialogHeader>
+                                          <DialogFooter className="gap-2">
+                                            <DialogClose asChild>
+                                              <Button variant="outline">
+                                                Cancel
+                                              </Button>
+                                            </DialogClose>
+                                            <DialogClose asChild>
+                                              <Button
+                                                variant="destructive"
+                                                onClick={() =>
+                                                  handleDeleteInvoice(invoice.invoiceId)
+                                                }
+                                                disabled={isDeleting}
+                                              >
+                                                Delete
+                                              </Button>
+                                            </DialogClose>
+                                          </DialogFooter>
+                                        </DialogContent>
+                                      </Dialog>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={9} className="h-24 text-center">
+                            No invoices found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {filteredInvoices.length > 0 && (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Showing {paginatedInvoices.length} of {filteredInvoices.length} invoices
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Rows per page</span>
+                      <Select
+                        value={itemsPerPage.toString()}
+                        onValueChange={(value) => {
+                          setItemsPerPage(Number(value));
+                          setCurrentPage(1);
+                        }}
+                      >
+                        <SelectTrigger className="h-8 w-16">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pageSizeOptions.map((size) => (
+                            <SelectItem key={size} value={size.toString()}>
+                              {size}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center justify-center text-sm font-medium">
+                      Page {currentPage} of {totalPages || 1}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                      disabled={currentPage === totalPages || totalPages === 0}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <p className="text-muted-foreground">
+                  Please select a member and date range to search for invoices
+                </p>
               </div>
             </div>
           )}
@@ -1709,8 +1688,8 @@ export default function GSTList() {
               {gstSubmissionStatus === "submitting"
                 ? "Please wait while we process your GST submission."
                 : gstSubmissionStatus === "submitted"
-                ? "GST submission completed."
-                : ""}
+                  ? "GST submission completed."
+                  : ""}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
@@ -1824,7 +1803,7 @@ export default function GSTList() {
                 : "Enter the OTP sent to your registered mobile number"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4 py-4">
             {gstVerificationStep === "username" ? (
               <div className="space-y-2">
