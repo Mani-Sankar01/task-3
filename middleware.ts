@@ -21,6 +21,37 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(signInUrl);
   }
 
+  // Check if token is expired
+  if (token.exp && typeof token.exp === "number") {
+    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+    if (token.exp < currentTime) {
+      // Token is expired, automatically sign out by clearing session cookies
+      console.log("Token expired. Automatically signing out user.");
+      
+      // Redirect to login page
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("expired", "true"); // Optional: add query param to show expiration message
+      
+      // Create response with redirect
+      const response = NextResponse.redirect(loginUrl);
+      
+      // Clear NextAuth session cookies to automatically sign out
+      // These cookie names may vary based on your NextAuth configuration
+      const cookiesToDelete = [
+        "next-auth.session-token",
+        "__Secure-next-auth.session-token",
+        "next-auth.csrf-token",
+        "__Host-next-auth.csrf-token",
+      ];
+      
+      cookiesToDelete.forEach((cookieName) => {
+        response.cookies.delete(cookieName);
+      });
+      
+      return response;
+    }
+  }
+
   const userRole = token.role;
   console.log("userRole", userRole);
 

@@ -66,6 +66,22 @@ export default function LoginPage() {
     }
   };
 
+  // Helper function to convert NextAuth error codes to user-friendly messages
+  const getErrorMessage = (errorCode: string | undefined): string => {
+    if (!errorCode) return "An error occurred. Please try again.";
+    
+    const errorMessages: Record<string, string> = {
+      "CredentialsSignin": "Invalid OTP. Please check and try again.",
+      "InvalidOTP": "Invalid OTP. Please check and try again.",
+      "OTPExpired": "OTP has expired. Please request a new one.",
+      "InvalidPhoneNumber": "Invalid phone number. Please check and try again.",
+      "UserNotFound": "No account found with this phone number.",
+      "Default": "An error occurred. Please try again.",
+    };
+    
+    return errorMessages[errorCode] || errorMessages["Default"];
+  };
+
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -80,7 +96,23 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError(result.error || "Invalid OTP. Please try again.");
+        // Check if there's a URL with error message (from query params)
+        if (result.url) {
+          try {
+            const urlObj = new URL(result.url);
+            const errorParam = urlObj.searchParams.get("error");
+            if (errorParam && errorParam !== "CredentialsSignin") {
+              setError(errorParam);
+              return;
+            }
+          } catch (e) {
+            // Ignore URL parsing errors
+          }
+        }
+        
+        // Convert NextAuth error code to user-friendly message
+        const friendlyMessage = getErrorMessage(result.error);
+        setError(friendlyMessage);
       } else {
         // Redirect to dashboard or home page
         router.push("/");
