@@ -177,6 +177,14 @@ export default function GSTList() {
   const [isVerifyingUsername, setIsVerifyingUsername] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [gstVerificationError, setGstVerificationError] = useState<string>("");
+
+  // Auth OTP states (for pre-submission auth check)
+  const [showAuthOtpDialog, setShowAuthOtpDialog] = useState(false);
+  const [authOtp, setAuthOtp] = useState("");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
+  const [isVerifyingAuthOtp, setIsVerifyingAuthOtp] = useState(false);
+  const [authOtpError, setAuthOtpError] = useState<string>("");
+  const [pendingInvoiceIds, setPendingInvoiceIds] = useState<string[]>([]);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
 
@@ -810,6 +818,292 @@ export default function GSTList() {
   };
 
   // Function to submit GST for invoices
+  // Check authentication before GST submission
+  const checkAuthBeforeSubmission = async (membershipId: string): Promise<boolean> => {
+    try {
+      setIsCheckingAuth(true);
+      setAuthOtpError("");
+
+      // Get client IP
+      const clientIP = await getClientIP();
+
+      // Check if session has token
+      if (!session?.user?.token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call auth API
+      const authUrl = `${process.env.NEXT_PUBLIC_GST_BACKEND_URL}/api/auth?membershipId=${membershipId}`;
+      const response = await axios.get(authUrl, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+          "x-client-ip": clientIP,
+        },
+      });
+
+      // Get the response data (axios wraps it in response.data)
+      const responseData = response.data;
+      
+      console.log("Auth API Response:", responseData);
+      console.log("Response data type:", typeof responseData);
+      console.log("isAuthenticated value:", responseData?.isAuthenticated);
+      console.log("isAuthenticated type:", typeof responseData?.isAuthenticated);
+
+      // Check response type - check for isAuthenticated first (handle both boolean true and string "true")
+      const isAuthenticatedValue = responseData?.isAuthenticated;
+      
+      // Check if already authenticated
+      if (isAuthenticatedValue === true || isAuthenticatedValue === "true" || isAuthenticatedValue === 1 || String(isAuthenticatedValue).toLowerCase() === "true") {
+        // Already authenticated, proceed directly
+        console.log("User is authenticated (isAuthenticated:", isAuthenticatedValue, "), proceeding with submission");
+        setIsCheckingAuth(false);
+        return true;
+      }
+      
+      // Check if OTP is required
+      if (responseData?.success === true && responseData?.message === "OTP requested successfully") {
+        // OTP required, show OTP dialog
+        console.log("OTP required, showing OTP dialog");
+        setIsCheckingAuth(false);
+        return false; // Return false to indicate OTP needed
+      }
+      
+      // If we get here, the response format is unexpected
+      console.error("Unexpected auth response format:", responseData);
+      console.error("Full response object:", response);
+      console.error("Response structure:", JSON.stringify(responseData, null, 2));
+      
+      // Default to requiring OTP if we can't determine auth status
+      console.warn("Could not determine authentication status, defaulting to OTP flow");
+      setIsCheckingAuth(false);
+      return false;
+    } catch (error: any) {
+      console.error("Error checking auth:", error);
+      setIsCheckingAuth(false);
+      throw new Error(
+        error.response?.data?.message || error.message || "Failed to check authentication. Please try again."
+      );
+    }
+  };
+
+  // Verify auth OTP
+  const handleAuthOtpVerification = async () => {
+    if (!authOtp || authOtp.length !== 6 || !/^\d{6}$/.test(authOtp)) {
+      setAuthOtpError("OTP must be exactly 6 digits");
+      return;
+    }
+
+    try {
+      setIsVerifyingAuthOtp(true);
+      setAuthOtpError("");
+
+      // Get membershipId from pending invoices
+      if (pendingInvoiceIds.length === 0) {
+        throw new Error("No pending invoices found");
+      }
+
+      const pendingInvoices = invoices.filter((inv) =>
+        pendingInvoiceIds.includes(inv.invoiceId)
+      );
+
+      if (pendingInvoices.length === 0) {
+        throw new Error("Pending invoices not found");
+      }
+
+      const membershipId = pendingInvoices[0]?.membershipId;
+      if (!membershipId) {
+        throw new Error("Membership ID not found in pending invoices");
+      }
+
+      // Get client IP
+      const clientIP = await getClientIP();
+
+      // Check if session has token
+      if (!session?.user?.token) {
+        throw new Error("Not authenticated");
+      }
+
+      // Call Verify_otp API
+      const verifyOtpUrl = `${process.env.NEXT_PUBLIC_GST_BACKEND_URL}/api/Verify_otp`;
+      console.log("Calling Verify_otp API with payload:", {
+        membershipId: membershipId,
+        otp: authOtp,
+      });
+      
+      const response = await axios.post(
+        verifyOtpUrl,
+        {
+          membershipId: membershipId,
+          otp: authOtp,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.user.token}`,
+            "x-client-ip": clientIP,
+          },
+        }
+      );
+
+      console.log("Verify_otp API Response:", response.data);
+      console.log("Response status:", response.status);
+      console.log("Response success value:", response.data?.success);
+      console.log("Response isAuthenticated value:", response.data?.isAuthenticated);
+
+      // Check for both response formats:
+      // 1. {success: true, message: "..."} format
+      // 2. {isAuthenticated: true, sessionTTL: ...} format (this is what the API actually returns)
+      const isSuccess = response.data?.success === true;
+      const isAuthenticated = response.data?.isAuthenticated === true || response.data?.isAuthenticated === "true" || response.data?.isAuthenticated === 1;
+
+      if (isSuccess || isAuthenticated) {
+        // OTP verified successfully, close OTP dialog
+        console.log("OTP verified successfully! isSuccess:", isSuccess, ", isAuthenticated:", isAuthenticated);
+        setShowAuthOtpDialog(false);
+        setAuthOtp("");
+        setIsVerifyingAuthOtp(false);
+
+        // Show loading dialog and proceed with GST submission
+        if (pendingInvoiceIds.length > 0) {
+          setShowGSTDialog(true);
+          setGstSubmissionStatus("submitting");
+          setIsSubmittingGST(true);
+          setGstSubmissionMessage("Connecting to GST portal...");
+          await proceedWithGSTSubmission(pendingInvoiceIds);
+        }
+      } else {
+        // Log the full response for debugging
+        console.error("OTP verification failed. Full response:", response.data);
+        const errorMessage = response.data?.message || response.data?.error || "Failed to verify OTP";
+        throw new Error(errorMessage);
+      }
+    } catch (error: any) {
+      console.error("Error verifying auth OTP:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
+      
+      // Get the actual error message from the API response
+      const errorMessage = 
+        error.response?.data?.message || 
+        error.response?.data?.error ||
+        error.message || 
+        "Failed to verify OTP. Please try again.";
+      
+      setAuthOtpError(errorMessage);
+      setIsVerifyingAuthOtp(false);
+    }
+  };
+
+  // Proceed with GST submission (after auth check)
+  const proceedWithGSTSubmission = async (invoiceIds: string[]) => {
+    // Dialog should already be open from caller, just update message
+    if (!showGSTDialog) {
+      setShowGSTDialog(true);
+    }
+    setGstSubmissionStatus("submitting");
+    setIsSubmittingGST(true);
+    setGstSubmissionMessage("Connecting to GST portal...");
+
+    try {
+      // Update message before submitting
+      setGstSubmissionMessage("Submitting invoices to GST portal...");
+      
+      // Submit to GST API
+      const response = await submitGSTForInvoices(invoiceIds);
+
+      // Get success message from API response or use default
+      const successMessage =
+        response?.message ||
+        `${invoiceIds.length} invoice(s) have been submitted for GST.`;
+
+      setGstSubmissionStatus("submitted");
+      setGstSubmissionMessage(successMessage);
+      setIsSubmittingGST(false);
+
+      // Refresh invoice data to get updated GST status
+      // Add a small delay to ensure backend has processed the submission
+      setTimeout(async () => {
+        try {
+          console.log("Refreshing invoice data to get updated GST status...");
+          setGstSubmissionMessage("Refreshing invoice data...");
+          
+          const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+          const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+
+          const updatedResponse = await axios.get(fullUrl, {
+            headers: {
+              Authorization: `Bearer ${session?.user?.token}`,
+            },
+          });
+
+          // Handle different possible response structures
+          let updatedInvoiceData;
+          if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
+            updatedInvoiceData = updatedResponse.data;
+          } else if (updatedResponse.data && updatedResponse.data.taxInvoice && Array.isArray(updatedResponse.data.taxInvoice)) {
+            updatedInvoiceData = updatedResponse.data.taxInvoice;
+          } else if (updatedResponse.data && updatedResponse.data.taxInvoices && Array.isArray(updatedResponse.data.taxInvoices)) {
+            updatedInvoiceData = updatedResponse.data.taxInvoices;
+          } else if (updatedResponse.data && updatedResponse.data.data && Array.isArray(updatedResponse.data.data)) {
+            updatedInvoiceData = updatedResponse.data.data;
+          } else {
+            updatedInvoiceData = [];
+          }
+
+          console.log("Updated invoice data received:", updatedInvoiceData.length, "invoices");
+          setInvoices(updatedInvoiceData);
+          
+          // Update success message to indicate data has been refreshed
+          setGstSubmissionMessage(`${successMessage} Invoice list has been refreshed with latest GST status.`);
+          
+          // The useEffect hook will automatically update filteredInvoices based on the new invoices data
+          // and current filters (selectedMemberId, dateFilterType, etc.)
+        } catch (refreshError) {
+          console.error("Error refreshing invoice data:", refreshError);
+          // Show a toast to inform user, but don't fail the submission
+          toast({
+            title: "Warning",
+            description: "GST submitted successfully, but failed to refresh the invoice list. Please refresh the page to see updated status.",
+            variant: "default",
+          });
+        }
+      }, 1000); // Wait 1 second before refreshing to ensure backend has processed
+
+      // Clear selection after showing success
+      setSelectedInvoiceIds([]);
+      setPendingInvoiceIds([]);
+    } catch (error: any) {
+      console.error("Error submitting GST:", error);
+      setIsSubmittingGST(false);
+      setShowGSTDialog(false);
+      setGstSubmissionStatus(null);
+      setGstSubmissionMessage("");
+      setPendingInvoiceIds([]);
+
+      // Check if it's a multiple members error
+      if (
+        error.message &&
+        error.message.includes("Multiple Members are not allowed")
+      ) {
+        setShowMultipleMembersErrorDialog(true);
+      } else if (
+        error.message &&
+        error.message.includes("Invoices must need to be approved")
+      ) {
+        setShowApprovalErrorDialog(true);
+      } else {
+        toast({
+          title: "Error",
+          description:
+            error.response?.data?.message ||
+            error.message ||
+            "Failed to submit GST. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const submitGSTForInvoices = async (invoiceIds: string[]) => {
     if (invoiceIds.length === 0) {
       throw new Error("No invoices selected");
@@ -897,55 +1191,88 @@ export default function GSTList() {
   const confirmSubmitGST = async () => {
     setShowGSTConfirmationDialog(false);
 
-    // Open dialog and start submission process
-    setShowGSTDialog(true);
-    setGstSubmissionStatus("submitting");
-    setIsSubmittingGST(true);
-    setGstSubmissionMessage("");
-
     try {
-      // Submit to GST API
-      const response = await submitGSTForInvoices(selectedInvoiceIds);
+      // Get selected invoices data to get membershipId
+      const selectedInvoices = invoices.filter((inv) =>
+        selectedInvoiceIds.includes(inv.invoiceId)
+      );
 
-      // Get success message from API response or use default
-      const successMessage =
-        response?.message ||
-        `${selectedInvoiceIds.length} invoice(s) have been submitted for GST.`;
-
-      setGstSubmissionStatus("submitted");
-      setGstSubmissionMessage(successMessage);
-      setIsSubmittingGST(false);
-
-      // Refresh invoice data to get updated GST status
-      try {
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
-
-        const updatedResponse = await axios.get(fullUrl, {
-          headers: {
-            Authorization: `Bearer ${session?.user?.token}`,
-          },
-        });
-
-        if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
-          setInvoices(updatedResponse.data);
-        } else if (updatedResponse.data && updatedResponse.data.taxInvoice && Array.isArray(updatedResponse.data.taxInvoice)) {
-          setInvoices(updatedResponse.data.taxInvoice);
-        }
-      } catch (refreshError) {
-        console.error("Error refreshing invoice data:", refreshError);
-        // Don't show error to user as submission was successful
+      if (selectedInvoices.length === 0) {
+        throw new Error("Selected invoices not found");
       }
 
-      // Clear selection after showing success
-      setSelectedInvoiceIds([]);
+      // Check if all invoices are approved
+      const unapprovedInvoices = selectedInvoices.filter(
+        (inv) => inv.status !== "APPROVED"
+      );
+
+      if (unapprovedInvoices.length > 0) {
+        setShowApprovalErrorDialog(true);
+        return;
+      }
+
+      // Check if all invoices are from the same member
+      const uniqueMembershipIds = new Set(
+        selectedInvoices.map((inv) => inv.membershipId).filter(Boolean)
+      );
+
+      if (uniqueMembershipIds.size > 1) {
+        setShowMultipleMembersErrorDialog(true);
+        return;
+      }
+
+      // Get membershipId from the first selected invoice
+      const membershipId = selectedInvoices[0]?.membershipId;
+      if (!membershipId) {
+        throw new Error("Membership ID not found in selected invoices");
+      }
+
+      // Store pending invoice IDs
+      setPendingInvoiceIds(selectedInvoiceIds);
+
+      // Show loading dialog immediately while checking auth
+      setShowGSTDialog(true);
+      setGstSubmissionStatus("submitting");
+      setIsSubmittingGST(true);
+      setGstSubmissionMessage("Connecting to GST portal...");
+
+      // Check authentication first
+      let isAuthenticated: boolean;
+      try {
+        isAuthenticated = await checkAuthBeforeSubmission(membershipId);
+        console.log("Auth check result:", isAuthenticated);
+      } catch (authError: any) {
+        console.error("Error during auth check:", authError);
+        // If auth check fails, close dialog and show error
+        setShowGSTDialog(false);
+        setIsSubmittingGST(false);
+        setGstSubmissionStatus(null);
+        throw authError; // Re-throw to be caught by outer catch
+      }
+
+      // Handle based on auth result
+      if (isAuthenticated === true) {
+        // Already authenticated, update message and proceed with submission
+        console.log("User is authenticated, proceeding with GST submission");
+        setGstSubmissionMessage("Submitting invoices to GST portal...");
+        await proceedWithGSTSubmission(selectedInvoiceIds);
+      } else {
+        // OTP required, close GST dialog and show OTP dialog
+        console.log("OTP required, showing OTP dialog");
+        setShowGSTDialog(false);
+        setIsSubmittingGST(false);
+        setGstSubmissionStatus(null);
+        setShowAuthOtpDialog(true);
+      }
     } catch (error: any) {
-      console.error("Error submitting GST:", error);
-      setIsSubmittingGST(false);
+      console.error("Error in confirmSubmitGST:", error);
+      
+      // Close GST dialog if it's open
       setShowGSTDialog(false);
+      setIsSubmittingGST(false);
       setGstSubmissionStatus(null);
       setGstSubmissionMessage("");
-
+      
       // Check if it's a multiple members error
       if (
         error.message &&
@@ -963,7 +1290,7 @@ export default function GSTList() {
           description:
             error.response?.data?.message ||
             error.message ||
-            "Failed to submit GST. Please try again.",
+            "Failed to proceed with GST submission. Please try again.",
           variant: "destructive",
         });
       }
@@ -1141,50 +1468,39 @@ export default function GSTList() {
   // Handle single invoice GST submission from dropdown
   const handleSingleInvoiceGSTSubmit = async (invoiceId: string) => {
     try {
-      setIsSubmittingGST(true);
-      setShowGSTDialog(true);
-      setGstSubmissionStatus("submitting");
-      setGstSubmissionMessage("");
+      // Get invoice to find membershipId
+      const invoice = invoices.find((inv) => inv.invoiceId === invoiceId);
+      if (!invoice) {
+        throw new Error("Invoice not found");
+      }
 
-      // Submit single invoice
-      const response = await submitGSTForInvoices([invoiceId]);
+      // Check if invoice is approved
+      if (invoice.status !== "APPROVED") {
+        setShowApprovalErrorDialog(true);
+        return;
+      }
 
-      // Get success message from API response or use default
-      const successMessage =
-        response?.message ||
-        `Invoice ${invoiceId} has been submitted for GST.`;
+      const membershipId = invoice.membershipId;
+      if (!membershipId) {
+        throw new Error("Membership ID not found in invoice");
+      }
 
-      setGstSubmissionStatus("submitted");
-      setGstSubmissionMessage(successMessage);
-      setIsSubmittingGST(false);
+      // Store pending invoice IDs
+      setPendingInvoiceIds([invoiceId]);
 
-      // Refresh invoice data to get updated GST status
-      try {
-        const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
-        const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+      // Check authentication first
+      const isAuthenticated = await checkAuthBeforeSubmission(membershipId);
 
-        const updatedResponse = await axios.get(fullUrl, {
-          headers: {
-            Authorization: `Bearer ${session?.user?.token}`,
-          },
-        });
-
-        if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
-          setInvoices(updatedResponse.data);
-        } else if (updatedResponse.data && updatedResponse.data.taxInvoice && Array.isArray(updatedResponse.data.taxInvoice)) {
-          setInvoices(updatedResponse.data.taxInvoice);
-        }
-      } catch (refreshError) {
-        console.error("Error refreshing invoice data:", refreshError);
-        // Don't show error to user as submission was successful
+      if (isAuthenticated) {
+        // Already authenticated, proceed directly with submission
+        await proceedWithGSTSubmission([invoiceId]);
+      } else {
+        // OTP required, show OTP dialog
+        setShowAuthOtpDialog(true);
       }
     } catch (error: any) {
-      console.error("Error submitting GST:", error);
-      setIsSubmittingGST(false);
-      setShowGSTDialog(false);
-      setGstSubmissionStatus(null);
-      setGstSubmissionMessage("");
-
+      console.error("Error in handleSingleInvoiceGSTSubmit:", error);
+      
       // Check if it's a multiple members error
       if (
         error.message &&
@@ -1202,7 +1518,7 @@ export default function GSTList() {
           description:
             error.response?.data?.message ||
             error.message ||
-            "Failed to submit GST. Please try again.",
+            "Failed to proceed with GST submission. Please try again.",
           variant: "destructive",
         });
       }
@@ -1788,7 +2104,7 @@ export default function GSTList() {
             <DialogTitle>Submitting GST</DialogTitle>
             <DialogDescription>
               {gstSubmissionStatus === "submitting"
-                ? "Please wait while we process your GST submission."
+                ? "Please wait while we connect and submit to the GST portal."
                 : gstSubmissionStatus === "submitted"
                   ? "GST submission completed."
                   : ""}
@@ -1798,7 +2114,9 @@ export default function GSTList() {
             {gstSubmissionStatus === "submitting" && (
               <>
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg font-medium">Submitting...</p>
+                <p className="text-lg font-medium">
+                  {gstSubmissionMessage || "Processing..."}
+                </p>
               </>
             )}
             {gstSubmissionStatus === "submitted" && (
@@ -1809,7 +2127,8 @@ export default function GSTList() {
             )}
             <p className="text-sm text-muted-foreground text-center">
               {gstSubmissionStatus === "submitting" &&
-                `Submitting ${selectedInvoiceIds.length} invoice(s)...`}
+                (gstSubmissionMessage ||
+                  `Processing ${pendingInvoiceIds.length > 0 ? pendingInvoiceIds.length : selectedInvoiceIds.length} invoice(s)...`)}
               {gstSubmissionStatus === "submitted" &&
                 (gstSubmissionMessage ||
                   "Your invoices have been successfully submitted for GST.")}
@@ -1877,6 +2196,99 @@ export default function GSTList() {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auth OTP Dialog (for pre-submission authentication) */}
+      <Dialog
+        open={showAuthOtpDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowAuthOtpDialog(false);
+            setAuthOtp("");
+            setAuthOtpError("");
+            setPendingInvoiceIds([]);
+          } else {
+            setShowAuthOtpDialog(open);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {isCheckingAuth || isVerifyingAuthOtp ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : (
+                <Clock className="h-5 w-5 text-primary" />
+              )}
+              Authentication Required
+            </DialogTitle>
+            <DialogDescription>
+              {isCheckingAuth
+                ? "Checking authentication status..."
+                : isVerifyingAuthOtp
+                  ? "Verifying OTP..."
+                  : "An OTP has been sent to your registered mobile number. Please enter it to continue with GST submission."}
+            </DialogDescription>
+          </DialogHeader>
+          {!isCheckingAuth && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="auth-otp">OTP</Label>
+                <Input
+                  id="auth-otp"
+                  placeholder="Enter 6-digit OTP"
+                  value={authOtp}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setAuthOtp(value);
+                    setAuthOtpError("");
+                  }}
+                  maxLength={6}
+                  disabled={isVerifyingAuthOtp}
+                  className={authOtpError ? "border-destructive" : ""}
+                />
+                {authOtpError && (
+                  <p className="text-sm text-destructive">{authOtpError}</p>
+                )}
+              </div>
+            </div>
+          )}
+          {isCheckingAuth ? (
+            <DialogFooter>
+              <Button variant="outline" disabled>
+                Please wait...
+              </Button>
+            </DialogFooter>
+          ) : (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAuthOtpDialog(false);
+                  setAuthOtp("");
+                  setAuthOtpError("");
+                  setPendingInvoiceIds([]);
+                }}
+                disabled={isVerifyingAuthOtp}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAuthOtpVerification}
+                disabled={!authOtp || authOtp.length !== 6 || isVerifyingAuthOtp}
+              >
+                {isVerifyingAuthOtp ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify & Submit"
+                )}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 
