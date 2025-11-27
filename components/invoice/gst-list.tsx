@@ -237,6 +237,8 @@ export default function GSTList() {
       }
 
       setInvoices(responseData);
+
+      console.log("Invoice data:", responseData);
     } catch (err: unknown) {
       console.error("Error fetching invoice data:", err);
       toast({
@@ -741,6 +743,45 @@ export default function GSTList() {
   // Check if some invoices are selected
   const someSelected = selectedInvoiceIds.length > 0 && !allSelected;
 
+  // Check if selected invoices need GST verification
+  const needsGstVerification = () => {
+    if (selectedInvoiceIds.length === 0) return false;
+    
+    const selectedInvoices = invoices.filter((inv) =>
+      selectedInvoiceIds.includes(inv.invoiceId)
+    );
+    
+    if (selectedInvoices.length === 0) return false;
+    
+    // Check if all selected invoices are from the same member and need verification
+    const firstInvoice = selectedInvoices[0];
+    const isGstVerified = firstInvoice?.members?.complianceDetails?.isGstVerified;
+    
+    return isGstVerified !== "TRUE";
+  };
+
+  // Handle GST verification for selected invoices (member-level verification)
+  const handleGstVerification = () => {
+    if (selectedInvoiceIds.length === 0) {
+      toast({
+        title: "No Invoices Selected",
+        description: "Please select at least one invoice to verify GST.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the first invoice for verification (all should be from same member)
+    // Verification is at member level, so we only need one invoice ID
+    const firstInvoiceId = selectedInvoiceIds[0];
+    setCurrentVerifyingInvoiceId(firstInvoiceId);
+    setShowGstVerificationDialog(true);
+    setGstVerificationStep("username");
+    setGstInUserName("");
+    setGstOtp("");
+    setGstVerificationError("");
+  };
+
   // Handle GST submission - show confirmation first
   const handleSubmitGST = () => {
     if (selectedInvoiceIds.length === 0) {
@@ -805,11 +846,10 @@ export default function GSTList() {
       );
     }
 
-    // Get GST number from members.complianceDetails.gstInNumber
-    const gstInNumber =
-      selectedInvoices[0]?.members?.complianceDetails?.gstInNumber;
-    if (!gstInNumber) {
-      throw new Error("GST number not found in selected invoices");
+    // Get membershipId from the first selected invoice
+    const membershipId = selectedInvoices[0]?.membershipId;
+    if (!membershipId) {
+      throw new Error("Membership ID not found in selected invoices");
     }
 
     // Get ret_period from invoice date (use first invoice's date or current date)
@@ -823,14 +863,13 @@ export default function GSTList() {
 
     // Prepare invoices array
     const invoicesPayload = selectedInvoices.map((inv) => ({
-      invoiceNumber: inv.invoiceId,
+      invoiceId: inv.invoiceId,
     }));
 
     // Prepare payload
     const payload = {
-      gstInNumber,
+      membershipId,
       ret_period,
-      ip,
       invoices: invoicesPayload,
     };
 
@@ -1045,12 +1084,47 @@ export default function GSTList() {
           description: response.data.message || "GST verified successfully",
         });
 
-        // Proceed with GST submission
-        if (currentVerifyingInvoiceId) {
-          handleSingleInvoiceGSTSubmit(currentVerifyingInvoiceId);
-        }
-
+        // After successful verification, refresh invoice data to get updated verification status
+        // Verification is at member level, so all invoices from that member will be updated
+        const verifyingInvoiceId = currentVerifyingInvoiceId;
         setCurrentVerifyingInvoiceId(null);
+        
+        // Refresh invoice data to reflect updated verification status
+        const refreshInvoices = async () => {
+          try {
+            if (status === "authenticated" && session?.user?.token) {
+              const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+              const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+              const updatedResponse = await axios.get(fullUrl, {
+                headers: {
+                  Authorization: `Bearer ${session.user.token}`,
+                },
+              });
+              
+              let responseData;
+              if (updatedResponse.data && Array.isArray(updatedResponse.data)) {
+                responseData = updatedResponse.data;
+              } else if (updatedResponse.data && updatedResponse.data.taxInvoices && Array.isArray(updatedResponse.data.taxInvoices)) {
+                responseData = updatedResponse.data.taxInvoices;
+              } else if (updatedResponse.data && updatedResponse.data.data && Array.isArray(updatedResponse.data.data)) {
+                responseData = updatedResponse.data.data;
+              } else {
+                responseData = [];
+              }
+              
+              setInvoices(responseData);
+            }
+          } catch (error) {
+            console.error("Error refreshing invoices:", error);
+          }
+        };
+        
+        refreshInvoices();
+        
+        // If this was for a single invoice from dropdown, proceed with submission
+        if (verifyingInvoiceId && !selectedInvoiceIds.includes(verifyingInvoiceId)) {
+          handleSingleInvoiceGSTSubmit(verifyingInvoiceId);
+        }
       } else {
         throw new Error(response.data.message || "Failed to verify OTP");
       }
@@ -1164,21 +1238,42 @@ export default function GSTList() {
 
               <div className="flex items-center gap-2">
                 {selectedInvoiceIds.length > 0 && (session?.user?.role === "ADMIN" || session?.user?.role === "TQMA_EDITOR" || session?.user?.role === "TSMWA_EDITOR") && (
-                  <Button
-                    onClick={handleSubmitGST}
-                    disabled={isSubmittingGST}
-                    variant="default"
-                  >
-                    {isSubmittingGST ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-                      </>
+                  <>
+                    {needsGstVerification() ? (
+                      <Button
+                        onClick={handleGstVerification}
+                        disabled={isSubmittingGST || isVerifyingUsername || isVerifyingOtp}
+                        variant="default"
+                      >
+                        {isVerifyingUsername || isVerifyingOtp ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...
+                          </>
+                        ) : (
+                          <>
+                            <CircleCheck className="mr-2 h-4 w-4" />
+                            Verify GST ({selectedInvoiceIds.length})
+                          </>
+                        )}
+                      </Button>
                     ) : (
-                      <>
-                        Submit GST ({selectedInvoiceIds.length})
-                      </>
+                      <Button
+                        onClick={handleSubmitGST}
+                        disabled={isSubmittingGST}
+                        variant="default"
+                      >
+                        {isSubmittingGST ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                          </>
+                        ) : (
+                          <>
+                            Submit GST ({selectedInvoiceIds.length})
+                          </>
+                        )}
+                      </Button>
                     )}
-                  </Button>
+                  </>
                 )}
               </div>
 
