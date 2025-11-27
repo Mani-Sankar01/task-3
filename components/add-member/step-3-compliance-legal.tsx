@@ -58,6 +58,7 @@ export default function Step3ComplianceLegal({
   const [gstDetails, setGstDetails] = useState<{
     name: string;
     address: string;
+    GSTmemstatus: string;
   } | null>(null);
   const [gstError, setGstError] = useState<string | null>(null);
 
@@ -82,7 +83,7 @@ export default function Step3ComplianceLegal({
         throw new Error("GST Backend URL is not configured.");
       }
 
-      const apiUrl = `${gstBackendUrl}/search?gstin=${encodeURIComponent(gstinNo.trim())}`;
+      const apiUrl = `${gstBackendUrl}/api/search?gstin=${encodeURIComponent(gstinNo.trim())}`;
       console.log("Calling GST API:", apiUrl);
 
       const response = await axios.get(apiUrl);
@@ -110,9 +111,10 @@ export default function Step3ComplianceLegal({
             addr.pncd
           ].filter(Boolean);
           address = addressParts.join(", ");
+
         }
 
-        setGstDetails({ name, address });
+        setGstDetails({ name, address, GSTmemstatus: data.sts || "N/A" });
       } else {
         throw new Error(response.data?.result?.status_desc || "Failed to fetch GST details");
       }
@@ -841,6 +843,10 @@ export default function Step3ComplianceLegal({
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Address</label>
                   <p className="mt-1 text-sm">{gstDetails.address}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">GST Status</label>
+                  <p className="mt-1 text-sm">{gstDetails.GSTmemstatus}</p>
                 </div>
               </div>
             ) : null}
