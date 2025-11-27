@@ -96,7 +96,7 @@ const invoiceFormSchema = z.object({
   companyGstin: z.string().min(1, "Company GSTIN is required"),
   // New customer fields
   customerName: z.string().min(1, "Customer name is required"),
-  gstInNumber: z.string().min(1, "GSTIN number is required"),
+  gstInNumber: z.string().optional(),
   billingAddress: z.string().min(1, "Billing address is required"),
   shippingAddress: z.string().min(1, "Shipping address is required"),
   eWayNumber: z.string().optional(),
@@ -1024,7 +1024,7 @@ export default function InvoiceForm({
                     name="gstInNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>GSTIN Number</FormLabel>
+                        <FormLabel data-required={false}>GSTIN Number</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter GSTIN number" 
@@ -1086,7 +1086,7 @@ export default function InvoiceForm({
                     name="eWayNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>E-Way Number (Optional)</FormLabel>
+                        <FormLabel data-required={false}>E-Way Number (Optional)</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter E-Way number" {...field} />
                         </FormControl>
