@@ -449,10 +449,10 @@ export default function DashboardOverview() {
 
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/update_tax_invoice`,
         {
-          id: invoiceId,
-          action: "APPROVED",
+          invoiceId: invoiceId,
+          status: "APPROVED",
           note: "Approved by admin"
         },
         {
@@ -492,10 +492,10 @@ export default function DashboardOverview() {
 
     try {
       const response = await axios.post(
-        `${process.env.BACKEND_API_URL}/api/tax_invoice/approve_decline_request`,
+        `${process.env.BACKEND_API_URL}/api/tax_invoice/update_tax_invoice`,
         {
-          id: invoiceId,
-          action: "DECLINED",
+          invoiceId: invoiceId,
+          status: "DECLINED",
           note: declineNote
         },
         {
@@ -530,7 +530,7 @@ export default function DashboardOverview() {
     if (selectedMember) {
       success = await handleMemberDeclined(selectedMember.membershipId, declineReason);
     } else if (selectedInvoice) {
-      success = await handleInvoiceDeclined(selectedInvoice.id, declineReason);
+      success = await handleInvoiceDeclined(selectedInvoice.invoiceId, declineReason);
     }
 
     if (success) {
@@ -942,7 +942,7 @@ export default function DashboardOverview() {
                           <div className="flex items-center gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleInvoiceApproved(invoice.id)}
+                              onClick={() => handleInvoiceApproved(invoice.invoiceId)}
                               disabled={isProcessing}
                             >
                               <Check className="h-4 w-4" />
@@ -1548,7 +1548,7 @@ export default function DashboardOverview() {
                               <div className="flex items-center gap-2">
                                 <Button
                                   size="sm"
-                                  onClick={() => handleInvoiceApproved(invoice.id)}
+                                  onClick={() => handleInvoiceApproved(invoice.invoiceId)}
                                   disabled={isProcessing}
                                 >
                                   <Check className="h-4 w-4" />
