@@ -165,6 +165,8 @@ export default function GSTList() {
   const [showGSTDialog, setShowGSTDialog] = useState(false);
   const [showMultipleMembersErrorDialog, setShowMultipleMembersErrorDialog] = useState(false);
   const [showApprovalErrorDialog, setShowApprovalErrorDialog] = useState(false);
+  const [showPendingInvoicesErrorDialog, setShowPendingInvoicesErrorDialog] = useState(false);
+  const [pendingInvoiceErrorType, setPendingInvoiceErrorType] = useState<"pending" | "filed" | null>(null);
   const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"submitting" | "submitted" | null>(null);
   const [gstSubmissionMessage, setGstSubmissionMessage] = useState<string>("");
 
@@ -1054,7 +1056,6 @@ export default function GSTList() {
           setInvoices(updatedInvoiceData);
           
           // Update success message to indicate data has been refreshed
-          setGstSubmissionMessage(`${successMessage} Invoice list has been refreshed with latest GST status.`);
           
           // The useEffect hook will automatically update filteredInvoices based on the new invoices data
           // and current filters (selectedMemberId, dateFilterType, etc.)
@@ -1091,6 +1092,16 @@ export default function GSTList() {
         error.message.includes("Invoices must need to be approved")
       ) {
         setShowApprovalErrorDialog(true);
+      } else if (
+        error.message &&
+        (error.message.includes("READY_TO_FILE") || error.message === "ALREADY_FILED" || error.message === "PENDING_INVOICES")
+      ) {
+        if (error.message === "ALREADY_FILED") {
+          setPendingInvoiceErrorType("filed");
+        } else {
+          setPendingInvoiceErrorType("pending");
+        }
+        setShowPendingInvoicesErrorDialog(true);
       } else {
         toast({
           title: "Error",
@@ -1127,6 +1138,24 @@ export default function GSTList() {
       throw new Error(
         "Invoices must need to be approved for GST submission"
       );
+    }
+
+    // Check if any invoices are already filed
+    const filedInvoices = selectedInvoices.filter(
+      (inv) => inv.gstStatus === "FILED"
+    );
+
+    if (filedInvoices.length > 0) {
+      throw new Error("ALREADY_FILED");
+    }
+
+    // Check if all invoices have gstStatus READY_TO_FILE
+    const pendingInvoices = selectedInvoices.filter(
+      (inv) => inv.gstStatus !== "READY_TO_FILE"
+    );
+
+    if (pendingInvoices.length > 0) {
+      throw new Error("PENDING_INVOICES");
     }
 
     // Check if all invoices are from the same member
@@ -1175,7 +1204,7 @@ export default function GSTList() {
     }
 
     // Call GST API
-    const gstApiUrl = "https://gst.tsmwa.online/api/ret_save";
+    const gstApiUrl = `${process.env.NEXT_PUBLIC_GST_BACKEND_URL}/api/ret_save`;
     const response = await axios.post(gstApiUrl, payload, {
       headers: {
         "Content-Type": "application/json",
@@ -1208,6 +1237,28 @@ export default function GSTList() {
 
       if (unapprovedInvoices.length > 0) {
         setShowApprovalErrorDialog(true);
+        return;
+      }
+
+      // Check if any invoices are already filed
+      const filedInvoices = selectedInvoices.filter(
+        (inv) => inv.gstStatus === "FILED"
+      );
+
+      if (filedInvoices.length > 0) {
+        setPendingInvoiceErrorType("filed");
+        setShowPendingInvoicesErrorDialog(true);
+        return;
+      }
+
+      // Check if all invoices have gstStatus READY_TO_FILE
+      const pendingInvoices = selectedInvoices.filter(
+        (inv) => inv.gstStatus !== "READY_TO_FILE"
+      );
+
+      if (pendingInvoices.length > 0) {
+        setPendingInvoiceErrorType("pending");
+        setShowPendingInvoicesErrorDialog(true);
         return;
       }
 
@@ -1284,6 +1335,16 @@ export default function GSTList() {
         error.message.includes("Invoices must need to be approved")
       ) {
         setShowApprovalErrorDialog(true);
+      } else if (
+        error.message &&
+        (error.message.includes("READY_TO_FILE") || error.message === "ALREADY_FILED" || error.message === "PENDING_INVOICES")
+      ) {
+        if (error.message === "ALREADY_FILED") {
+          setPendingInvoiceErrorType("filed");
+        } else {
+          setPendingInvoiceErrorType("pending");
+        }
+        setShowPendingInvoicesErrorDialog(true);
       } else {
         toast({
           title: "Error",
@@ -1381,7 +1442,7 @@ export default function GSTList() {
       }
 
       // Call verify_username_otp API
-      const verifyOtpUrl = "https://gst.tsmwa.online/api/verify_username_otp";
+      const verifyOtpUrl = `${process.env.NEXT_PUBLIC_GST_BACKEND_URL}/api/verify_username_otp`;
       const response = await axios.post(
         verifyOtpUrl,
         {
@@ -1480,6 +1541,20 @@ export default function GSTList() {
         return;
       }
 
+      // Check if invoice is already filed
+      if (invoice.gstStatus === "FILED") {
+        setPendingInvoiceErrorType("filed");
+        setShowPendingInvoicesErrorDialog(true);
+        return;
+      }
+
+      // Check if invoice has gstStatus READY_TO_FILE
+      if (invoice.gstStatus !== "READY_TO_FILE") {
+        setPendingInvoiceErrorType("pending");
+        setShowPendingInvoicesErrorDialog(true);
+        return;
+      }
+
       const membershipId = invoice.membershipId;
       if (!membershipId) {
         throw new Error("Membership ID not found in invoice");
@@ -1512,6 +1587,16 @@ export default function GSTList() {
         error.message.includes("Invoices must need to be approved")
       ) {
         setShowApprovalErrorDialog(true);
+      } else if (
+        error.message &&
+        (error.message.includes("READY_TO_FILE") || error.message === "ALREADY_FILED" || error.message === "PENDING_INVOICES")
+      ) {
+        if (error.message === "ALREADY_FILED") {
+          setPendingInvoiceErrorType("filed");
+        } else {
+          setPendingInvoiceErrorType("pending");
+        }
+        setShowPendingInvoicesErrorDialog(true);
       } else {
         toast({
           title: "Error",
@@ -1835,144 +1920,19 @@ export default function GSTList() {
                             </TableCell>
 
                             <TableCell>
-                              <Button variant="ghost" className="h-8 w-8 p-0" onClick={(e) => {
+                              <Button variant="outline" className="h-8 w-8 p-0 mr-1" onClick={(e) => {
                                 e.stopPropagation();
                                 handleViewInvoice(invoice.invoiceId);
                               }}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger
-                                  asChild
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Button variant="ghost" className="h-8 w-8 p-0">
-                                    <span className="sr-only">Open menu</span>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewInvoice(invoice.invoiceId);
-                                    }}
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" /> View
-                                  </DropdownMenuItem>
-                                  {(session?.user?.role === "ADMIN" ||
-                                    session?.user?.role === "TSMWA_EDITOR" ||
-                                    session?.user?.role === "TQMA_EDITOR") && (
-                                      <>
-                                        <DropdownMenuItem
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditInvoice(invoice.invoiceId);
-                                          }}
-                                        >
-                                          <Edit className="mr-2 h-4 w-4" /> Edit
-                                        </DropdownMenuItem>
-
-                                        {invoice.status === "APPROVED" && (
-                                          <>
-                                            {invoice.members?.complianceDetails?.isGstVerified === "TRUE" ? (
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleSingleInvoiceGSTSubmit(invoice.invoiceId);
-                                                }}
-                                                disabled={isSubmittingGST}
-                                              >
-                                                <CircleCheck className="mr-2 h-4 w-4 text-green-500" />
-                                                Submit GST
-                                              </DropdownMenuItem>
-                                            ) : (
-                                              <DropdownMenuItem
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  setCurrentVerifyingInvoiceId(invoice.invoiceId);
-                                                  setShowGstVerificationDialog(true);
-                                                  setGstVerificationStep("username");
-                                                  setGstInUserName("");
-                                                  setGstOtp("");
-                                                  setGstVerificationError("");
-                                                }}
-                                                disabled={isSubmittingGST || isVerifyingUsername || isVerifyingOtp}
-                                              >
-                                                <CircleCheck className="mr-2 h-4 w-4 text-blue-500" />
-                                                Verify GST
-                                              </DropdownMenuItem>
-                                            )}
-                                          </>
-                                        )}
-                                      </>
-
-                                    )}
-
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownloadInvoice(invoice.id);
-                                    }}
-                                  >
-                                    <Download className="mr-2 h-4 w-4" /> Download
-                                  </DropdownMenuItem>
-                                  {session?.user?.role === "ADMIN" && (
-                                    <>
-
-
-                                      <DropdownMenuSeparator />
-                                      <Dialog>
-                                        <DialogTrigger asChild>
-                                          <DropdownMenuItem
-                                            className="text-destructive focus:text-destructive"
-                                            onSelect={(e) => e.preventDefault()}
-                                          >
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                          </DropdownMenuItem>
-                                        </DialogTrigger>
-                                        <DialogContent className="sm:max-w-md">
-                                          <DialogHeader>
-                                            <DialogTitle className="flex items-center gap-2">
-                                              <span className="text-destructive">
-                                                ⚠️
-                                              </span>
-                                              Delete Invoice
-                                            </DialogTitle>
-                                            <DialogDescription>
-                                              Are you sure you want to delete invoice{" "}
-                                              <span className="font-semibold">
-                                                {invoice.invoiceId}
-                                              </span>
-                                              ? This action cannot be undone.
-                                            </DialogDescription>
-                                          </DialogHeader>
-                                          <DialogFooter className="gap-2">
-                                            <DialogClose asChild>
-                                              <Button variant="outline">
-                                                Cancel
-                                              </Button>
-                                            </DialogClose>
-                                            <DialogClose asChild>
-                                              <Button
-                                                variant="destructive"
-                                                onClick={() =>
-                                                  handleDeleteInvoice(invoice.invoiceId)
-                                                }
-                                                disabled={isDeleting}
-                                              >
-                                                Delete
-                                              </Button>
-                                            </DialogClose>
-                                          </DialogFooter>
-                                        </DialogContent>
-                                      </Dialog>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                              <Button variant="default" className="h-8 w-8 p-0" onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadInvoice(invoice.id);
+                              }}>
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            
                             </TableCell>
                           </TableRow>
                         ))
@@ -2193,6 +2153,41 @@ export default function GSTList() {
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setShowApprovalErrorDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pending Invoices Error Dialog */}
+      <Dialog
+        open={showPendingInvoicesErrorDialog}
+        onOpenChange={(open) => {
+          setShowPendingInvoicesErrorDialog(open);
+          if (!open) {
+            setPendingInvoiceErrorType(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <CircleX className="h-5 w-5" />
+              {pendingInvoiceErrorType === "filed" 
+                ? "Already Filed" 
+                : "Can't Proceed with Pending Invoices"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingInvoiceErrorType === "filed"
+                ? "These invoices have already been filed for GST. You cannot submit them again."
+                : "Can't proceed with Pending Invoices. Only invoices with status READY_TO_FILE can be submitted for GST."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => {
+              setShowPendingInvoicesErrorDialog(false);
+              setPendingInvoiceErrorType(null);
+            }}>
               Close
             </Button>
           </DialogFooter>
