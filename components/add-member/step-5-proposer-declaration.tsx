@@ -521,7 +521,7 @@ export default function Step5ProposerDeclaration() {
                         console.error('Upload error:', error);
                       }}
                       subfolder="photos"
-                      accept=".jpg,.jpeg,.png"
+                      accept=".jpg,.jpeg,.png,.pdf"
                       existingFilePath={field.value?.existingPath}
                       onDownload={handleDownload}
                     />
@@ -547,7 +547,7 @@ export default function Step5ProposerDeclaration() {
                         console.error('Upload error:', error);
                       }}
                       subfolder="signatures"
-                      accept=".jpg,.jpeg,.png"
+                      accept=".jpg,.jpeg,.png,.pdf"
                       existingFilePath={field.value?.existingPath}
                       onDownload={handleDownload}
                     />

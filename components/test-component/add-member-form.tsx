@@ -166,11 +166,11 @@ const formSchema = z.object({
     partners: z
       .array(
         z.object({
-          name: z.string().min(2, "Name is required"),
-          contactNo: z.string().min(10, "Contact is required"),
-          aadharNo: z.string().min(12, "Aadhar No is required"),
-          pan: z.string().min(10, "Pan No is required"),
-          email: z.string().min(4, "Email No is required"),
+          name: z.string().min(2, "Name must be minimum 2 digits"),
+          contactNo: z.string().length(10, "Contact number must be 10 digits"),
+          aadharNo: z.string().length(12, "Aadhar number must be 12 digits"),
+          pan: z.string().length(10, "Pan number must be 10 digits"),
+          email: z.string().email("Invalid email address"),
         })
       )
       .default([]),
