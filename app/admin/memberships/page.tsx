@@ -794,7 +794,7 @@ const page = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" className="h-8 w-8 p-0"
+                          <Button variant="default" className="h-8 w-8 p-0 cursor-pointer mr-1"
                             onClick={(e) => {
                               e.stopPropagation();
                               viewMemberDetails(member.membershipId);
@@ -808,7 +808,7 @@ const page = () => {
                               asChild
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <Button variant="ghost" className="h-8 w-8 p-0">
+                              <Button variant="outline" className="h-8 w-8 p-0 cursor-pointer">
                                 <span className="sr-only">Open menu</span>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
@@ -936,7 +936,7 @@ const page = () => {
                                     </DropdownMenuItem>
                                   )}
 
-                                  <Dialog>
+                                  {/* <Dialog>
                                     <DialogTrigger asChild>
                                       <DropdownMenuItem
                                         className="text-destructive focus:text-destructive"
@@ -982,7 +982,7 @@ const page = () => {
                                         </DialogClose>
                                       </DialogFooter>
                                     </DialogContent>
-                                  </Dialog>
+                                  </Dialog> */}
                                 </>
                               )}
                             </DropdownMenuContent>
