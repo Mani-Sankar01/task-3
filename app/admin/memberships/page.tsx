@@ -67,6 +67,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 
 // Define the Member type based on API response
 interface Member {
@@ -124,6 +125,10 @@ const page = () => {
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [declineError, setDeclineError] = useState("");
+  const [showCancelMembershipDialog, setShowCancelMembershipDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelError, setCancelError] = useState("");
+  const [memberToCancel, setMemberToCancel] = useState<Member | null>(null);
 
   const { data: session, status } = useSession();
   const { toast } = useToast();
@@ -266,7 +271,7 @@ const page = () => {
   };
 
   // Update member status (Active/Inactive/Cancelled)
-  const handleUpdateMemberStatus = async (memberId: string, newStatus: "ACTIVE" | "INACTIVE" | "CANCELLED") => {
+  const handleUpdateMemberStatus = async (memberId: string, newStatus: "ACTIVE" | "INACTIVE" | "CANCELLED", note?: string) => {
     if (!session?.user?.token) {
       console.log("Token" + session?.user?.token);
       toast({
@@ -281,12 +286,19 @@ const page = () => {
       setIsProcessing(true);
       const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
 
+      const payload: any = {
+        membershipId: memberId,
+        membershipStatus: newStatus
+      };
+
+      // Include note if provided (for cancellation)
+      if (note) {
+        payload.note = note;
+      }
+
       const response = await axios.post(
         `${apiUrl}/api/member/update_member`,
-        {
-          membershipId: memberId,
-          membershipStatus: newStatus
-        },
+        payload,
         {
           headers: {
             Authorization: `Bearer ${session.user.token}`,
@@ -316,6 +328,25 @@ const page = () => {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Handle cancel membership with reason
+  const handleCancelMembership = () => {
+    if (!cancelReason.trim()) {
+      setCancelError("Please provide a reason for canceling the membership.");
+      return;
+    }
+
+    if (!memberToCancel) {
+      setCancelError("Member information not found.");
+      return;
+    }
+
+    setCancelError("");
+    handleUpdateMemberStatus(memberToCancel.membershipId, "CANCELLED", cancelReason.trim());
+    setShowCancelMembershipDialog(false);
+    setCancelReason("");
+    setMemberToCancel(null);
   };
 
   // Handle member approval
@@ -854,7 +885,12 @@ const page = () => {
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
                                         className="cursor-pointer"
-                                        onClick={() => handleUpdateMemberStatus(member.membershipId, "CANCELLED")}
+                                        onClick={() => {
+                                          setMemberToCancel(member);
+                                          setCancelReason("");
+                                          setCancelError("");
+                                          setShowCancelMembershipDialog(true);
+                                        }}
                                         disabled={isProcessing}
                                       >
                                         <X className="h-4 w-4 text-red-600" />
@@ -1080,6 +1116,64 @@ const page = () => {
               >
                 <BanIcon className="h-4 w-4 mr-2" />
                 Decline Member
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Cancel Membership Dialog */}
+        <Dialog open={showCancelMembershipDialog} onOpenChange={setShowCancelMembershipDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <X className="h-5 w-5 text-red-500" />
+                Cancel Membership
+              </DialogTitle>
+              <DialogDescription>
+                Please provide a reason for canceling membership for {memberToCancel?.applicantName} ({memberToCancel?.membershipId})
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="cancel-reason">Reason for Cancellation</Label>
+                <Textarea
+                  id="cancel-reason"
+                  placeholder="Enter reason for canceling membership..."
+                  value={cancelReason}
+                  onChange={(e) => {
+                    setCancelReason(e.target.value);
+                    setCancelError("");
+                  }}
+                  rows={4}
+                />
+              </div>
+              {cancelError && (
+                <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+                  {cancelError}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCancelMembershipDialog(false);
+                  setCancelReason("");
+                  setCancelError("");
+                  setMemberToCancel(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleCancelMembership}
+                disabled={isProcessing || !cancelReason.trim()}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel Membership
               </Button>
             </DialogFooter>
           </DialogContent>

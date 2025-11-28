@@ -232,6 +232,7 @@ export interface Member {
   approvedOrDeclinedBy: number | null;
   approvedOrDeclinedAt: string | null;
   declineReason: string | null;
+  note: string | null;
   createdAt: string;
   modifiedAt: string;
   machineryInformations: MachineryInformation[];

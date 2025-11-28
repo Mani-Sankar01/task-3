@@ -332,29 +332,29 @@ function MemberLaboursTable({ memberId }: { memberId: string }) {
                 session?.user?.role === "TQMA_EDITOR" ||
                 session?.user?.role === "TSMWA_EDITOR") &&
                 <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => viewLabourDetails(labour.labourId)}>
-                      <Eye className="mr-2 h-4 w-4" /> View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => editLabour(labour.labourId)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => openDeleteDialog(labour.labourId, labour.fullName)}
-                      disabled={isDeleting === labour.labourId}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                    </DropdownMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={() => viewLabourDetails(labour.labourId)}>
+                        <Eye className="mr-2 h-4 w-4" /> View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => editLabour(labour.labourId)}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => openDeleteDialog(labour.labourId, labour.fullName)}
+                        disabled={isDeleting === labour.labourId}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -572,53 +572,53 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
                 session?.user?.role === "TQMA_EDITOR" ||
                 session?.user?.role === "TSMWA_EDITOR") &&
                 <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <span className="sr-only">Open menu</span>
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        viewFeeDetails(fee.billingId);
-                      }}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <EyeIcon className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    {(session?.user?.role === "ADMIN" ||
-                      session?.user?.role === "TSMWA_EDITOR" ||
-                      session?.user?.role === "TQMA_EDITOR") && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editFee(fee.billingId);
-                          }}
-                        >
-                          <PencilIcon className="h-4 w-4 mr-2" />
-                          Edit Fee
-                        </DropdownMenuItem>
-                      )}
-                    {session?.user?.role === "ADMIN" && (
+                      <Button variant="ghost" className="h-8 w-8 p-0">
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
+                          viewFeeDetails(fee.billingId);
                         }}
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                        Delete
+                        <EyeIcon className="h-4 w-4 mr-2" />
+                        View Details
                       </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                      {(session?.user?.role === "ADMIN" ||
+                        session?.user?.role === "TSMWA_EDITOR" ||
+                        session?.user?.role === "TQMA_EDITOR") && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editFee(fee.billingId);
+                            }}
+                          >
+                            <PencilIcon className="h-4 w-4 mr-2" />
+                            Edit Fee
+                          </DropdownMenuItem>
+                        )}
+                      {session?.user?.role === "ADMIN" && (
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                          Delete
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               }
             </TableRow>
@@ -2081,32 +2081,32 @@ export default function MembershipDetailsClient({
             <div className="flex items-center gap-2">
               <CardTitle className="text-2xl">{member.applicantName}</CardTitle>
 
-            
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      member.membershipStatus === "ACTIVE"
-                        ? "default"
-                        : member.membershipStatus === "INACTIVE"
-                          ? "secondary"
-                          : "outline"
-                    }
-                  >
-                    {member.membershipStatus}
-                  </Badge>
 
-                  {/* Only show edit status button for admin role */}
-                  {userRole === "admin" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsStatusEditing(true)}
-                    >
-                      Edit Status
-                    </Button>
-                  )}
-                </div>
-        
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant={
+                    member.membershipStatus === "ACTIVE"
+                      ? "default"
+                      : member.membershipStatus === "INACTIVE"
+                        ? "secondary"
+                        : "outline"
+                  }
+                >
+                  {member.membershipStatus}
+                </Badge>
+
+                {/* Only show edit status button for admin role */}
+                {userRole === "admin" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsStatusEditing(true)}
+                  >
+                    Edit Status
+                  </Button>
+                )}
+              </div>
+
             </div>
             <CardDescription>
               Member since {new Date(member.createdAt).toLocaleDateString()}
@@ -2122,8 +2122,8 @@ export default function MembershipDetailsClient({
             session?.user?.role === "TQMA_EDITOR" ||
             session?.user?.role === "TSMWA_EDITOR") &&
             <Button onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" /> Edit Profile
-          </Button>
+              <Edit className="mr-2 h-4 w-4" /> Edit Profile
+            </Button>
           }
         </CardHeader>
       </Card>
@@ -2769,6 +2769,36 @@ export default function MembershipDetailsClient({
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Notes</CardTitle>
+              <CardDescription>Notes and comments for this member</CardDescription>
+            </CardHeader>
+            <CardContent className="">
+              {member.note ? (
+                <div className="bg-muted/40 p-4 rounded-md">
+                  <h4 className="text-sm font-semibold text-primary">Notes</h4>
+                <p className="text-sm text-muted-foreground">{member.note}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No notes added yet.
+                </p>
+              )}
+              {member.declineReason ? (
+                <div className="mt-4 bg-muted/40 p-4 rounded-md">
+                  <h4 className="text-sm font-semibold text-primary">Decline Reason</h4>
+                  <p className="text-sm text-muted-foreground">{member.declineReason}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground mt-4 bg-muted/40 p-4 rounded-md">
+                  No decline reason added yet.
+                </p>
+              )}
+
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="machineries">
@@ -2892,13 +2922,13 @@ export default function MembershipDetailsClient({
                   All GST filling details for this member
                 </CardDescription>
               </div>
-              
+
             </CardHeader>
             <CardContent>
-              
+
             </CardContent>
           </Card>
-         
+
         </TabsContent>
 
         {/* Other tabs content remains the same */}
@@ -3094,58 +3124,58 @@ export default function MembershipDetailsClient({
                   ].filter(doc => doc.number || doc.path).map((doc) => {
                     const isExpirable = !!doc.expiredAt;
                     return (
-                    <TableRow key={doc.type}>
-                      <TableCell className="font-medium">{doc.label}</TableCell>
-                      <TableCell>{doc.number || "-"}</TableCell>
-                      <TableCell>{doc.path || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant={isExpirable ? "default" : "secondary"}>
-                          {isExpirable ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {isExpirable && doc.expiredAt ? (
-                          new Date(doc.expiredAt as string) >= new Date(new Date().toDateString()) ? (
-                            <Badge variant="default">Active</Badge>
+                      <TableRow key={doc.type}>
+                        <TableCell className="font-medium">{doc.label}</TableCell>
+                        <TableCell>{doc.number || "-"}</TableCell>
+                        <TableCell>{doc.path || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={isExpirable ? "default" : "secondary"}>
+                            {isExpirable ? "Yes" : "No"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {isExpirable && doc.expiredAt ? (
+                            new Date(doc.expiredAt as string) >= new Date(new Date().toDateString()) ? (
+                              <Badge variant="default">Active</Badge>
+                            ) : (
+                              <Badge variant="destructive">Expired</Badge>
+                            )
                           ) : (
-                            <Badge variant="destructive">Expired</Badge>
-                          )
-                        ) : (
-                          <Badge variant="secondary">No Expiry</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{isExpirable && doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
-                      {(session?.user?.role === "ADMIN" ||
-                        session?.user?.role === "TQMA_EDITOR" ||
-                        session?.user?.role === "TSMWA_EDITOR") &&
-                        <TableCell className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditLicenseDialog(doc.type)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
-                          {doc.type === "gst" && (
+                            <Badge variant="secondary">No Expiry</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{isExpirable && doc.expiredAt ? prettyDate(doc.expiredAt) : "-"}</TableCell>
+                        {(session?.user?.role === "ADMIN" ||
+                          session?.user?.role === "TQMA_EDITOR" ||
+                          session?.user?.role === "TSMWA_EDITOR") &&
+                          <TableCell className="flex gap-2">
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setGstCredentialsError("");
-                                setGstUsername(memberCompliance?.gstInUsername || "");
-                                setGstPassword(memberCompliance?.gstInPassword || "");
-                                setShowGSTCredentialsDialog(true);
-                              }}
+                              onClick={() => openEditLicenseDialog(doc.type)}
                             >
-                              <Key className="h-4 w-4" />
+                              <Edit2 className="h-4 w-4" />
                             </Button>
-                          )}
-                        </TableCell>
-                      }
-                    </TableRow>
-                  );
+                            <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
+                            {doc.type === "gst" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setGstCredentialsError("");
+                                  setGstUsername(memberCompliance?.gstInUsername || "");
+                                  setGstPassword(memberCompliance?.gstInPassword || "");
+                                  setShowGSTCredentialsDialog(true);
+                                }}
+                              >
+                                <Key className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        }
+                      </TableRow>
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -3229,37 +3259,37 @@ export default function MembershipDetailsClient({
                   {attachmentsWithExpiry.map((attachment) => {
                     const isExpirable = !!attachment.expiredAt;
                     return (
-                    <TableRow key={attachment.id}>
-                      <TableCell className="font-medium">{attachment.documentName}</TableCell>
-                      <TableCell>{attachment.documentPath || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant={isExpirable ? "default" : "secondary"}>
-                          {isExpirable ? "Yes" : "No"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {isExpirable && attachment.expiredAt ? (
-                          new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
-                            <Badge variant="default">Active</Badge>
-                          ) : (
-                            <Badge variant="destructive">Expired</Badge>
-                          )
-                        ) : (
-                          <Badge variant="secondary">No Expiry</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>{isExpirable && attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
-                      {(session?.user?.role === "ADMIN" ||
-                        session?.user?.role === "TQMA_EDITOR" ||
-                        session?.user?.role === "TSMWA_EDITOR") &&
-                        <TableCell className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
-                          <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
+                      <TableRow key={attachment.id}>
+                        <TableCell className="font-medium">{attachment.documentName}</TableCell>
+                        <TableCell>{attachment.documentPath || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={isExpirable ? "default" : "secondary"}>
+                            {isExpirable ? "Yes" : "No"}
+                          </Badge>
                         </TableCell>
-                      }
-                    </TableRow>
-                  );
+                        <TableCell>
+                          {isExpirable && attachment.expiredAt ? (
+                            new Date(attachment.expiredAt) >= new Date(new Date().toDateString()) ? (
+                              <Badge variant="default">Active</Badge>
+                            ) : (
+                              <Badge variant="destructive">Expired</Badge>
+                            )
+                          ) : (
+                            <Badge variant="secondary">No Expiry</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>{isExpirable && attachment.expiredAt ? prettyDate(attachment.expiredAt) : "-"}</TableCell>
+                        {(session?.user?.role === "ADMIN" ||
+                          session?.user?.role === "TQMA_EDITOR" ||
+                          session?.user?.role === "TSMWA_EDITOR") &&
+                          <TableCell className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openEditDoc(attachment, "additional")}><Edit2 className="h-4 w-4" /></Button>
+                            <Button variant="destructive" size="sm" onClick={() => openDeleteDocDialog(attachment)} disabled={docLoading || isDeletingDoc}><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="sm" onClick={() => handleDownloadAttachment(attachment)}><Download className="h-4 w-4" /></Button>
+                          </TableCell>
+                        }
+                      </TableRow>
+                    );
                   })}
                 </TableBody>
               </Table>
