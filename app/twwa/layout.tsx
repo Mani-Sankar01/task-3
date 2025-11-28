@@ -16,6 +16,7 @@ import {
   CircleAlert,
   ClipboardList,
   Dices,
+  FileText,
   GalleryVerticalEnd,
   IndianRupee,
   ListTodoIcon,
@@ -125,7 +126,12 @@ const data = {
           title: "All Invoices",
           url: "/twwa/invoices",
           icon: ClipboardList,
-        }
+        },
+        {
+          title: "GST Filling",
+          url: "/twwa/gst",
+          icon: FileText,
+        },
       ],
     },
     {

@@ -167,7 +167,7 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
             name="membershipDetails.isValidMember"
             render={({ field }) => (
               <FormItem className="space-y-3">
-                <FormLabel>Is this a Valid member?</FormLabel>
+                <FormLabel>Is this a valid Advisory Body member?</FormLabel>
                 <FormControl>
                   <RadioGroup
                     onValueChange={field.onChange}
