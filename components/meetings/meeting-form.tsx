@@ -1288,12 +1288,12 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Member Attendees</h3>
 
-              <FormField
+                    <FormField
                 control={form.control}
                       name="memberAttendees.type"
                 render={({ field }) => (
                   <FormItem>
-                          <FormLabel>Member Selection Type</FormLabel>
+                          <FormLabel data-required="false">Member Selection Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                               <SelectTrigger>
@@ -1320,7 +1320,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         name="memberAttendees.zone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Select Zones</FormLabel>
+                            <FormLabel data-required="false">Select Zones</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -1389,7 +1389,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         name="memberAttendees.mandal"
                     render={({ field }) => (
                       <FormItem>
-                            <FormLabel>Select Mandals</FormLabel>
+                            <FormLabel data-required="false">Select Mandals</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -1458,7 +1458,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         name="memberAttendees.custom"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Select Members</FormLabel>
+                            <FormLabel data-required="false">Select Members</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
@@ -1538,7 +1538,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       name="vehicleAttendees.type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Vehicle Selection Type</FormLabel>
+                          <FormLabel data-required="false">Vehicle Selection Type</FormLabel>
                           <Select 
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -1588,7 +1588,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                     {(form.watch("vehicleAttendees.type") === "selectedOwners" || 
                       form.watch("vehicleAttendees.type") === "selectedDrivers") && (
                   <div className="space-y-2">
-                        <FormLabel>
+                        <FormLabel data-required="false">
                           {form.watch("vehicleAttendees.type") === "selectedOwners" && "Select Vehicle Owners"}
                           {form.watch("vehicleAttendees.type") === "selectedDrivers" && "Select Vehicle Drivers"}
                         </FormLabel>
@@ -1682,7 +1682,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       name="labourAttendees.type"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Labour Selection Type</FormLabel>
+                          <FormLabel data-required="false">Labour Selection Type</FormLabel>
                           <Select 
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -1719,7 +1719,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         name="labourAttendees.custom"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Select Labour</FormLabel>
+                            <FormLabel data-required="false">Select Labour</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
                                 <FormControl>
