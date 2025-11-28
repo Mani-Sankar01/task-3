@@ -43,24 +43,24 @@ const formSchema = z.object({
     required_error: "Membership Type is required",
   }),
   applicationDetails: z.object({
-    electricalUscNumber: z.string().min(1, "USC Number is required"),
+    electricalUscNumber: z.string().min(4, "USC Number must be minimum 4 digits"),
     dateOfApplication: z.string().min(1, "Date is required"),
-    scNumber: z.string().min(1, "SC Number is required"),
+    scNumber: z.string().min(4, "SC Number must be minimum 4 digits"),
   }),
   memberDetails: z.object({
-    applicantName: z.string().min(1, "Name is required"),
+    applicantName: z.string().min(4, "Name must be minimum 4 digits"),
     relation: z.string().min(1, "Relation is required"),
-    relativeName: z.string().min(1, "Name is required"),
+    relativeName: z.string().min(4, "Name must be minimum 4 digits"),
   }),
   firmDetails: z.object({
-    firmName: z.string().min(1, "Firm name is required"),
-    proprietorName: z.string().min(1, "Proprietor name is required"),
-    contact1: z.string().min(10, "Contact1 number is required"),
+    firmName: z.string().min(4, "Firm name must be minimum 4 digits"),
+    proprietorName: z.string().min(4, "Proprietor name must be minimum 4 digits"),
+    contact1: z.string().length(10, "Contact1 number must be 10 digits"),
     contact2: z.string().optional(),
   }),
   businessDetails: z.object({
-    surveyNumber: z.string().min(1, "Survey number is required"),
-    village: z.string().min(1, "Village is required"),
+    surveyNumber: z.string().min(4, "Survey number must be minimum 4 digits"),
+    village: z.string().min(4, "Village must be minimum 4 digits"),
     zone: z.string().min(1, "Zone is required"),
     mandal: z.string().min(1, "Mandal is required"),
     district: z.string().min(1, "District is required"),
@@ -70,20 +70,20 @@ const formSchema = z.object({
     ownerSubType: z.string().optional(),
   }),
   electricalDetails: z.object({
-    sanctionedHP: z.string().min(1, "sanctionedHP is required"),
+    sanctionedHP: z.string().min(1, "sanctionedHP must be minimum 1"),
   }),
   branchDetails: z.object({
     branches: z
       .array(
         z.object({
-          placeOfBusiness: z.string().min(1, "Place Business is required"),
+          placeOfBusiness: z.string().min(4, "Place Business must be minimum 4 digits"),
           proprietorStatus: z.string().min(1, "Proprietor Status is required"),
           proprietorType: z.string().optional(),
           electricalUscNumber: z
             .string()
-            .min(4, "Electrical Usc Number is required"),
+            .min(4, "Electrical Usc Number must be minimum 4 digits"),
           scNumber: z.string().min(4, "SC Number is required"),
-          sanctionedHP: z.string().min(1, "SC Number is required"),
+          sanctionedHP: z.string().min(1, "Sanctioned HP must be minimum 1"),
           machinery: z
             .array(
               z.object({
@@ -125,8 +125,8 @@ const formSchema = z.object({
       .default([]),
   }),
   complianceDetails: z.object({
-    gstinNo: z.string().min(1, "GSTIN number is required"),
-    factoryLicenseNo: z.string().min(1, "Factory License number is required"),
+    gstinNo: z.string().min(10, "GSTIN number must be minimum 10 digits"),
+    factoryLicenseNo: z.string().min(6, "Factory License number is required"),
     tspcbOrderNo: z.string().optional(),
     mdlNo: z.string().optional(),
     udyamCertificateNo: z.string().optional(),

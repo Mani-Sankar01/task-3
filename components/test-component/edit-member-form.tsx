@@ -39,24 +39,24 @@ import { useToast } from "@/hooks/use-toast";
 const formSchema = z.object({
   membershipType: z.enum(["TSMWA", "TQMWA"]).default("TSMWA"),
   applicationDetails: z.object({
-    electricalUscNumber: z.string().min(1, "USC Number is required"),
+    electricalUscNumber: z.string().min(4, "USC Number must be minimum 4 digits"),
     dateOfApplication: z.string().min(1, "Date is required"),
-    scNumber: z.string().min(1, "SC Number is required"),
+    scNumber: z.string().min(4, "SC Number must be minimum 4 digits"),
   }),
   memberDetails: z.object({
-    applicantName: z.string().min(1, "Name is required"),
+    applicantName: z.string().min(4, "Name must be minimum 4 digits"),
     relation: z.string().min(1, "Relation is required"),
-    relativeName: z.string().min(1, "Name is required"),
+    relativeName: z.string().min(4, "Name must be minimum 4 digits"),
   }),
   firmDetails: z.object({
-    firmName: z.string().min(1, "Firm name is required"),
-    proprietorName: z.string().min(1, "Proprietor name is required"),
-    contact1: z.string().min(10, "Contact1 number is required"),
+    firmName: z.string().min(4, "Firm name must be minimum 4 digits"),
+    proprietorName: z.string().min(4, "Proprietor name must be minimum 4 digits"),
+    contact1: z.string().length(10, "Contact1 number must be 10 digits"),
     contact2: z.string().optional(),
   }),
   businessDetails: z.object({
-    surveyNumber: z.string().min(1, "Survey number is required"),
-    village: z.string().min(1, "Village is required"),
+    surveyNumber: z.string().min(4, "Survey number must be minimum 4 digits"),
+    village: z.string().min(4, "Village must be minimum 4 digits"),
     zone: z.string().min(1, "Zone is required"),
     mandal: z.string().min(1, "Mandal is required"),
     district: z.string().min(1, "District is required"),
@@ -73,14 +73,14 @@ const formSchema = z.object({
       .array(
         z.object({
           id: z.number().optional(),
-          placeOfBusiness: z.string().min(1, "Place Business is required"),
+          placeOfBusiness: z.string().min(4, "Place Business must be minimum 4 digits"),
           proprietorStatus: z.string().min(1, "Proprietor Status is required"),
           proprietorType: z.string().optional(),
           electricalUscNumber: z
             .string()
-            .min(4, "Electrical Usc Number is required"),
-          scNumber: z.string().min(4, "SC Number is required"),
-          sanctionedHP: z.string().min(1, "SC Number is required"),
+            .min(4, "Electrical Usc Number must be minimum 4 digits"),
+          scNumber: z.string().min(4, "SC Number must be minimum 4 digits"),
+          sanctionedHP: z.string().min(1, "Sanctioned HP must be minimum 1"),
           machinery: z
             .array(
               z.object({
