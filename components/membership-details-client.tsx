@@ -676,7 +676,7 @@ export default function MembershipDetailsClient({
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user?.role)}/memberships`);
+    router.back();
   };
 
   const handleStatusChange = (newStatus: string) => {

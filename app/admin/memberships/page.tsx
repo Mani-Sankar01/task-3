@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpDown,
   BananaIcon,
@@ -109,6 +109,7 @@ interface Member {
 
 const page = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Member | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -120,6 +121,7 @@ const page = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [approvalFilter, setApprovalFilter] = useState<string>("all");
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showDeclineDialog, setShowDeclineDialog] = useState(false);
@@ -132,6 +134,45 @@ const page = () => {
 
   const { data: session, status } = useSession();
   const { toast } = useToast();
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string, status: string, approval: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    if (status && status !== "all") {
+      params.set("status", status);
+    }
+    if (approval && approval !== "all") {
+      params.set("approval", approval);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "all";
+    const approval = searchParams.get("approval") || "all";
+
+    if (search) {
+      setSearchTerm(search);
+    }
+    if (status && status !== "all") {
+      setStatusFilter(status);
+    }
+    if (approval && approval !== "all") {
+      setApprovalFilter(approval);
+    }
+
+    // Return true if we have any filters
+    return !!(search || (status !== "all") || (approval !== "all"));
+  };
 
   // User role for role-based access control - get from localStorage for persistence
   useEffect(() => {
@@ -189,6 +230,14 @@ const page = () => {
   useEffect(() => {
     fetchMembers();
   }, [status, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   // Filter members based on search term and status filters
   const filteredMembers = members.filter((member) => {
@@ -659,8 +708,11 @@ const page = () => {
                     className="pl-8"
                     value={searchTerm}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value);
+                      const newValue = e.target.value;
+                      setSearchTerm(newValue);
                       setCurrentPage(1); // Reset to first page when search changes
+                      // Update URL when search changes
+                      updateURL(newValue, statusFilter, approvalFilter);
                     }}
                   />
                 </div>
@@ -672,6 +724,8 @@ const page = () => {
                     onValueChange={(value) => {
                       setStatusFilter(value);
                       setCurrentPage(1); // Reset to first page when filter changes
+                      // Update URL when filter changes
+                      updateURL(searchTerm, value, approvalFilter);
                     }}
                   >
                     <SelectTrigger className="w-[160px]">
@@ -689,6 +743,8 @@ const page = () => {
                     onValueChange={(value) => {
                       setApprovalFilter(value);
                       setCurrentPage(1); // Reset to first page when filter changes
+                      // Update URL when filter changes
+                      updateURL(searchTerm, statusFilter, value);
                     }}
                   >
                     <SelectTrigger className="w-[160px]">
