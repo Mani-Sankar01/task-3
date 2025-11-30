@@ -127,7 +127,7 @@ export default function LeaseQueryDetails({ id }: { id?: string }) {
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user?.role)}/lease-queries`);
+    router.back();
   };
 
   // Document management functions

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -81,6 +81,7 @@ interface ApiLeaseQuery {
 
 export default function LeaseQueryList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -113,6 +114,32 @@ export default function LeaseQueryList() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<{ id: string; leaseQueryId: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+
+    if (search) {
+      setSearchTerm(search);
+    }
+
+    // Return true if we have any filters
+    return !!search;
+  };
 
   // Load lease queries from API on component mount
   useEffect(() => {
@@ -172,6 +199,14 @@ export default function LeaseQueryList() {
     };
     fetchLeaseQueries();
   }, [status, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   // Filter queries based on search term
   useEffect(() => {
@@ -587,8 +622,11 @@ export default function LeaseQueryList() {
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  const newValue = e.target.value;
+                  setSearchTerm(newValue);
                   setCurrentPage(1); // Reset to first page when search changes
+                  // Update URL when search changes
+                  updateURL(newValue);
                 }}
               />
             </div>
