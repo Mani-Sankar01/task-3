@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -75,6 +75,7 @@ interface User {
 
 export default function UsersList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { data: session, status } = useSession();
   const [users, setUsers] = useState<User[]>([]);
@@ -93,6 +94,42 @@ export default function UsersList() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: number; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string, role: string, status: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (role !== "all") params.set("role", role);
+    if (status !== "all") params.set("status", status);
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+    const role = searchParams.get("role") || "all";
+    const status = searchParams.get("status") || "all";
+
+    let hasFilters = false;
+    if (search) {
+      setSearchQuery(search);
+      hasFilters = true;
+    }
+    if (role) {
+      setRoleFilter(role);
+      hasFilters = true;
+    }
+    if (status) {
+      setStatusFilter(status);
+      hasFilters = true;
+    }
+    return hasFilters;
+  };
 
   // Load users data
   useEffect(() => {
@@ -128,6 +165,14 @@ export default function UsersList() {
 
     fetchUsers();
   }, [status, session?.user?.token, toast]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
 
   // Apply filters and search
   useEffect(() => {
@@ -395,13 +440,20 @@ export default function UsersList() {
                 placeholder="Search users..."
                 className="pl-8"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setSearchQuery(newValue);
+                  updateURL(newValue, roleFilter, statusFilter);
+                }}
               />
             </div>
           </div>
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter} onValueChange={(value) => {
+              setRoleFilter(value);
+              updateURL(searchQuery, value, statusFilter);
+            }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
@@ -414,12 +466,15 @@ export default function UsersList() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(value) => {
+              setStatusFilter(value);
+              updateURL(searchQuery, roleFilter, value);
+            }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 {Object.values(UserStatus).map((status) => (
                   <SelectItem key={status} value={status}>
                     {status}
@@ -518,6 +573,10 @@ export default function UsersList() {
                       {user.createdAt ? formatDate(user.createdAt) : "N/A"}
                     </TableCell>
                     <TableCell>
+                      <Button variant="ghost" className="h-8 w-8 p-0 "  onClick={() => handleViewUser(user.id.toString())}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                     
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">

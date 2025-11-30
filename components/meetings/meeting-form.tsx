@@ -1155,8 +1155,14 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                          <SelectItem value="COMPLETED">Completed</SelectItem>
-                          <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                          {
+                            isEditMode && (
+                              <>
+                              <SelectItem value="COMPLETED">Completed</SelectItem>
+                              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                              </>
+                            )
+                          }
                         </SelectContent>
                       </Select>
                       <FormMessage />

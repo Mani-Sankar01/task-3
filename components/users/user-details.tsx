@@ -99,7 +99,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
         <CardHeader>
           <div className="flex items-center">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="mr-2"
               onClick={() => router.back()}
@@ -127,7 +127,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
         <CardHeader>
           <div className="flex items-center">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="mr-2"
               onClick={() => router.back()}
@@ -220,7 +220,7 @@ export default function UserDetails({ userId }: UserDetailsProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="mr-2"
               onClick={() => router.back()}
