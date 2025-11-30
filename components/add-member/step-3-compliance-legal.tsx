@@ -59,6 +59,7 @@ export default function Step3ComplianceLegal({
     name: string;
     address: string;
     GSTmemstatus: string;
+    tradeName: string;
   } | null>(null);
   const [gstError, setGstError] = useState<string | null>(null);
 
@@ -95,7 +96,7 @@ export default function Step3ComplianceLegal({
         
         // Extract name
         const name = data.lgnm || "N/A";
-        
+        const tradeName = data.tradename || "N/A";
         // Format address from pradr.addr
         const addr = data.pradr?.addr;
         let address = "N/A";
@@ -114,7 +115,7 @@ export default function Step3ComplianceLegal({
 
         }
 
-        setGstDetails({ name, address, GSTmemstatus: data.sts || "N/A" });
+        setGstDetails({ name, tradeName, address, GSTmemstatus: data.sts || "N/A" });
       } else {
         throw new Error(response.data?.result?.status_desc || "Failed to fetch GST details");
       }
@@ -203,7 +204,7 @@ export default function Step3ComplianceLegal({
                       disabled={!field.value}
                       className="whitespace-nowrap"
                     >
-                      Verify
+                      Validate
                     </Button>
                   </div>
                   <FormMessage />
@@ -836,6 +837,14 @@ export default function Step3ComplianceLegal({
               </div>
             ) : gstDetails ? (
               <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Name</label>
+                  <p className="mt-1 text-sm font-medium">{gstDetails.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Trade Name</label>
+                  <p className="mt-1 text-sm font-medium">{gstDetails.tradeName}</p>
+                </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Name</label>
                   <p className="mt-1 text-sm font-medium">{gstDetails.name}</p>
