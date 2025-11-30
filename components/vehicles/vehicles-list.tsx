@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowUpDown, MoreHorizontal, Plus, Search, Truck, Eye, Edit, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,7 @@ import {
 
 export default function VehiclesList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Vehicle | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -68,6 +69,7 @@ export default function VehiclesList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { data: session, status } = useSession();
   const { toast } = useToast();
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
@@ -99,12 +101,50 @@ export default function VehiclesList() {
     fetchData();
   }, [status, session?.user?.token]);
 
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+
+    if (search) {
+      setSearchTerm(search);
+    }
+
+    // Return true if we have any filters
+    return !!search;
+  };
+
   // Filter vehicles based on search term
   const filteredVehicles = vehicles.filter(
-    (vehicle) =>
-      vehicle.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.driverName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.id.toLowerCase().includes(searchTerm.toLowerCase())
+    (vehicle) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        (vehicle.vehicleNumber || "").toLowerCase().includes(searchLower) ||
+        (vehicle.driverName || "").toLowerCase().includes(searchLower) ||
+        (vehicle.vehicleId || "").toLowerCase().includes(searchLower) ||
+        (vehicle.id ? String(vehicle.id).toLowerCase().includes(searchLower) : false)
+      );
+    }
   );
 
   // Sort vehicles if a sort field is selected
@@ -309,8 +349,11 @@ export default function VehiclesList() {
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  const newValue = e.target.value;
+                  setSearchTerm(newValue);
                   setCurrentPage(1);
+                  // Update URL when search changes
+                  updateURL(newValue);
                 }}
               />
             </div>

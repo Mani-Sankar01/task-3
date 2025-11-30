@@ -178,7 +178,7 @@ export default function VehicleDetailsWithID({ id }: any) {
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.user.role)}/vehicle`);
+    router.back();
   };
 
   const handleAddTrip = () => {

@@ -100,7 +100,7 @@ export default function VehicleDetails({ vehicle }: VehicleDetailsProps) {
   };
 
   const handleBack = () => {
-    router.push(`/${renderRoleBasedPath(session?.data?.user.role)}/vehicle`);
+    router.back();
   };
 
   const handleAddTrip = () => {
