@@ -28,8 +28,18 @@ const MAX_FILE_SIZE = 6 * 1024 * 1024;
  * Validates a file for upload on the client side
  */
 export function validateFile(file: File): FileValidationResult {
-  // Check file type
-  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+  // Get file extension
+  const fileName = file.name.toLowerCase();
+  const fileExtension = fileName.includes('.') 
+    ? '.' + fileName.split('.').pop() 
+    : '';
+
+  // Check file type (MIME type) or file extension as fallback
+  const isValidMimeType = file.type && ALLOWED_FILE_TYPES.includes(file.type);
+  const isValidExtension = fileExtension && ALLOWED_EXTENSIONS.includes(fileExtension);
+  
+  // Accept file if either MIME type OR extension is valid (some browsers don't set MIME type correctly)
+  if (!isValidMimeType && !isValidExtension) {
     return {
       isValid: false,
       error: `File type not allowed. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}`

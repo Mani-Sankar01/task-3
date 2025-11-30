@@ -481,104 +481,166 @@ const AddMemberForm = () => {
       // Upload new files first
       const uploadedFiles: Record<string, string> = {};
 
+      // Helper function to check if file is already uploaded
+      const isFileAlreadyUploaded = (fileField: any): boolean => {
+        if (!fileField) return false;
+        if (typeof fileField === "string") return true; // Already a path string
+        if (typeof fileField === "object" && fileField?.existingPath) return true; // Has existingPath
+        return false;
+      };
+
+      // Helper function to get existing path from file field
+      const getExistingPath = (fileField: any): string | undefined => {
+        if (!fileField) return undefined;
+        if (typeof fileField === "string") return fileField;
+        if (typeof fileField === "object" && fileField?.existingPath) return fileField.existingPath;
+        return undefined;
+      };
+
       // Upload compliance documents from step 3
+      // Only upload if it's a File object, skip if already uploaded
       if (data.complianceDetails.factoryLicenseDoc) {
-        const result = await uploadFile(
-          data.complianceDetails.factoryLicenseDoc,
-          "documents"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.factoryLicenseDoc = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload Factory License: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.complianceDetails.factoryLicenseDoc)) {
+          // File already uploaded, use existing path
+          const existingPath = getExistingPath(data.complianceDetails.factoryLicenseDoc);
+          if (existingPath) {
+            uploadedFiles.factoryLicenseDoc = existingPath;
+          }
+        } else if (data.complianceDetails.factoryLicenseDoc instanceof File) {
+          // New file, upload it
+          const result = await uploadFile(
+            data.complianceDetails.factoryLicenseDoc,
+            "documents"
+          );
+          if (result.success && result.filePath) {
+            uploadedFiles.factoryLicenseDoc = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload Factory License: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
       if (data.complianceDetails.tspcbOrderDoc) {
-        const result = await uploadFile(
-          data.complianceDetails.tspcbOrderDoc,
-          "documents"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.tspcbOrderDoc = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload TSPCB Certificate: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.complianceDetails.tspcbOrderDoc)) {
+          const existingPath = getExistingPath(data.complianceDetails.tspcbOrderDoc);
+          if (existingPath) {
+            uploadedFiles.tspcbOrderDoc = existingPath;
+          }
+        } else if (data.complianceDetails.tspcbOrderDoc instanceof File) {
+          const result = await uploadFile(
+            data.complianceDetails.tspcbOrderDoc,
+            "documents"
+          );
+          if (result.success && result.filePath) {
+            uploadedFiles.tspcbOrderDoc = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload TSPCB Certificate: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
       if (data.complianceDetails.mdlDoc) {
-        const result = await uploadFile(
-          data.complianceDetails.mdlDoc,
-          "documents"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.mdlDoc = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload MDL Certificate: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.complianceDetails.mdlDoc)) {
+          const existingPath = getExistingPath(data.complianceDetails.mdlDoc);
+          if (existingPath) {
+            uploadedFiles.mdlDoc = existingPath;
+          }
+        } else if (data.complianceDetails.mdlDoc instanceof File) {
+          const result = await uploadFile(
+            data.complianceDetails.mdlDoc,
+            "documents"
+          );
+          if (result.success && result.filePath) {
+            uploadedFiles.mdlDoc = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload MDL Certificate: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
       if (data.complianceDetails.udyamCertificateDoc) {
-        const result = await uploadFile(
-          data.complianceDetails.udyamCertificateDoc,
-          "documents"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.udyamCertificateDoc = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload Udyam Certificate: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.complianceDetails.udyamCertificateDoc)) {
+          const existingPath = getExistingPath(data.complianceDetails.udyamCertificateDoc);
+          if (existingPath) {
+            uploadedFiles.udyamCertificateDoc = existingPath;
+          }
+        } else if (data.complianceDetails.udyamCertificateDoc instanceof File) {
+          const result = await uploadFile(
+            data.complianceDetails.udyamCertificateDoc,
+            "documents"
+          );
+          if (result.success && result.filePath) {
+            uploadedFiles.udyamCertificateDoc = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload Udyam Certificate: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
       // Upload new declaration files
+      // Only upload if it's a File object, skip if already uploaded
       if (data.declaration.photoUpload) {
-        const result = await uploadFile(data.declaration.photoUpload, "photos");
-        if (result.success && result.filePath) {
-          uploadedFiles.photoUpload = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload Photo: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.declaration.photoUpload)) {
+          const existingPath = getExistingPath(data.declaration.photoUpload);
+          if (existingPath) {
+            uploadedFiles.photoUpload = existingPath;
+          }
+        } else if (data.declaration.photoUpload instanceof File) {
+          const result = await uploadFile(data.declaration.photoUpload, "photos");
+          if (result.success && result.filePath) {
+            uploadedFiles.photoUpload = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload Photo: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
       if (data.declaration.signatureUpload) {
-        const result = await uploadFile(
-          data.declaration.signatureUpload,
-          "signatures"
-        );
-        if (result.success && result.filePath) {
-          uploadedFiles.signatureUpload = result.filePath;
-        } else {
-          setErrorPopup({
-            isOpen: true,
-            message: `Failed to upload Signature: ${result.error}`,
-          });
-          setIsSubmitting(false);
-          return;
+        if (isFileAlreadyUploaded(data.declaration.signatureUpload)) {
+          const existingPath = getExistingPath(data.declaration.signatureUpload);
+          if (existingPath) {
+            uploadedFiles.signatureUpload = existingPath;
+          }
+        } else if (data.declaration.signatureUpload instanceof File) {
+          const result = await uploadFile(
+            data.declaration.signatureUpload,
+            "signatures"
+          );
+          if (result.success && result.filePath) {
+            uploadedFiles.signatureUpload = result.filePath;
+          } else {
+            setErrorPopup({
+              isOpen: true,
+              message: `Failed to upload Signature: ${result.error}`,
+            });
+            setIsSubmitting(false);
+            return;
+          }
         }
       }
 
@@ -591,24 +653,36 @@ const AddMemberForm = () => {
       ) {
         const attachment = data.documentDetails.additionalAttachments[i];
         if (attachment.file) {
-          const result = await uploadFile(attachment.file, "documents");
-          if (result.success && result.filePath) {
+          let filePath: string | undefined;
+          
+          if (isFileAlreadyUploaded(attachment.file)) {
+            // File already uploaded, use existing path
+            filePath = getExistingPath(attachment.file);
+          } else if (attachment.file instanceof File) {
+            // New file, upload it
+            const result = await uploadFile(attachment.file, "documents");
+            if (result.success && result.filePath) {
+              filePath = result.filePath;
+            } else {
+              setErrorPopup({
+                isOpen: true,
+                message: `Failed to upload ${attachment.name}: ${result.error}`,
+              });
+              setIsSubmitting(false);
+              return;
+            }
+          }
+          
+          if (filePath) {
             const attachmentPayload: any = {
               documentName: attachment.name,
-              documentPath: result.filePath,
+              documentPath: filePath,
             };
             // Only include expiredAt if isExpirable is true
             if (attachment.isExpirable && attachment.expiredAt) {
               attachmentPayload.expiredAt = new Date(attachment.expiredAt).toISOString();
             }
             additionalAttachments.push(attachmentPayload);
-          } else {
-            setErrorPopup({
-              isOpen: true,
-              message: `Failed to upload ${attachment.name}: ${result.error}`,
-            });
-            setIsSubmitting(false);
-            return;
           }
         }
       }

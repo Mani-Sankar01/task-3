@@ -297,16 +297,24 @@ export default function Step3ComplianceLegal({
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
-                        onFileSelect={(file) => field.onChange(file)}
+                        onFileSelect={(file) => {
+                          // Store the File object - will be uploaded automatically by FileUpload
+                          field.onChange(file);
+                        }}
                         onUploadComplete={(filePath) => {
-                          // File is already uploaded, just store the file object for later processing
+                          // Store the uploaded filePath as existingPath so form knows it's already uploaded
+                          if (filePath) {
+                            field.onChange({
+                              existingPath: filePath
+                            });
+                          }
                         }}
                         onUploadError={(error) => {
                           console.error('Upload error:', error);
                         }}
                         subfolder="documents"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        existingFilePath={field.value?.existingPath}
+                        existingFilePath={field.value?.existingPath || field.value?.filePath}
                         onDownload={handleDownload}
                       />
                     </div>
@@ -404,16 +412,24 @@ export default function Step3ComplianceLegal({
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
-                        onFileSelect={(file) => field.onChange(file)}
+                        onFileSelect={(file) => {
+                          // Store the File object - will be uploaded automatically by FileUpload
+                          field.onChange(file);
+                        }}
                         onUploadComplete={(filePath) => {
-                          // File is already uploaded, just store the file object for later processing
+                          // Store the uploaded filePath as existingPath so form knows it's already uploaded
+                          if (filePath) {
+                            field.onChange({
+                              existingPath: filePath
+                            });
+                          }
                         }}
                         onUploadError={(error) => {
                           console.error('Upload error:', error);
                         }}
                         subfolder="documents"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        existingFilePath={field.value?.existingPath}
+                        existingFilePath={field.value?.existingPath || field.value?.filePath}
                         onDownload={handleDownload}
                       />
                     </div>
@@ -511,16 +527,24 @@ export default function Step3ComplianceLegal({
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
-                        onFileSelect={(file) => field.onChange(file)}
+                        onFileSelect={(file) => {
+                          // Store the File object - will be uploaded automatically by FileUpload
+                          field.onChange(file);
+                        }}
                         onUploadComplete={(filePath) => {
-                          // File is already uploaded, just store the file object for later processing
+                          // Store the uploaded filePath as existingPath so form knows it's already uploaded
+                          if (filePath) {
+                            field.onChange({
+                              existingPath: filePath
+                            });
+                          }
                         }}
                         onUploadError={(error) => {
                           console.error('Upload error:', error);
                         }}
                         subfolder="documents"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        existingFilePath={field.value?.existingPath}
+                        existingFilePath={field.value?.existingPath || field.value?.filePath}
                         onDownload={handleDownload}
                       />
                     </div>
@@ -618,16 +642,24 @@ export default function Step3ComplianceLegal({
                   <FormControl>
                     <div style={isEditMode ? { display: 'none' } : {}}>
                       <FileUpload
-                        onFileSelect={(file) => field.onChange(file)}
+                        onFileSelect={(file) => {
+                          // Store the File object - will be uploaded automatically by FileUpload
+                          field.onChange(file);
+                        }}
                         onUploadComplete={(filePath) => {
-                          // File is already uploaded, just store the file object for later processing
+                          // Store the uploaded filePath as existingPath so form knows it's already uploaded
+                          if (filePath) {
+                            field.onChange({
+                              existingPath: filePath
+                            });
+                          }
                         }}
                         onUploadError={(error) => {
                           console.error('Upload error:', error);
                         }}
                         subfolder="documents"
                         accept=".pdf,.jpg,.jpeg,.png"
-                        existingFilePath={field.value?.existingPath}
+                        existingFilePath={field.value?.existingPath || field.value?.filePath}
                         onDownload={handleDownload}
                       />
                     </div>

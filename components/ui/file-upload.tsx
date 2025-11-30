@@ -43,20 +43,28 @@ export function FileUpload({
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     
+    // Reset input value to allow selecting the same file again
+    event.target.value = '';
+    
     if (!file) {
       setSelectedFile(null);
       onFileSelect(null);
       return;
     }
+    
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size, 'Extension:', file.name.split('.').pop());
 
     // Validate file
     const validation = validateFile(file);
     if (!validation.isValid) {
-      setError(validation.error || 'Invalid file');
-      onUploadError(validation.error || 'Invalid file');
+      const errorMsg = validation.error || 'Invalid file';
+      console.error('File validation failed:', errorMsg, 'File:', file.name, 'Type:', file.type, 'Size:', file.size);
+      setError(errorMsg);
+      onUploadError(errorMsg);
       return;
     }
 
+    console.log('File validation passed. Starting upload for:', file.name, 'Type:', file.type, 'Size:', file.size);
     setError(null);
     setSelectedFile(file);
     onFileSelect(file);
@@ -73,14 +81,18 @@ export function FileUpload({
       );
 
       if (result.success && result.filePath) {
+        console.log('Upload successful. File path:', result.filePath);
         setUploadedFilePath(result.filePath);
         onUploadComplete(result.filePath);
       } else {
-        setError(result.error || 'Upload failed');
-        onUploadError(result.error || 'Upload failed');
+        const errorMsg = result.error || 'Upload failed';
+        console.error('Upload failed:', errorMsg);
+        setError(errorMsg);
+        onUploadError(errorMsg);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Upload failed';
+      console.error('Upload error:', err);
       setError(errorMessage);
       onUploadError(errorMessage);
     } finally {
@@ -147,32 +159,40 @@ export function FileUpload({
   return (
     <div className={`space-y-2 ${className}`}>
       {!selectedFile && !existingFilePath ? (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-          <input
-            type="file"
-            accept={accept}
-            onChange={handleFileChange}
-            className="hidden"
-            id={`file-upload-${uniqueId}`}
-            disabled={disabled || isUploading}
-          />
-          <label
-            htmlFor={`file-upload-${uniqueId}`}
-            className={`cursor-pointer flex flex-col items-center space-y-2 ${
-              disabled || isUploading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            <Upload className="h-8 w-8 text-gray-400" />
-            <div className="text-sm text-gray-600">
-              <span className="font-medium text-blue-600 hover:text-blue-500">
-                Click to upload
-              </span>{' '}
-              or drag and drop
+        <div>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            <input
+              type="file"
+              accept={accept}
+              onChange={handleFileChange}
+              className="hidden"
+              id={`file-upload-${uniqueId}`}
+              disabled={disabled || isUploading}
+            />
+            <label
+              htmlFor={`file-upload-${uniqueId}`}
+              className={`cursor-pointer flex flex-col items-center space-y-2 ${
+                disabled || isUploading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <Upload className="h-8 w-8 text-gray-400" />
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-blue-600 hover:text-blue-500">
+                  Click to upload
+                </span>{' '}
+                or drag and drop
+              </div>
+              <div className="text-xs text-gray-500">
+                {accept.replace(/\./g, '').toUpperCase()} files up to {formatFileSize(maxSize)}
+              </div>
+            </label>
+          </div>
+          {error && (
+            <div className="mt-2 flex items-center space-x-1 text-sm">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <p className="text-xs text-red-600">{error}</p>
             </div>
-            <div className="text-xs text-gray-500">
-              {accept.replace(/\./g, '').toUpperCase()} files up to {formatFileSize(maxSize)}
-            </div>
-          </label>
+          )}
         </div>
       ) : (
         <div className="border rounded-lg p-4 bg-gray-50">
