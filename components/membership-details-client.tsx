@@ -7,7 +7,7 @@ import {
   Save,
   CalendarDays,
   Loader2,
-  Calendar,
+  Calendar as CalendarIcon,
   CreditCard,
   FileText,
   History,
@@ -30,6 +30,7 @@ import {
   EyeOff,
   Key,
   Eye,
+  Search,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -87,6 +88,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { renderRoleBasedPath } from "@/lib/utils";
+import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, startOfYear, endOfYear } from "date-fns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -625,6 +633,414 @@ function MembershipFeesTable({ memberId }: { memberId: string }) {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+// Member GST Invoices Table Component for GST Tab
+interface ApiInvoice {
+  members: any;
+  id: string;
+  invoiceId: string;
+  membershipId: string;
+  invoiceDate: string;
+  customerName?: string;
+  gstInNumber?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  eWayNumber?: string;
+  phoneNumber?: string;
+  cGSTInPercent: number;
+  sGSTInPercent: number;
+  iGSTInPercent: number;
+  gstStatus: string;
+  subTotal: string;
+  total: string;
+  status: string;
+  createdAt: string;
+  modifiedAt: string;
+  createdBy: number;
+  modifiedBy: number | null;
+}
+
+function MemberGSTInvoicesTable({ memberId }: { memberId: string }) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+  
+  const [invoices, setInvoices] = useState<ApiInvoice[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<ApiInvoice[]>([]);
+  const [dateFilterType, setDateFilterType] = useState<"lastMonth" | "thisYear" | "custom">("lastMonth");
+  const [dateRange, setDateRange] = useState<{
+    from: Date | undefined;
+    to: Date | undefined;
+  }>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Initialize date range based on filter type
+  useEffect(() => {
+    if (dateFilterType === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+    } else if (dateFilterType === "thisYear") {
+      const now = new Date();
+      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
+    }
+  }, [dateFilterType]);
+
+  const handleDateFilterTypeChange = (value: "lastMonth" | "thisYear" | "custom") => {
+    setDateFilterType(value);
+    if (value === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+    } else if (value === "thisYear") {
+      const now = new Date();
+      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
+    } else if (value === "custom") {
+      setDateRange({ from: undefined, to: undefined });
+    }
+  };
+
+  // Fetch invoices function
+  const fetchInvoices = async () => {
+    if (status !== "authenticated" || !session?.user?.token) {
+      return;
+    }
+
+    if (dateFilterType === "custom" && (!dateRange.from || !dateRange.to)) {
+      toast({
+        title: "Date Range Required",
+        description: "Please select a date range for custom filter",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setHasSearched(true);
+    try {
+      const apiUrl = process.env.BACKEND_API_URL || "https://tsmwa.online";
+      const fullUrl = `${apiUrl}/api/tax_invoice/get_tax_invoice`;
+
+      const response = await axios.get(fullUrl, {
+        headers: {
+          Authorization: `Bearer ${session.user.token}`,
+        },
+      });
+
+      // Handle different possible response structures
+      let responseData;
+      if (response.data && Array.isArray(response.data)) {
+        responseData = response.data;
+      } else if (
+        response.data &&
+        response.data.taxInvoices &&
+        Array.isArray(response.data.taxInvoices)
+      ) {
+        responseData = response.data.taxInvoices;
+      } else if (
+        response.data &&
+        response.data.data &&
+        Array.isArray(response.data.data)
+      ) {
+        responseData = response.data.data;
+      } else {
+        responseData = [];
+      }
+
+      // Filter by member ID
+      const memberInvoices = responseData.filter(
+        (invoice: ApiInvoice) => invoice.membershipId === memberId
+      );
+
+      setInvoices(memberInvoices);
+    } catch (err: unknown) {
+      console.error("Error fetching invoice data:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load invoice data",
+        variant: "destructive"
+      });
+      setInvoices([]);
+      setFilteredInvoices([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filter invoices by date range
+  useEffect(() => {
+    if (!hasSearched || invoices.length === 0) {
+      setFilteredInvoices([]);
+      return;
+    }
+
+    let filtered = invoices;
+
+    // Filter by date range based on filter type
+    if (dateFilterType === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      const start = startOfDay(startOfMonth(lastMonth));
+      const end = endOfDay(endOfMonth(lastMonth));
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        return invoiceDate >= start && invoiceDate <= end;
+      });
+    } else if (dateFilterType === "thisYear") {
+      const now = new Date();
+      const start = startOfDay(startOfYear(now));
+      const end = endOfDay(endOfYear(now));
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        return invoiceDate >= start && invoiceDate <= end;
+      });
+    } else if (dateFilterType === "custom" && dateRange.from && dateRange.to) {
+      const start = startOfDay(dateRange.from);
+      const end = endOfDay(dateRange.to);
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoiceDate);
+        return invoiceDate >= start && invoiceDate <= end;
+      });
+    }
+
+    setFilteredInvoices(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
+  }, [dateFilterType, dateRange, invoices, hasSearched]);
+
+  // Paginate the filtered invoices
+  const paginatedInvoices = filteredInvoices.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+
+  const handleViewInvoice = (id: string) => {
+    router.push(`/${renderRoleBasedPath(session?.user?.role)}/invoices/${id}`);
+  };
+
+  const getGstStatusBadge = (gstStatus: string) => {
+    switch (gstStatus) {
+      case "FILED":
+        return <Badge className="bg-green-100 text-green-800">Filed</Badge>;
+      case "READY_TO_FILE":
+        return <Badge className="bg-blue-100 text-blue-800">Ready to File</Badge>;
+      case "SUBMITTED":
+        return <Badge className="bg-yellow-100 text-yellow-800">Submitted</Badge>;
+      case "PENDING":
+        return <Badge className="bg-orange-100 text-orange-800">Pending</Badge>;
+      default:
+        return <Badge variant="secondary">{gstStatus || "Unknown"}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Search GST Invoices</CardTitle>
+          <CardDescription>
+            Select a date range to search for invoices
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <Label htmlFor="date-select" className="mb-2 block">
+                Select Date *
+              </Label>
+              <Select
+                value={dateFilterType}
+                onValueChange={(value) => handleDateFilterTypeChange(value as "lastMonth" | "thisYear" | "custom")}
+              >
+                <SelectTrigger id="date-select">
+                  <SelectValue placeholder="Select date range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lastMonth">Last Month</SelectItem>
+                  <SelectItem value="thisYear">This Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {dateFilterType === "custom" && (
+              <div className="flex-1">
+                <Label htmlFor="date-range" className="mb-2 block">
+                  Date Range *
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      id="date-range"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateRange.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "LLL dd, y")} -{" "}
+                            {format(dateRange.to, "LLL dd, y")}
+                          </>
+                        ) : (
+                          format(dateRange.from, "LLL dd, y")
+                        )
+                      ) : (
+                        <span>Pick a date range</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={dateRange.from}
+                      selected={{
+                        from: dateRange.from,
+                        to: dateRange.to,
+                      }}
+                      onSelect={(range) => {
+                        if (range) {
+                          setDateRange({
+                            from: range.from,
+                            to: range.to,
+                          });
+                        }
+                      }}
+                      numberOfMonths={2}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+
+            <div className="flex items-end">
+              <Button
+                onClick={fetchInvoices}
+                disabled={isLoading || (dateFilterType === "custom" && (!dateRange.from || !dateRange.to))}
+                className="w-full sm:w-auto"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Search
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results Table */}
+      {hasSearched ? (
+        <>
+          {isLoading ? (
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading invoices...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {filteredInvoices.length > 0 ? (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>CGST %</TableHead>
+                        <TableHead>SGST %</TableHead>
+                        <TableHead>IGST %</TableHead>
+                        <TableHead>Sub Total</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>GST Status</TableHead>
+                        <TableHead className="w-[100px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedInvoices.map((invoice) => (
+                        <TableRow
+                          key={invoice.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium">{invoice.invoiceId}</TableCell>
+                          <TableCell>{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</TableCell>
+                          <TableCell>{invoice.cGSTInPercent}%</TableCell>
+                          <TableCell>{invoice.sGSTInPercent}%</TableCell>
+                          <TableCell>{invoice.iGSTInPercent}%</TableCell>
+                          <TableCell>₹{parseFloat(invoice.subTotal).toLocaleString()}</TableCell>
+                          <TableCell className="font-medium">₹{parseFloat(invoice.total).toLocaleString()}</TableCell>
+                          <TableCell>{getGstStatusBadge(invoice.gstStatus)}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => handleViewInvoice(invoice.invoiceId)}>
+                              <EyeIcon className="h-4 w-4" />
+                            </Button>
+                           
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t">
+                      <div className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredInvoices.length)} of {filteredInvoices.length} invoices
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No invoices found for the selected date range</p>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <div className="text-center py-10 text-muted-foreground">
+          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Select a date range and click Search to view invoices</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -2915,17 +3331,9 @@ export default function MembershipDetailsClient({
 
         <TabsContent value="gst">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-center">
-              <div className="text-center">
-                <CardTitle>GST Filling</CardTitle>
-                <CardDescription>
-                  All GST filling details for this member
-                </CardDescription>
-              </div>
-
-            </CardHeader>
-            <CardContent>
-
+           
+            <CardContent className="mt-6">
+              <MemberGSTInvoicesTable memberId={member.membershipId} />
             </CardContent>
           </Card>
 
