@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -82,6 +82,7 @@ import {
 
 export default function LabourList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,6 +106,44 @@ export default function LabourList() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string, status: string, member: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (status && status !== "all") params.set("status", status);
+    if (member && member !== "all") params.set("member", member);
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+    const status = searchParams.get("status") || "all";
+    const member = searchParams.get("member") || "all";
+
+    let hasFilters = false;
+
+    if (search) {
+      setSearchTerm(search);
+      hasFilters = true;
+    }
+    if (status) {
+      setSelectedStatus(status);
+      hasFilters = true;
+    }
+    if (member) {
+      setSelectedMember(member);
+      hasFilters = true;
+    }
+
+    return hasFilters;
+  };
 
   // Load labour list from API
   useEffect(() => {
@@ -167,6 +206,14 @@ export default function LabourList() {
     };
     fetchAllMembers();
   }, [sessionStatus, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined" && allMembers.length > 0) {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, [allMembers.length, isInitialized]);
 
   // Apply all filters
   const applyFilters = () => {
@@ -475,6 +522,8 @@ export default function LabourList() {
     setSelectedStatus("all");
     setSelectedMember("all");
     setCurrentPage(1);
+    // Clear URL params
+    updateURL("", "all", "all");
   };
 
   return (
@@ -506,8 +555,11 @@ export default function LabourList() {
               className="pl-8"
               value={searchTerm}
               onChange={(e) => {
-                setSearchTerm(e.target.value);
+                const newValue = e.target.value;
+                setSearchTerm(newValue);
                 setCurrentPage(1);
+                // Update URL when search changes
+                updateURL(newValue, selectedStatus, selectedMember);
               }}
             />
           </div>
@@ -518,6 +570,8 @@ export default function LabourList() {
             onValueChange={(value) => {
               setSelectedStatus(value);
               setCurrentPage(1);
+              // Update URL when status changes
+              updateURL(searchTerm, value, selectedMember);
             }}
           >
             <SelectTrigger>
@@ -564,6 +618,8 @@ export default function LabourList() {
                         setSelectedMember("all");
                         setMemberDropdownOpen(false);
                         setCurrentPage(1);
+                        // Update URL when member changes
+                        updateURL(searchTerm, selectedStatus, "all");
                       }}
                     >
                       All Members
@@ -576,6 +632,8 @@ export default function LabourList() {
                           setSelectedMember(member.membershipId);
                           setMemberDropdownOpen(false);
                           setCurrentPage(1);
+                          // Update URL when member changes
+                          updateURL(searchTerm, selectedStatus, member.membershipId);
                         }}
                       >
                         {(member.applicantName || "Unknown") +
