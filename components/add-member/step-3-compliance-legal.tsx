@@ -96,7 +96,7 @@ export default function Step3ComplianceLegal({
         
         // Extract name
         const name = data.lgnm || "N/A";
-        const tradeName = data.tradename || "N/A";
+        const tradeName = data.tradeNam || "N/A";
         // Format address from pradr.addr
         const addr = data.pradr?.addr;
         let address = "N/A";
@@ -844,10 +844,6 @@ export default function Step3ComplianceLegal({
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Trade Name</label>
                   <p className="mt-1 text-sm font-medium">{gstDetails.tradeName}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Name</label>
-                  <p className="mt-1 text-sm font-medium">{gstDetails.name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Address</label>
