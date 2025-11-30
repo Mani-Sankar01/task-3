@@ -31,6 +31,8 @@ import {
   Key,
   Eye,
   Search,
+  File,
+  FileIcon,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -682,6 +684,7 @@ function MemberGSTInvoicesTable({ memberId }: { memberId: string }) {
   const [hasSearched, setHasSearched] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   // Initialize date range based on filter type
   useEffect(() => {
@@ -693,6 +696,13 @@ function MemberGSTInvoicesTable({ memberId }: { memberId: string }) {
       setDateRange({ from: startOfYear(now), to: endOfYear(now) });
     }
   }, [dateFilterType]);
+
+  // Close popover when component unmounts (e.g., when switching tabs)
+  useEffect(() => {
+    return () => {
+      setDatePickerOpen(false);
+    };
+  }, []);
 
   const handleDateFilterTypeChange = (value: "lastMonth" | "thisYear" | "custom") => {
     setDateFilterType(value);
@@ -877,7 +887,7 @@ function MemberGSTInvoicesTable({ memberId }: { memberId: string }) {
                 <Label htmlFor="date-range" className="mb-2 block">
                   Date Range *
                 </Label>
-                <Popover>
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       id="date-range"
@@ -914,6 +924,10 @@ function MemberGSTInvoicesTable({ memberId }: { memberId: string }) {
                             from: range.from,
                             to: range.to,
                           });
+                          // Close popover when both dates are selected
+                          if (range.from && range.to) {
+                            setDatePickerOpen(false);
+                          }
                         }
                       }}
                       numberOfMonths={2}
@@ -2723,7 +2737,7 @@ export default function MembershipDetailsClient({
             />
             <SummaryCard
               title="Member Since"
-              icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+              icon={<FileIcon className="h-4 w-4 text-muted-foreground" />}
               value={new Date(member.createdAt).toLocaleDateString()}
               subtitle={`Last updated ${new Date(member.modifiedAt).toLocaleDateString()}`}
             />
