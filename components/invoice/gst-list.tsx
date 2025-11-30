@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -138,7 +139,8 @@ import {
 
 export default function GSTList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -216,10 +218,14 @@ export default function GSTList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const memberId = searchParams.get("memberId") || "";
-    const dateType = searchParams.get("dateType") || "";
-    const dateFromParam = searchParams.get("dateFrom");
-    const dateToParam = searchParams.get("dateTo");
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const memberId = urlParams.get("memberId") || "";
+    const dateType = urlParams.get("dateType") || "";
+    const dateFromParam = urlParams.get("dateFrom");
+    const dateToParam = urlParams.get("dateTo");
 
     if (memberId) {
       setSelectedMemberId(memberId);
@@ -254,6 +260,13 @@ export default function GSTList() {
     // Return true if we have filters to auto-search
     return !!(memberId && dateType);
   };
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (typeof window !== "undefined" && members.length > 0) {
+      readFiltersFromURL();
+    }
+  }, [pathname, members.length]);
 
   // Fetch invoices function (called on search)
   const fetchInvoices = async (skipValidation: boolean = false) => {

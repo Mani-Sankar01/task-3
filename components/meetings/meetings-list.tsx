@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -125,7 +126,8 @@ interface Meeting {
 
 export default function MeetingsList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
 
@@ -160,7 +162,11 @@ export default function MeetingsList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
 
     if (search) {
       setSearchTerm(search);
@@ -209,7 +215,14 @@ export default function MeetingsList() {
       const hasFilters = readFiltersFromURL();
       setIsInitialized(true);
     }
-  }, []);
+  }, [isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Filter meetings based on search term
   const filteredMeetings = meetings.filter(

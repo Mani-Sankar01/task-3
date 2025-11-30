@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import {
   CalendarDays,
   FileText,
@@ -71,7 +72,7 @@ import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function LeaseQueryDetails({ id }: { id?: string }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSafeSearchParams();
   // Use the id prop if provided, otherwise try to get it from search params
   const queryId = id || searchParams.get("id");
   const [query, setQuery] = useState<LeaseQuery | null>(null);

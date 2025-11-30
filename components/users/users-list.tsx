@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import {
   Table,
   TableBody,
@@ -75,7 +76,8 @@ interface User {
 
 export default function UsersList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const { toast } = useToast();
   const { data: session, status } = useSession();
   const [users, setUsers] = useState<User[]>([]);
@@ -111,20 +113,24 @@ export default function UsersList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
-    const role = searchParams.get("role") || "all";
-    const status = searchParams.get("status") || "all";
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
+    const role = urlParams.get("role") || "all";
+    const status = urlParams.get("status") || "all";
 
     let hasFilters = false;
     if (search) {
       setSearchQuery(search);
       hasFilters = true;
     }
-    if (role) {
+    if (role && role !== "all") {
       setRoleFilter(role);
       hasFilters = true;
     }
-    if (status) {
+    if (status && status !== "all") {
       setStatusFilter(status);
       hasFilters = true;
     }
@@ -169,10 +175,18 @@ export default function UsersList() {
   // Read filters from URL on mount (only once)
   useEffect(() => {
     if (!isInitialized && typeof window !== "undefined") {
+      // Read filters from URL - using window.location directly ensures we get current params
       readFiltersFromURL();
       setIsInitialized(true);
     }
   }, [isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Apply filters and search
   useEffect(() => {

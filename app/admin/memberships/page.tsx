@@ -4,7 +4,8 @@ import React, { useEffect } from "react";
 import { SidebarInset } from "@/components/ui/sidebar";
 import Header from "@/components/header";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import {
   ArrowUpDown,
   BananaIcon,
@@ -109,7 +110,8 @@ interface Member {
 
 const page = () => {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Member | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -156,9 +158,13 @@ const page = () => {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
-    const approval = searchParams.get("approval") || "all";
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
+    const status = urlParams.get("status") || "all";
+    const approval = urlParams.get("approval") || "all";
 
     if (search) {
       setSearchTerm(search);
@@ -237,7 +243,14 @@ const page = () => {
       const hasFilters = readFiltersFromURL();
       setIsInitialized(true);
     }
-  }, []);
+  }, [isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Filter members based on search term and status filters
   const filteredMembers = members.filter((member) => {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import { ArrowUpDown, MoreHorizontal, Plus, Search, Truck, Eye, Edit, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,8 @@ import {
 
 export default function VehiclesList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<keyof Vehicle | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -101,14 +103,6 @@ export default function VehiclesList() {
     fetchData();
   }, [status, session?.user?.token]);
 
-  // Read filters from URL on mount (only once)
-  useEffect(() => {
-    if (!isInitialized && typeof window !== "undefined") {
-      const hasFilters = readFiltersFromURL();
-      setIsInitialized(true);
-    }
-  }, []);
-
   // Update URL with current filter parameters
   const updateURL = (search: string) => {
     if (typeof window === "undefined") return;
@@ -124,7 +118,11 @@ export default function VehiclesList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
 
     if (search) {
       setSearchTerm(search);
@@ -133,6 +131,21 @@ export default function VehiclesList() {
     // Return true if we have any filters
     return !!search;
   };
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, [isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Filter vehicles based on search term
   const filteredVehicles = vehicles.filter(

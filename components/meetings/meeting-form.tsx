@@ -1302,7 +1302,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           <FormLabel data-required="false">Member Selection Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                              <SelectTrigger>
+                              <SelectTrigger disabled={isEditMode}>
                                 <SelectValue placeholder="Select member type" />
                               </SelectTrigger>
                             </FormControl>
@@ -1328,7 +1328,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           <FormItem>
                             <FormLabel data-required="false">Select Zones</FormLabel>
                             <Popover>
-                              <PopoverTrigger asChild>
+                              <PopoverTrigger asChild disabled={isEditMode}>
                                 <FormControl>
                                   <Button
                                     variant="outline"
@@ -1372,6 +1372,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                   <div key={zone} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
                                     <span>{zones.find(z => z.value === zone)?.label}</span>
                                     <button
+                                      disabled={isEditMode}
                                       type="button"
                                       onClick={() => field.onChange(field.value?.filter(z => z !== zone))}
                                       className="text-blue-600 hover:text-blue-800"
@@ -1397,7 +1398,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       <FormItem>
                             <FormLabel data-required="false">Select Mandals</FormLabel>
                             <Popover>
-                              <PopoverTrigger asChild>
+                              <PopoverTrigger asChild disabled={isEditMode}>
                                 <FormControl>
                                   <Button
                                     variant="outline"
@@ -1441,6 +1442,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                   <div key={mandal} className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
                                     <span>{mandals.find(m => m.value === mandal)?.label}</span>
                                     <button
+                                      disabled={isEditMode}
                                       type="button"
                                       onClick={() => field.onChange(field.value?.filter(m => m !== mandal))}
                                       className="text-green-600 hover:text-green-800"
@@ -1466,7 +1468,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           <FormItem>
                             <FormLabel data-required="false">Select Members</FormLabel>
                             <Popover>
-                              <PopoverTrigger asChild>
+                              <PopoverTrigger asChild disabled={isEditMode}>
                                 <FormControl>
                                   <Button
                                     variant="outline"
@@ -1517,6 +1519,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                     <div key={memberId} className="flex items-center gap-1 bg-purple-100 text-purple-800 px-2 py-1 rounded text-sm">
                                       <span>{member?.applicantName}</span>
                                       <button
+                                        disabled={isEditMode}
                                         type="button"
                                         onClick={() => field.onChange(field.value?.filter(m => m !== memberId))}
                                         className="text-purple-600 hover:text-purple-800"
@@ -1546,6 +1549,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         <FormItem>
                           <FormLabel data-required="false">Vehicle Selection Type</FormLabel>
                           <Select 
+                            disabled={isEditMode}
                             onValueChange={(value) => {
                               field.onChange(value);
                               // Update owner, driver, and all fields based on the type
@@ -1604,9 +1608,10 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           render={({ field }) => (
                             <FormItem>
                               <Popover>
-                                <PopoverTrigger asChild>
+                                <PopoverTrigger asChild disabled={isEditMode}>
                                   <FormControl>
                                     <Button
+                                      disabled={isEditMode}
                                       variant="outline"
                                       role="combobox"
                                       className="w-full justify-between"
@@ -1660,6 +1665,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                       <div key={vehicle.vehicleId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
                                         <span>{vehicleData?.vehicleNumber || `Vehicle ${vehicle.vehicleId}`}</span>
                                         <button
+                                          disabled={isEditMode}
                                           type="button"
                                           onClick={() => field.onChange(field.value?.filter(v => v.vehicleId !== vehicle.vehicleId))}
                                           className="text-blue-600 hover:text-blue-800"
@@ -1690,6 +1696,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                         <FormItem>
                           <FormLabel data-required="false">Labour Selection Type</FormLabel>
                           <Select 
+                            disabled={isEditMode}
                             onValueChange={(value) => {
                               field.onChange(value);
                               // Update the 'all' field based on the type
@@ -1727,7 +1734,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           <FormItem>
                             <FormLabel data-required="false">Select Labour</FormLabel>
                             <Popover>
-                              <PopoverTrigger asChild>
+                              <PopoverTrigger asChild disabled={isEditMode}>
                                 <FormControl>
                         <Button
                                     variant="outline"
@@ -1778,6 +1785,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                     <div key={labourId} className="flex items-center gap-1 bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm">
                                       <span>{lab?.fullName}</span>
                                       <button
+                                        disabled={isEditMode}
                                         type="button"
                                         onClick={() => field.onChange(field.value?.filter(l => l !== labourId))}
                                         className="text-orange-600 hover:text-orange-800"

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -67,7 +68,8 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function MembershipFeesList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -146,11 +148,15 @@ export default function MembershipFeesList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
-    const member = searchParams.get("member") || "all";
-    const status = searchParams.get("status") || "all";
-    const dateFromParam = searchParams.get("dateFrom");
-    const dateToParam = searchParams.get("dateTo");
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
+    const member = urlParams.get("member") || "all";
+    const status = urlParams.get("status") || "all";
+    const dateFromParam = urlParams.get("dateFrom");
+    const dateToParam = urlParams.get("dateTo");
 
     if (search) {
       setSearchTerm(search);
@@ -205,7 +211,14 @@ export default function MembershipFeesList() {
       const hasFilters = readFiltersFromURL();
       setIsInitialized(true);
     }
-  }, []);
+  }, [isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined") {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Fetch member options from API
   useEffect(() => {

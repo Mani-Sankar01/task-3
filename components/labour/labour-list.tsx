@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { useSafeSearchParams } from "@/hooks/use-safe-search-params";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -82,7 +83,8 @@ import {
 
 export default function LabourList() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const searchParams = useSafeSearchParams();
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -123,9 +125,13 @@ export default function LabourList() {
 
   // Read filters from URL parameters
   const readFiltersFromURL = () => {
-    const search = searchParams.get("search") || "";
-    const status = searchParams.get("status") || "all";
-    const member = searchParams.get("member") || "all";
+    if (typeof window === "undefined") return false;
+    
+    // Read directly from window.location.search to ensure we get current params
+    const urlParams = new URLSearchParams(window.location.search);
+    const search = urlParams.get("search") || "";
+    const status = urlParams.get("status") || "all";
+    const member = urlParams.get("member") || "all";
 
     let hasFilters = false;
 
@@ -133,11 +139,11 @@ export default function LabourList() {
       setSearchTerm(search);
       hasFilters = true;
     }
-    if (status) {
+    if (status && status !== "all") {
       setSelectedStatus(status);
       hasFilters = true;
     }
-    if (member) {
+    if (member && member !== "all") {
       setSelectedMember(member);
       hasFilters = true;
     }
@@ -214,6 +220,13 @@ export default function LabourList() {
       setIsInitialized(true);
     }
   }, [allMembers.length, isInitialized]);
+
+  // Re-read filters when pathname changes (e.g., when navigating back)
+  useEffect(() => {
+    if (isInitialized && typeof window !== "undefined" && allMembers.length > 0) {
+      readFiltersFromURL();
+    }
+  }, [pathname]);
 
   // Apply all filters
   const applyFilters = () => {
