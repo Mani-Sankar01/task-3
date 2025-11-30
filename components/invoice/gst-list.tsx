@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay, startOfYear, endOfYear } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -138,6 +138,7 @@ import {
 
 export default function GSTList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -153,6 +154,7 @@ export default function GSTList() {
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [members, setMembers] = useState<ApiMember[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -190,27 +192,107 @@ export default function GSTList() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
 
+  // Update URL with current filter parameters
+  const updateURL = (memberId: string, dateType: string, dateFrom?: Date, dateTo?: Date) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (memberId) {
+      params.set("memberId", memberId);
+    }
+    if (dateType) {
+      params.set("dateType", dateType);
+    }
+    if (dateFrom) {
+      params.set("dateFrom", dateFrom.toISOString());
+    }
+    if (dateTo) {
+      params.set("dateTo", dateTo.toISOString());
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const memberId = searchParams.get("memberId") || "";
+    const dateType = searchParams.get("dateType") || "";
+    const dateFromParam = searchParams.get("dateFrom");
+    const dateToParam = searchParams.get("dateTo");
+
+    if (memberId) {
+      setSelectedMemberId(memberId);
+    }
+    
+    if (dateType && ["lastMonth", "thisYear", "custom"].includes(dateType)) {
+      setDateFilterType(dateType as "lastMonth" | "thisYear" | "custom");
+      
+      // Set date range based on filter type
+      if (dateType === "lastMonth") {
+        const lastMonth = subMonths(new Date(), 1);
+        setDateRange({
+          from: startOfMonth(lastMonth),
+          to: endOfMonth(lastMonth),
+        });
+      } else if (dateType === "thisYear") {
+        const now = new Date();
+        setDateRange({
+          from: startOfYear(now),
+          to: endOfYear(now),
+        });
+      } else if (dateType === "custom") {
+        if (dateFromParam && dateToParam) {
+          setDateRange({
+            from: new Date(dateFromParam),
+            to: new Date(dateToParam),
+          });
+        }
+      }
+    }
+
+    // Return true if we have filters to auto-search
+    return !!(memberId && dateType);
+  };
+
   // Fetch invoices function (called on search)
-  const fetchInvoices = async () => {
+  const fetchInvoices = async (skipValidation: boolean = false) => {
     if (status !== "authenticated" || !session?.user?.token) {
       return;
     }
 
+    // Check if filters are in URL - if so, skip validation errors
+    const hasUrlFilters = searchParams.get("memberId") && searchParams.get("dateType");
+
+    // Only show validation errors if:
+    // 1. Not skipping validation (user manually clicked search)
+    // 2. Filters are not in URL (fresh page load without filters)
+    if (!skipValidation && !hasUrlFilters) {
+      if (!selectedMemberId) {
+        toast({
+          title: "Member Required",
+          description: "Please select a member to search",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (dateFilterType === "custom" && (!dateRange.from || !dateRange.to)) {
+        toast({
+          title: "Date Range Required",
+          description: "Please select a date range for custom filter",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Double-check we have the required data - silently return if missing
     if (!selectedMemberId) {
-      toast({
-        title: "Member Required",
-        description: "Please select a member to search",
-        variant: "destructive"
-      });
       return;
     }
 
     if (dateFilterType === "custom" && (!dateRange.from || !dateRange.to)) {
-      toast({
-        title: "Date Range Required",
-        description: "Please select a date range for custom filter",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -249,6 +331,9 @@ export default function GSTList() {
       setInvoices(responseData);
 
       console.log("Invoice data:", responseData);
+      
+      // Update URL with filter parameters after successful search
+      updateURL(selectedMemberId, dateFilterType, dateRange.from, dateRange.to);
     } catch (err: unknown) {
       console.error("Error fetching invoice data:", err);
       toast({
@@ -263,7 +348,7 @@ export default function GSTList() {
     }
   };
 
-  // Load members from API
+  // Load members from API and restore filter state
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.token) return;
 
@@ -276,6 +361,17 @@ export default function GSTList() {
           },
         });
         setMembers(response.data || []);
+        
+        // After members are loaded, read filters from URL and auto-search if present
+        const hasFilters = readFiltersFromURL();
+        if (hasFilters && !isInitialized) {
+          setIsInitialized(true);
+          // Auto-fetch after a brief delay to ensure state is set
+          // Skip validation since filters are from URL
+          setTimeout(() => {
+            fetchInvoices(true); // Pass true to skip validation
+          }, 400);
+        }
       } catch (err: unknown) {
         console.error("Error fetching members:", err);
         setMembers([]);
@@ -285,12 +381,40 @@ export default function GSTList() {
     fetchMembers();
   }, [status, session?.user?.token]);
 
-  // Set default date range to last month on component mount
+  // Auto-search when URL has filters and component is ready
   useEffect(() => {
-    if (dateFilterType === "lastMonth" && !dateRange.from && !dateRange.to) {
+    if (
+      isInitialized &&
+      selectedMemberId &&
+      members.length > 0 &&
+      status === "authenticated" &&
+      session?.user?.token &&
+      !isLoading &&
+      !hasSearched
+    ) {
+      // Check if date range is ready
+      const isDateRangeReady = 
+        dateFilterType === "custom" 
+          ? (dateRange.from && dateRange.to)
+          : (dateFilterType === "lastMonth" || dateFilterType === "thisYear")
+            ? (dateRange.from && dateRange.to)
+            : true;
+
+      if (isDateRangeReady) {
+        const timer = setTimeout(() => {
+          fetchInvoices(true); // Pass true to skip validation when auto-fetching from URL
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isInitialized, selectedMemberId, members.length, status, session?.user?.token, hasSearched, dateFilterType, dateRange.from, dateRange.to, isLoading]);
+
+  // Set default date range based on filter type (also after restoration)
+  useEffect(() => {
+    if (dateFilterType === "lastMonth" && (!dateRange.from || !dateRange.to)) {
       const lastMonth = subMonths(new Date(), 1);
       setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
-    } else if (dateFilterType === "thisYear" && !dateRange.from && !dateRange.to) {
+    } else if (dateFilterType === "thisYear" && (!dateRange.from || !dateRange.to)) {
       const now = new Date();
       setDateRange({ from: startOfYear(now), to: endOfYear(now) });
     }
@@ -1804,7 +1928,7 @@ export default function GSTList() {
 
                 <div className="flex items-end">
                   <Button
-                    onClick={fetchInvoices}
+                    onClick={() => fetchInvoices(false)}
                     disabled={isLoading || !selectedMemberId || (dateFilterType === "custom" && (!dateRange.from || !dateRange.to))}
                     className="w-full sm:w-auto"
                   >
