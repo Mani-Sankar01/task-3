@@ -855,14 +855,23 @@ export default function GSTList() {
 
   const handleDateFilterTypeChange = (value: "lastMonth" | "thisYear" | "custom") => {
     setDateFilterType(value);
+    let newDateRange = { from: undefined as Date | undefined, to: undefined as Date | undefined };
+    
     if (value === "lastMonth") {
       const lastMonth = subMonths(new Date(), 1);
-      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+      newDateRange = { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
+      setDateRange(newDateRange);
     } else if (value === "thisYear") {
       const now = new Date();
-      setDateRange({ from: startOfYear(now), to: endOfYear(now) });
+      newDateRange = { from: startOfYear(now), to: endOfYear(now) };
+      setDateRange(newDateRange);
     }
     // For "custom", don't change dateRange - let user select manually
+    
+    // Update URL immediately when date filter type changes
+    if (selectedMemberId) {
+      updateURL(selectedMemberId, value, newDateRange.from, newDateRange.to);
+    }
   };
 
   // Handle invoice selection
@@ -1857,6 +1866,8 @@ export default function GSTList() {
                                 onSelect={() => {
                                   setSelectedMemberId(member.membershipId);
                                   setMemberDropdownOpen(false);
+                                  // Update URL immediately when member changes
+                                  updateURL(member.membershipId, dateFilterType, dateRange.from, dateRange.to);
                                 }}
                               >
                                 {member.applicantName} - {member.firmName}
@@ -1926,10 +1937,15 @@ export default function GSTList() {
                           }}
                           onSelect={(range) => {
                             if (range) {
-                              setDateRange({
+                              const newRange = {
                                 from: range.from,
                                 to: range.to,
-                              });
+                              };
+                              setDateRange(newRange);
+                              // Update URL immediately when date range changes
+                              if (selectedMemberId && range.from && range.to) {
+                                updateURL(selectedMemberId, dateFilterType, range.from, range.to);
+                              }
                             }
                           }}
                           numberOfMonths={2}
