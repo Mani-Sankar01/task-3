@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -85,6 +85,7 @@ interface ApiTrip {
 
 export default function AllTripsList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -97,6 +98,32 @@ export default function AllTripsList() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
   const [vehicleDetails, setVehicleDetails] = useState<Record<string, any>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+
+    if (search) {
+      setSearchTerm(search);
+    }
+
+    // Return true if we have any filters
+    return !!search;
+  };
 
   // Function to fetch vehicle details
   const fetchVehicleDetails = async (vehicleIds: string[]) => {
@@ -199,6 +226,14 @@ export default function AllTripsList() {
 
     fetchData();
   }, [status, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   // Filter trips based on search term
   const filteredTrips = trips.filter(
@@ -431,8 +466,11 @@ export default function AllTripsList() {
                     className="pl-8"
                     value={searchTerm}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value);
+                      const newValue = e.target.value;
+                      setSearchTerm(newValue);
                       setCurrentPage(1);
+                      // Update URL when search changes
+                      updateURL(newValue);
                     }}
                   />
                 </div>
@@ -525,7 +563,7 @@ export default function AllTripsList() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              {vehicle?.vehicleId || trip?.vehicleId || "Unknown"}
+                              {vehicle?.vehicleNumber || trip?.vehicleId || "Unknown"}
                             </TableCell>
                             <TableCell>
                               {vehicle?.driverName || "Unknown"}
