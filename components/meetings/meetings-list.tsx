@@ -421,7 +421,7 @@ export default function MeetingsList() {
       const payload = {
         meetId: meetingToCancel.id,
         status: "CANCELLED",
-        notes: cancelReason,
+        reason: cancelReason,
       };
 
       await axios.post(
