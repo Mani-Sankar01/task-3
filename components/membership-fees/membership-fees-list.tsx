@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpDown,
   MoreHorizontal,
@@ -67,6 +67,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function MembershipFeesList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status: sessionStatus } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,6 +87,7 @@ export default function MembershipFeesList() {
     from: startOfYear,
     to: today,
   });
+  const [isInitialized, setIsInitialized] = useState(false);
   const [memberOptions, setMemberOptions] = useState<any[]>([]);
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
@@ -117,6 +119,59 @@ export default function MembershipFeesList() {
   const totalDueAmount = totalAmount - totalPaidAmount;
   const [memberNames, setMemberNames] = useState<Record<string, string>>({});
 
+  // Update URL with current filter parameters
+  const updateURL = (search: string, member: string, status: string, dateFrom?: Date, dateTo?: Date) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    if (member && member !== "all") {
+      params.set("member", member);
+    }
+    if (status && status !== "all") {
+      params.set("status", status);
+    }
+    if (dateFrom) {
+      params.set("dateFrom", dateFrom.toISOString());
+    }
+    if (dateTo) {
+      params.set("dateTo", dateTo.toISOString());
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+    const member = searchParams.get("member") || "all";
+    const status = searchParams.get("status") || "all";
+    const dateFromParam = searchParams.get("dateFrom");
+    const dateToParam = searchParams.get("dateTo");
+
+    if (search) {
+      setSearchTerm(search);
+    }
+    if (member && member !== "all") {
+      setSelectedMember(member);
+    }
+    if (status && status !== "all") {
+      setSelectedStatus(status);
+    }
+    if (dateFromParam && dateToParam) {
+      setDateRange({
+        from: new Date(dateFromParam),
+        to: new Date(dateToParam),
+      });
+    }
+
+    // Return true if we have any filters
+    return !!(search || (member !== "all") || (status !== "all") || (dateFromParam && dateToParam));
+  };
+
   // Fetch all membership fees from API
   useEffect(() => {
     const fetchFees = async () => {
@@ -143,6 +198,14 @@ export default function MembershipFeesList() {
     };
     fetchFees();
   }, [sessionStatus, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   // Fetch member options from API
   useEffect(() => {
@@ -582,8 +645,11 @@ export default function MembershipFeesList() {
                   className="pl-8"
                   value={searchTerm}
                   onChange={(e) => {
-                    setSearchTerm(e.target.value);
+                    const newValue = e.target.value;
+                    setSearchTerm(newValue);
                     setCurrentPage(1);
+                    // Update URL when search changes
+                    updateURL(newValue, selectedMember, selectedStatus, dateRange.from, dateRange.to);
                   }}
                 />
               </div>
@@ -593,6 +659,8 @@ export default function MembershipFeesList() {
                 onValueChange={(value) => {
                   setSelectedMember(value);
                   setCurrentPage(1);
+                  // Update URL when member filter changes
+                  updateURL(searchTerm, value, selectedStatus, dateRange.from, dateRange.to);
                 }}
               >
                 <SelectTrigger>
@@ -619,6 +687,8 @@ export default function MembershipFeesList() {
                 onValueChange={(value) => {
                   setSelectedStatus(value);
                   setCurrentPage(1);
+                  // Update URL when status filter changes
+                  updateURL(searchTerm, selectedMember, value, dateRange.from, dateRange.to);
                 }}
               >
                 <SelectTrigger>
@@ -639,17 +709,23 @@ export default function MembershipFeesList() {
               <DateRangePicker
                 date={dateRange}
                 onDateChange={(newRange: any) => {
+                  let newDateRange;
                   if (newRange?.from && newRange?.to) {
+                    newDateRange = newRange;
                     setDateRange(newRange);
                   } else if (newRange?.from) {
-                    setDateRange({ from: newRange.from, to: newRange.from });
+                    newDateRange = { from: newRange.from, to: newRange.from };
+                    setDateRange(newDateRange);
                   } else {
-                    setDateRange({
+                    newDateRange = {
                       from: startOfYear,
                       to: today,
-                    });
+                    };
+                    setDateRange(newDateRange);
                   }
                   setCurrentPage(1);
+                  // Update URL when date range changes
+                  updateURL(searchTerm, selectedMember, selectedStatus, newDateRange.from, newDateRange.to);
                 }}
               />
               <Button variant="outline" onClick={resetFilters}>
