@@ -3570,6 +3570,7 @@ export default function MembershipDetailsClient({
                         {(session?.user?.role === "ADMIN" ||
                           session?.user?.role === "TQMA_EDITOR" ||
                           session?.user?.role === "TSMWA_EDITOR") &&
+                          doc.type !== "gst" &&
                           <TableCell className="flex gap-2">
                             <Button
                               variant="outline"
@@ -3580,20 +3581,14 @@ export default function MembershipDetailsClient({
                             </Button>
                             <Button variant="destructive" size="sm" onClick={() => openDeleteLicenseDialog(doc.type)} disabled={docLoading || isDeletingLicense}><Trash2 className="h-4 w-4" /></Button>
                             <Button variant="outline" size="sm" onClick={() => handleDownloadDocument(doc.path)}><Download className="h-4 w-4" /></Button>
-                            {doc.type === "gst" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setGstCredentialsError("");
-                                  setGstUsername(memberCompliance?.gstInUsername || "");
-                                  setGstPassword(memberCompliance?.gstInPassword || "");
-                                  setShowGSTCredentialsDialog(true);
-                                }}
-                              >
-                                <Key className="h-4 w-4" />
-                              </Button>
-                            )}
+                          </TableCell>
+                        }
+                        {(session?.user?.role === "ADMIN" ||
+                          session?.user?.role === "TQMA_EDITOR" ||
+                          session?.user?.role === "TSMWA_EDITOR") &&
+                          doc.type === "gst" &&
+                          <TableCell>
+                            {/* No actions for GST */}
                           </TableCell>
                         }
                       </TableRow>
