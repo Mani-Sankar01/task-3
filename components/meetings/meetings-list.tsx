@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import {
@@ -125,10 +125,12 @@ interface Meeting {
 
 export default function MeetingsList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [isInitialized, setIsInitialized] = useState(false);
   const [sortField, setSortField] = useState<keyof Meeting | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -142,6 +144,31 @@ export default function MeetingsList() {
   const [meetingToCancel, setMeetingToCancel] = useState<{ id: string; title: string } | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isSendingReminder, setIsSendingReminder] = useState<string | null>(null);
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+
+    if (search) {
+      setSearchTerm(search);
+    }
+
+    // Return true if we have any filters
+    return !!search;
+  };
 
   // Fetch meetings from API
   const fetchMeetings = async () => {
@@ -175,6 +202,14 @@ export default function MeetingsList() {
   useEffect(() => {
     fetchMeetings();
   }, [status, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   // Filter meetings based on search term
   const filteredMeetings = meetings.filter(
@@ -593,8 +628,11 @@ export default function MeetingsList() {
                 className="pl-8"
                 value={searchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value);
+                  const newValue = e.target.value;
+                  setSearchTerm(newValue);
                   setCurrentPage(1);
+                  // Update URL when search changes
+                  updateURL(newValue);
                 }}
               />
             </div>
