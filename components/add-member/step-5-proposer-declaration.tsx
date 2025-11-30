@@ -203,7 +203,7 @@ export default function Step5ProposerDeclaration() {
                   data-required={false}
                   data-tooltip="This field is optional. Select a valid member if available."
                 >
-                  Select Valid Member
+                  Select valid Advisory Body Member
                 </FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -218,7 +218,7 @@ export default function Step5ProposerDeclaration() {
                         placeholder={
                           !isLoading && proposer1Id
                             ? `${proposer1Name} - ${proposer1firm}`
-                            : "Select Valid Member (Optional)"
+                            : "Select valid Advisory Body Member (Optional)"
                         }
                       />
                     </SelectTrigger>
