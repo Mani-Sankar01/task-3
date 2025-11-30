@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format, startOfMonth, endOfMonth, subMonths, startOfDay, endOfDay } from "date-fns";
 import { useSession } from "next-auth/react";
 import axios from "axios";
@@ -128,6 +128,7 @@ import { renderRoleBasedPath } from "@/lib/utils";
 
 export default function InvoiceList() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,6 +145,7 @@ export default function InvoiceList() {
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [members, setMembers] = useState<ApiMember[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -155,6 +157,78 @@ export default function InvoiceList() {
   const [gstSubmissionStatus, setGstSubmissionStatus] = useState<"connecting" | "submitting" | "submitted" | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const pageSizeOptions = [20, 50, 100, 200];
+
+  // Update URL with current filter parameters
+  const updateURL = (search: string, member: string, dateType: string, status: string, dateFrom?: Date, dateTo?: Date) => {
+    if (typeof window === "undefined") return;
+    
+    const params = new URLSearchParams();
+    if (search) {
+      params.set("search", search);
+    }
+    if (member) {
+      params.set("member", member);
+    }
+    if (dateType && dateType !== "all") {
+      params.set("dateType", dateType);
+    }
+    if (status && status !== "all") {
+      params.set("status", status);
+    }
+    if (dateFrom) {
+      params.set("dateFrom", dateFrom.toISOString());
+    }
+    if (dateTo) {
+      params.set("dateTo", dateTo.toISOString());
+    }
+    
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+    router.replace(newUrl, { scroll: false });
+  };
+
+  // Read filters from URL parameters
+  const readFiltersFromURL = () => {
+    const search = searchParams.get("search") || "";
+    const member = searchParams.get("member") || "";
+    const dateType = searchParams.get("dateType") || "all";
+    const status = searchParams.get("status") || "all";
+    const dateFromParam = searchParams.get("dateFrom");
+    const dateToParam = searchParams.get("dateTo");
+
+    if (search) {
+      setSearchTerm(search);
+    }
+    if (member) {
+      setSelectedMemberId(member);
+    }
+    if (dateType && ["all", "today", "lastMonth", "custom"].includes(dateType)) {
+      setDateFilterType(dateType as "all" | "today" | "lastMonth" | "custom");
+    }
+    if (status && status !== "all") {
+      setStatusFilter(status);
+    }
+    if (dateFromParam && dateToParam) {
+      setDateRange({
+        from: new Date(dateFromParam),
+        to: new Date(dateToParam),
+      });
+    } else if (dateType === "today") {
+      const today = new Date();
+      setDateRange({
+        from: startOfDay(today),
+        to: endOfDay(today),
+      });
+    } else if (dateType === "lastMonth") {
+      const lastMonth = subMonths(new Date(), 1);
+      setDateRange({
+        from: startOfMonth(lastMonth),
+        to: endOfMonth(lastMonth),
+      });
+    }
+
+    // Return true if we have any filters
+    return !!(search || member || (dateType !== "all") || (status !== "all") || (dateFromParam && dateToParam));
+  };
 
   // Fetch invoices from API
   useEffect(() => {
@@ -251,6 +325,14 @@ export default function InvoiceList() {
 
     fetchMembers();
   }, [status, session?.user?.token]);
+
+  // Read filters from URL on mount (only once)
+  useEffect(() => {
+    if (!isInitialized && typeof window !== "undefined") {
+      const hasFilters = readFiltersFromURL();
+      setIsInitialized(true);
+    }
+  }, []);
 
   useEffect(() => {
     let filtered = invoices;
@@ -679,28 +761,44 @@ export default function InvoiceList() {
   const clearDateFilter = () => {
     setDateFilterType("all");
     setDateRange({ from: undefined, to: undefined });
+    // Update URL when clearing date filter
+    updateURL(searchTerm, selectedMemberId, "all", statusFilter);
   };
 
   const handleDateFilterTypeChange = (value: "all" | "today" | "lastMonth" | "custom") => {
     setDateFilterType(value);
+    let newDateRange = { from: undefined as Date | undefined, to: undefined as Date | undefined };
     if (value === "today") {
       const today = new Date();
-      setDateRange({ from: startOfDay(today), to: endOfDay(today) });
+      newDateRange = { from: startOfDay(today), to: endOfDay(today) };
+      setDateRange(newDateRange);
     } else if (value === "lastMonth") {
       const lastMonth = subMonths(new Date(), 1);
-      setDateRange({ from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) });
+      newDateRange = { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
+      setDateRange(newDateRange);
     } else if (value === "all") {
       setDateRange({ from: undefined, to: undefined });
     }
     // For "custom", don't change dateRange - let user select manually
+    
+    // Update URL when date filter type changes
+    if (value === "all") {
+      updateURL(searchTerm, selectedMemberId, "all", statusFilter);
+    } else {
+      updateURL(searchTerm, selectedMemberId, value, statusFilter, newDateRange.from, newDateRange.to);
+    }
   };
 
   const clearMemberFilter = () => {
     setSelectedMemberId("");
+    // Update URL when clearing member filter
+    updateURL(searchTerm, "", dateFilterType, statusFilter, dateRange.from, dateRange.to);
   };
 
   const clearStatusFilter = () => {
     setStatusFilter("all");
+    // Update URL when clearing status filter
+    updateURL(searchTerm, selectedMemberId, dateFilterType, "all", dateRange.from, dateRange.to);
   };
 
 
@@ -745,7 +843,12 @@ export default function InvoiceList() {
                 placeholder="Search by invoice number, member or firm..."
                 className="pl-8"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setSearchTerm(newValue);
+                  // Update URL when search changes
+                  updateURL(newValue, selectedMemberId, dateFilterType, statusFilter, dateRange.from, dateRange.to);
+                }}
               />
             </div>
 
@@ -753,11 +856,10 @@ export default function InvoiceList() {
               <Select
                 value={selectedMemberId}
                 onValueChange={(v) => {
-                  if (v == "all") {
-                    setSelectedMemberId("");
-                  } else {
-                    setSelectedMemberId(v);
-                  }
+                  const memberValue = v == "all" ? "" : v;
+                  setSelectedMemberId(memberValue);
+                  // Update URL when member filter changes
+                  updateURL(searchTerm, memberValue, dateFilterType, statusFilter, dateRange.from, dateRange.to);
                 }}
               >
                 <SelectTrigger className="w-[200px]">
@@ -831,10 +933,15 @@ export default function InvoiceList() {
                       }}
                       onSelect={(range) => {
                         if (range) {
-                          setDateRange({
+                          const newRange = {
                             from: range.from,
                             to: range.to,
-                          });
+                          };
+                          setDateRange(newRange);
+                          // Update URL when date range changes
+                          if (newRange.from && newRange.to) {
+                            updateURL(searchTerm, selectedMemberId, dateFilterType, statusFilter, newRange.from, newRange.to);
+                          }
                         }
                       }}
                       numberOfMonths={2}
@@ -853,7 +960,11 @@ export default function InvoiceList() {
             <div className="flex items-center gap-2">
               <Select
                 value={statusFilter}
-                onValueChange={(value) => setStatusFilter(value)}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  // Update URL when status filter changes
+                  updateURL(searchTerm, selectedMemberId, dateFilterType, value, dateRange.from, dateRange.to);
+                }}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by status" />
