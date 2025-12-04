@@ -16,6 +16,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import Step1PersonalBusiness from "@/components/add-member/step-1-personal-business";
 import Step2OperationDetails from "@/components/add-member/step-2-operation-details";
 import Step3ComplianceLegal from "@/components/add-member/step-3-compliance-legal";
@@ -39,18 +47,24 @@ import {
 
 // Define the form schema
 const formSchema = z.object({
+  membershipId: z.string().min(1, "Membership ID is required"),
   membershipType: z.enum(["TSMWA", "TQMWA"], {
     required_error: "Membership Type is required",
   }),
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(4, "USC Number must be minimum 4 digits"),
     dateOfApplication: z.string().min(1, "Date is required"),
+    dateOfApplicationApproved: z.string().optional(),
+    yearOfJoining: z.string().optional(),
     scNumber: z.string().min(4, "SC Number must be minimum 4 digits"),
   }),
   memberDetails: z.object({
     applicantName: z.string().min(4, "Name must be minimum 4 digits"),
     relation: z.string().min(1, "Relation is required"),
     relativeName: z.string().min(4, "Name must be minimum 4 digits"),
+    aadharNo: z.string().optional(),
+    panNo: z.string().optional(),
+    emailId: z.string().email("Invalid email address").optional().or(z.literal("")),
   }),
   firmDetails: z.object({
     firmName: z.string().min(4, "Firm name must be minimum 4 digits"),
@@ -59,8 +73,9 @@ const formSchema = z.object({
     contact2: z.string().optional(),
   }),
   businessDetails: z.object({
-    surveyNumber: z.string().min(4, "Survey number must be minimum 4 digits"),
-    village: z.string().min(4, "Village must be minimum 4 digits"),
+    surveyNumber: z.string().optional(),
+    housePlotNumber: z.string().optional(),
+    village: z.string().optional(),
     zone: z.string().min(1, "Zone is required"),
     mandal: z.string().min(1, "Mandal is required"),
     district: z.string().min(1, "District is required"),
@@ -71,12 +86,29 @@ const formSchema = z.object({
   }),
   electricalDetails: z.object({
     sanctionedHP: z.string().min(1, "sanctionedHP must be minimum 1"),
+    machinery: z
+      .array(
+        z.object({
+          type: z.string().min(4, "Machinery Type is required"),
+          machineName: z.string().optional(),
+          isOther: z.boolean().default(false),
+          quantity: z.string().min(1, "Machinery quantity is required"),
+        })
+      )
+      .default([]),
   }),
   branchDetails: z.object({
     branches: z
       .array(
         z.object({
-          placeOfBusiness: z.string().min(4, "Place Business must be minimum 4 digits"),
+          placeOfBusiness: z.string().min(4, "Name of the branch must be minimum 4 digits"),
+          district: z.string().min(1, "District is required"),
+          state: z.string().min(1, "State is required"),
+          mandal: z.string().min(1, "Mandal is required"),
+          zone: z.string().min(1, "Zone is required"),
+          village: z.string().optional(),
+          surveyNumber: z.string().optional(),
+          housePlotNumber: z.string().optional(),
           proprietorStatus: z.string().min(1, "Proprietor Status is required"),
           proprietorType: z.string().optional(),
           electricalUscNumber: z
@@ -166,6 +198,7 @@ const formSchema = z.object({
     partners: z
       .array(
         z.object({
+          type: z.string().min(1, "Type is required"),
           name: z.string().min(2, "Name must be minimum 2 digits"),
           contactNo: z.string().length(10, "Contact number must be 10 digits"),
           aadharNo: z.string().length(12, "Aadhar number must be 12 digits"),
@@ -184,10 +217,6 @@ const formSchema = z.object({
       .string()
       .min(1, "Select if you applied for membership earlier?"),
     previousApplicationDetails: z.string().optional(),
-    isValidMember: z.string().min(1, "Select is Valid member or not"),
-    isExecutiveMember: z
-      .string()
-      .min(1, "Select is an Executive member or not"),
   }),
   documentDetails: z.object({
     additionalDocuments: z.any().optional(),
@@ -263,6 +292,7 @@ const AddMemberForm = () => {
   const { data: session, status } = useSession();
   const { toast } = useToast();
   const [validationErrors, setValidationErrors] = useState<{
+    membershipId?: string;
     electricalUscNumber?: string;
     scNumber?: string;
     gstinNo?: string;
@@ -275,6 +305,7 @@ const AddMemberForm = () => {
     [key: string]: string | undefined;
   }>({});
   const [validationSuccess, setValidationSuccess] = useState<{
+    membershipId?: string;
     electricalUscNumber?: string;
     scNumber?: string;
     gstinNo?: string;
@@ -286,6 +317,7 @@ const AddMemberForm = () => {
     udyamCertificateNo?: string;
     [key: string]: string | undefined;
   }>({});
+  const [isValidatingMembershipId, setIsValidatingMembershipId] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [errorPopup, setErrorPopup] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
@@ -302,16 +334,22 @@ const AddMemberForm = () => {
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      membershipId: "",
       membershipType: "TSMWA",
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
+        dateOfApplicationApproved: "",
+        yearOfJoining: new Date().getFullYear().toString(),
         scNumber: "",
       },
       memberDetails: {
         applicantName: "",
         relation: "",
         relativeName: "",
+        aadharNo: "",
+        panNo: "",
+        emailId: "",
       },
       firmDetails: {
         firmName: "",
@@ -321,17 +359,19 @@ const AddMemberForm = () => {
       },
       businessDetails: {
         surveyNumber: "",
+        housePlotNumber: "",
         village: "",
         zone: "",
         mandal: "",
-        district: "",
-        state: "",
+        district: "Vikarabad",
+        state: "Telangana",
         pincode: "",
         ownershipType: "",
         ownerSubType: "",
       },
       electricalDetails: {
         sanctionedHP: "",
+        machinery: [],
       },
       branchDetails: {
         branches: [],
@@ -366,6 +406,7 @@ const AddMemberForm = () => {
       representativeDetails: {
         partners: [
           {
+            type: "",
             name: "",
             contactNo: "",
             aadharNo: "",
@@ -737,13 +778,19 @@ const AddMemberForm = () => {
       }
 
       const requestData: any = {
+        membershipId: data.membershipId,
         membershipType: data.membershipType,
         electricalUscNumber: data.applicationDetails.electricalUscNumber,
         scNumber: data.applicationDetails.scNumber,
         applicantName: data.memberDetails.applicantName,
         relation: data.memberDetails.relation || "SO",
         doj: data.applicationDetails.dateOfApplication,
+        doa: data.applicationDetails.dateOfApplicationApproved || null,
+        yoj: data.applicationDetails.yearOfJoining || null,
         relativeName: data.memberDetails.relativeName,
+        aadharNo: data.memberDetails.aadharNo || null,
+        panNo: data.memberDetails.panNo || null,
+        emailId: data.memberDetails.emailId || null,
         gender: "MALE", // hardcoded or can be added to form
 
         firmName: data.firmDetails.firmName,
@@ -751,8 +798,9 @@ const AddMemberForm = () => {
         phoneNumber1: data.firmDetails.contact1,
         phoneNumber2: data.firmDetails.contact2,
 
-        surveyNumber: data.businessDetails.surveyNumber,
-        village: data.businessDetails.village,
+        surveyNumber: data.businessDetails.surveyNumber || null,
+        housePlotNumber: data.businessDetails.housePlotNumber || null,
+        village: data.businessDetails.village || null,
         zone: data.businessDetails.zone,
         mandal: data.businessDetails.mandal,
         district: data.businessDetails.district,
@@ -762,11 +810,18 @@ const AddMemberForm = () => {
         proprietorStatus:
           data.businessDetails.ownershipType?.toUpperCase() || "OWNER",
         proprietorType:
-          data.businessDetails.ownerSubType?.toUpperCase() || "OWNED",
+          data.businessDetails.ownerSubType?.toUpperCase() || "",
 
         sanctionedHP: parseFloat(data.electricalDetails.sanctionedHP),
 
+        machineryInformations: (data.electricalDetails.machinery || []).map((m) => ({
+          machineName: m.isOther ? m.machineName || "Custom" : m.type,
+          isOther: m.isOther ? "TRUE" : "FALSE",
+          machineCount: parseInt(m.quantity),
+        })),
+
         partnerDetails: data.representativeDetails.partners.map((partner) => ({
+          type: partner.type || null,
           partnerName: partner.name,
           partnerAadharNo: partner.aadharNo,
           partnerPanNo: partner.pan,
@@ -786,6 +841,13 @@ const AddMemberForm = () => {
           proprietorStatus: branch.proprietorStatus?.toUpperCase() || "OWNER",
           sanctionedHP: parseFloat(branch.sanctionedHP),
           placeOfBusiness: branch.placeOfBusiness,
+          district: branch.district || "Vikarabad",
+          state: branch.state || "Telangana",
+          mandal: branch.mandal || null,
+          zone: branch.zone || null,
+          village: branch.village || null,
+          surveyNumber: branch.surveyNumber || null,
+          housePlotNumber: branch.housePlotNumber || null,
           machineryInformations: branch.machinery.map((m) => ({
             machineName: m.isOther ? m.machineName || "Custom" : m.type,
             isOther: m.isOther ? "TRUE" : "FALSE",
@@ -798,12 +860,6 @@ const AddMemberForm = () => {
             data.membershipDetails.isMemberOfOrg === "yes" ? "TRUE" : "FALSE",
           has_applied_earlier:
             data.membershipDetails.hasAppliedEarlier === "yes"
-              ? "TRUE"
-              : "FALSE",
-          is_valid_member:
-            data.membershipDetails.isValidMember === "yes" ? "TRUE" : "FALSE",
-          is_executive_member:
-            data.membershipDetails.isExecutiveMember === "yes"
               ? "TRUE"
               : "FALSE",
         },
@@ -1351,9 +1407,74 @@ const AddMemberForm = () => {
     }
   };
 
+  // Validate membership ID function
+  const validateMembershipId = async (membershipId: string) => {
+    if (!membershipId || membershipId.length < 1) {
+      setValidationErrors((prev) => ({ ...prev, membershipId: undefined }));
+      setValidationSuccess((prev) => ({ ...prev, membershipId: undefined }));
+      return false;
+    }
+
+    if (!session?.user?.token) {
+      return false;
+    }
+
+    setIsValidatingMembershipId(true);
+    try {
+      const response = await axios.get(
+        `${process.env.BACKEND_API_URL}/api/member/validate?membershipId=${encodeURIComponent(membershipId)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${session.user.token}`,
+          },
+        }
+      );
+
+      // Clear previous validation
+      setValidationErrors((prev) => ({ ...prev, membershipId: undefined }));
+      setValidationSuccess((prev) => ({ ...prev, membershipId: undefined }));
+
+      if (response.data.isDuplicate) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          membershipId: response.data.message || "This membership ID is already registered. Please try another one.",
+        }));
+        return false;
+      } else {
+        setValidationSuccess((prev) => ({
+          ...prev,
+          membershipId: response.data.message || "This membership ID is available.",
+        }));
+        return true;
+      }
+    } catch (error: any) {
+      console.error("Membership ID validation error:", error);
+      setValidationErrors((prev) => ({
+        ...prev,
+        membershipId: error.response?.data?.message || "Error validating membership ID. Please try again.",
+      }));
+      return false;
+    } finally {
+      setIsValidatingMembershipId(false);
+    }
+  };
+
   // Real-time validation function
   const handleFieldChange = async (fieldName: string, value: string) => {
     console.log("Field change detected:", fieldName, value); // Debug log
+
+    // Membership ID validation
+    if (fieldName === "membershipId") {
+      if (value.length >= 1) {
+        setTimeout(async () => {
+          await validateMembershipId(value);
+        }, 500); // 500ms delay to avoid too many API calls
+      } else {
+        setValidationErrors((prev) => ({ ...prev, membershipId: undefined }));
+        setValidationSuccess((prev) => ({ ...prev, membershipId: undefined }));
+      }
+      return;
+    }
 
     const currentData = methods.getValues();
 
@@ -1577,6 +1698,7 @@ const AddMemberForm = () => {
                   validationSuccess={validationSuccess as any}
                   onFieldChange={handleFieldChange}
                   isValidating={isValidating}
+                  isValidatingMembershipId={isValidatingMembershipId}
                 />
               )}
               {currentStep === 2 && (

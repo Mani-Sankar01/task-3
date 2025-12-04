@@ -1,6 +1,7 @@
 "use client";
 
 import { useFieldArray, useFormContext } from "react-hook-form";
+import { useEffect } from "react";
 import { Plus, Trash2, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 
@@ -55,6 +56,25 @@ export default function Step2OperationDetails({
     control,
     name: "branchDetails.branches",
   });
+
+  // Main machinery field array
+  const machineryArray = useFieldArray({
+    control,
+    name: "electricalDetails.machinery",
+  });
+
+  // Set default values for district and state in all branches
+  useEffect(() => {
+    const branches = getValues("branchDetails.branches") || [];
+    branches.forEach((branch: any, index: number) => {
+      if (!branch.district) {
+        setValue(`branchDetails.branches.${index}.district`, "Vikarabad");
+      }
+      if (!branch.state) {
+        setValue(`branchDetails.branches.${index}.state`, "Telangana");
+      }
+    });
+  }, [branchArray.fields.length, setValue, getValues]);
 
   // Function to add a new machinery to a specific branch
   const addMachinery = (branchIndex: number) => {
@@ -118,7 +138,7 @@ export default function Step2OperationDetails({
             name="electricalDetails.sanctionedHP"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Total Sanctioned HP</FormLabel>
+                <FormLabel>Sanctioned HP</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -131,14 +151,153 @@ export default function Step2OperationDetails({
             )}
           />
         </div>
-
-
       </div>
 
-      {/* Section 2: Branch Details */}
+      {/* Section 2: Machinery Details */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium border-b pb-2 flex-1">
+            Machinery Details
+          </h3>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => machineryArray.append({
+              type: "",
+              machineName: "",
+              isOther: false,
+              quantity: "",
+            })}
+            className="ml-4"
+          >
+            <Plus className="h-4 w-4 mr-2" /> Add Machine
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {machineryArray.fields.map((field, machineryIndex) => (
+            <Card key={field.id}>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={control}
+                    name={`electricalDetails.machinery.${machineryIndex}.type`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Machine Type</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Update isOther based on selection
+                            const isOther = value === "Others";
+                            setValue(
+                              `electricalDetails.machinery.${machineryIndex}.isOther`,
+                              isOther
+                            );
+                            // Clear machineName if not "Others"
+                            if (!isOther) {
+                              setValue(
+                                `electricalDetails.machinery.${machineryIndex}.machineName`,
+                                ""
+                              );
+                            }
+                          }}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select machine type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="High Polish">
+                              High Polish
+                            </SelectItem>
+                            <SelectItem value="Slice">
+                              Slice
+                            </SelectItem>
+                            <SelectItem value="Cutting">
+                              Cutting
+                            </SelectItem>
+                            <SelectItem value="Lathe Machine">
+                              Lathe Machine
+                            </SelectItem>
+                            <SelectItem value="Others">
+                              Others
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {watch(
+                    `electricalDetails.machinery.${machineryIndex}.type`
+                  ) === "Others" && (
+                    <FormField
+                      control={control}
+                      name={`electricalDetails.machinery.${machineryIndex}.machineName`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Machine Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter machine name"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={control}
+                    name={`electricalDetails.machinery.${machineryIndex}.quantity`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantity</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Enter quantity"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-4 text-destructive"
+                  onClick={() => machineryArray.remove(machineryIndex)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" /> Remove
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+
+          {machineryArray.fields.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No machinery added yet. Click the button above to add machinery.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Section 3: Branch Details */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-medium">Branch Details</h3>
+          <h3 className="text-lg font-medium">Additional Branch Details</h3>
           <Button
             type="button"
             variant="outline"
@@ -146,10 +305,17 @@ export default function Step2OperationDetails({
             onClick={() =>
               branchArray.append({
                 placeOfBusiness: "",
+                district: "Vikarabad",
+                state: "Telangana",
+                mandal: "",
+                zone: "",
+                village: "",
+                surveyNumber: "",
+                housePlotNumber: "",
                 proprietorStatus: "",
                 proprietorType: "",
                 electricalUscNumber: "",
-                scNumber: "", // Added SC Number
+                scNumber: "",
                 sanctionedHP: "",
                 machinery: [],
                 labour: [],
@@ -180,10 +346,133 @@ export default function Step2OperationDetails({
                       name={`branchDetails.branches.${branchIndex}.placeOfBusiness`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Place of Business</FormLabel>
+                          <FormLabel>Name of the branch</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter business location"
+                              placeholder="Enter branch name"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.district`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>District</FormLabel>
+                          <FormControl>
+                            <Input
+                              value={field.value || "Vikarabad"}
+                              disabled
+                              readOnly
+                              className="bg-gray-100 cursor-not-allowed"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.state`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input
+                              value={field.value || "Telangana"}
+                              disabled
+                              readOnly
+                              className="bg-gray-100 cursor-not-allowed"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.mandal`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mandal</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter mandal"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.zone`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Zone</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter zone"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.village`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-required="false">Village</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter village"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.surveyNumber`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-required="false">Survey Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter survey number"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.housePlotNumber`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-required="false">House/Plot Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter house/plot number"
                               {...field}
                             />
                           </FormControl>

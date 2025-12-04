@@ -1,8 +1,8 @@
 "use client";
 
 import { useFormContext } from "react-hook-form";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import {
@@ -19,26 +19,22 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 
 interface Step1PersonalBusinessProps {
   isEditMode?: boolean;
   validationErrors?: {
+    membershipId?: string;
     electricalUscNumber?: string;
     scNumber?: string;
   };
   validationSuccess?: {
+    membershipId?: string;
     electricalUscNumber?: string;
     scNumber?: string;
   };
   onFieldChange?: (fieldName: string, value: string) => void;
   isValidating?: boolean;
+  isValidatingMembershipId?: boolean;
 }
 
 export default function Step1PersonalBusiness({ 
@@ -46,10 +42,17 @@ export default function Step1PersonalBusiness({
   validationErrors = {},
   validationSuccess = {},
   onFieldChange,
-  isValidating = false
+  isValidating = false,
+  isValidatingMembershipId = false
 }: Step1PersonalBusinessProps) {
-  const { control, watch } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const ownershipType = watch("businessDetails.ownershipType");
+  
+  // Set default values for district and state
+  useEffect(() => {
+    setValue("businessDetails.district", "Vikarabad");
+    setValue("businessDetails.state", "Telangana");
+  }, [setValue]);
 
   return (
     <div className="space-y-8">
@@ -64,6 +67,57 @@ export default function Step1PersonalBusiness({
           )}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <FormField
+            control={control}
+            name="membershipId"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel data-tooltip="Enter the membership ID for this member.">
+                  Membership ID
+                </FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      placeholder="Enter Membership ID"
+                      readOnly={isEditMode}
+                      className={`${
+                        isEditMode ? "bg-gray-100 cursor-not-allowed" : ""
+                      } ${
+                        validationErrors.membershipId
+                          ? "border-red-500"
+                          : validationSuccess.membershipId
+                          ? "border-green-500"
+                          : ""
+                      }`}
+                      onChange={(e) => {
+                        field.onChange(e);
+                        if (onFieldChange && !isEditMode) {
+                          onFieldChange("membershipId", e.target.value);
+                        }
+                      }}
+                      disabled={isValidatingMembershipId}
+                    />
+                    {isValidatingMembershipId && (
+                      <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage />
+                {validationErrors?.membershipId && (
+                  <p className="text-sm text-destructive">
+                    {validationErrors.membershipId}
+                  </p>
+                )}
+                {validationSuccess?.membershipId && !validationErrors?.membershipId && (
+                  <p className="text-sm text-green-600">
+                    {validationSuccess.membershipId}
+                  </p>
+                )}
+              </FormItem>
+            )}
+          />
+
           <FormField
             control={control}
             name="applicationDetails.electricalUscNumber"
@@ -151,8 +205,8 @@ export default function Step1PersonalBusiness({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="TSMWA">Tandur Stone Merchant</SelectItem>
-                    <SelectItem value="TQMWA">Tandur Query Mandal</SelectItem>
+                    <SelectItem value="TSMWA">TSMWA</SelectItem>
+                    <SelectItem value="TMQOWA">TMQOWA</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -168,36 +222,60 @@ export default function Step1PersonalBusiness({
                 <FormLabel data-tooltip="Select the date when this application is submitted.">
                   Date of Application
                 </FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant={"outline"}
-                        className={`w-full pl-3 text-left font-normal ${
-                          !field.value ? "text-muted-foreground" : ""
-                        }`}
-                      >
-                        {field.value ? (
-                          format(new Date(field.value), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value ? new Date(field.value) : undefined}
-                      onSelect={(date) =>
-                        field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                      }
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                    max={new Date().toISOString().split("T")[0]}
+                    className="w-full"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="applicationDetails.dateOfApplicationApproved"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel data-required="false" data-tooltip="Select the date when this application was approved.">
+                  Date of Application Approved
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...field}
+                    max={new Date().toISOString().split("T")[0]}
+                    className="w-full"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="applicationDetails.yearOfJoining"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel data-required="false" data-tooltip="Enter the year of joining.">
+                  Year of Joining
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="Enter year (e.g., 2025)" 
+                    {...field}
+                    maxLength={4}
+                    onChange={(e) => {
+                      // Only allow numbers
+                      const value = e.target.value.replace(/\D/g, '');
+                      field.onChange(value);
+                    }}
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -270,44 +348,6 @@ export default function Step1PersonalBusiness({
               </FormItem>
             )}
           />
-        </div>
-      </div>
-
-      {/* Section 3: Firm Details */}
-      <div>
-        <h3 className="text-lg font-medium border-b pb-2 mb-4">Firm Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={control}
-            name="firmDetails.firmName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel data-tooltip="Enter the registered name of the firm.">
-                  Firm Name
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter firm name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="firmDetails.proprietorName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel data-tooltip="Enter the name of the proprietor or managing partner.">
-                  Proprietor/Managing Partner Name
-                </FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter proprietor name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={control}
@@ -347,6 +387,116 @@ export default function Step1PersonalBusiness({
               </FormItem>
             )}
           />
+
+          <FormField
+            control={control}
+            name="memberDetails.aadharNo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-required="false" data-tooltip="Enter 12-digit Aadhar number.">
+                  Aadhar Number
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter Aadhar number"
+                    type="text"
+                    maxLength={12}
+                    {...field}
+                    onChange={(e) => {
+                      // Only allow numbers
+                      const value = e.target.value.replace(/\D/g, '');
+                      field.onChange(value);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="memberDetails.panNo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-required="false" data-tooltip="Enter 10-character PAN number.">
+                  PAN Number
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter PAN number"
+                    type="text"
+                    maxLength={10}
+                    {...field}
+                    onChange={(e) => {
+                      // Convert to uppercase and only allow alphanumeric
+                      const value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                      field.onChange(value);
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="memberDetails.emailId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-required="false" data-tooltip="Enter email address.">
+                  Email ID
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Enter email address"
+                    type="email"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      </div>
+
+      {/* Section 3: Firm Details */}
+      <div>
+        <h3 className="text-lg font-medium border-b pb-2 mb-4">Firm Details</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <FormField
+            control={control}
+            name="firmDetails.firmName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-tooltip="Enter the registered name of the firm.">
+                  Firm Name
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter firm name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="firmDetails.proprietorName"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-tooltip="Enter the name of the proprietor or managing partner.">
+                  Proprietor/Managing Partner Name
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter proprietor name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
       </div>
 
@@ -361,7 +511,7 @@ export default function Step1PersonalBusiness({
             name="businessDetails.surveyNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel data-tooltip="Enter the land survey number associated with the unit.">
+                <FormLabel data-required="false" data-tooltip="Enter the land survey number associated with the unit.">
                   Survey Number
                 </FormLabel>
                 <FormControl>
@@ -374,10 +524,26 @@ export default function Step1PersonalBusiness({
 
           <FormField
             control={control}
+            name="businessDetails.housePlotNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel data-required="false" data-tooltip="Enter the house or plot number.">
+                  House/Plot Number
+                </FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter house/plot number" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
             name="businessDetails.village"
             render={({ field }) => (
               <FormItem>
-                <FormLabel data-tooltip="Enter the village or locality name.">
+                <FormLabel data-required="false" data-tooltip="Enter the village or locality name.">
                   Village
                 </FormLabel>
                 <FormControl>
@@ -460,21 +626,14 @@ export default function Step1PersonalBusiness({
                 <FormLabel data-tooltip="Specify the district for this business location.">
                   District
                 </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select district" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Vikarabad">Vikarabad</SelectItem>
-                    <SelectItem value="Medak">Medak</SelectItem>
-                    <SelectItem value="Rangareddy">Rangareddy</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Input
+                    value={field.value || "Vikarabad"}
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
+                    readOnly
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -488,24 +647,14 @@ export default function Step1PersonalBusiness({
                 <FormLabel data-tooltip="Select the state where the firm operates.">
                   State
                 </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="telangana">Telangana</SelectItem>
-                    <SelectItem value="andhra_pradesh">
-                      Andhra Pradesh
-                    </SelectItem>
-                    <SelectItem value="karnataka">Karnataka</SelectItem>
-                    <SelectItem value="tamil_nadu">Tamil Nadu</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <Input
+                    value={field.value || "Telangana"}
+                    disabled
+                    className="bg-gray-100 cursor-not-allowed"
+                    readOnly
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -563,7 +712,7 @@ export default function Step1PersonalBusiness({
                     data-required="false"
                     data-tooltip="Optional: refine the ownership classification."
                   >
-                    Proprietor Type
+                    Factory type
                   </FormLabel>
                   <Select
                     onValueChange={field.onChange}
@@ -576,8 +725,7 @@ export default function Step1PersonalBusiness({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="OWNED">Owned</SelectItem>
-                      <SelectItem value="RENTED">Rented/Tenant</SelectItem>
-                      <SelectItem value="TRADING">Trader</SelectItem>
+                      <SelectItem value="RENTED">Rented</SelectItem>
                       <SelectItem value="FACTORY_ON_LEASE">
                         Factory given on lease
                       </SelectItem>

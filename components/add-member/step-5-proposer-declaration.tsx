@@ -191,7 +191,7 @@ export default function Step5ProposerDeclaration() {
       {/* Section 1: Proposer 1 */}
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
-          Proposer 1 (Factory Owner/Valid Member)
+          Proposer 1 (Members of the Association)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
@@ -203,7 +203,7 @@ export default function Step5ProposerDeclaration() {
                   data-required={false}
                   data-tooltip="This field is optional. Select a valid member if available."
                 >
-                  Select valid Advisory Body Member
+                  Select valid Members of the Association
                 </FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -218,7 +218,7 @@ export default function Step5ProposerDeclaration() {
                         placeholder={
                           !isLoading && proposer1Id
                             ? `${proposer1Name} - ${proposer1firm}`
-                            : "Select valid Advisory Body Member (Optional)"
+                            : "Select valid Members of the Association"
                         }
                       />
                     </SelectTrigger>
@@ -331,7 +331,7 @@ export default function Step5ProposerDeclaration() {
       {/* Section 2: Proposer 2 */}
       <div>
         <h3 className="text-lg font-medium border-b pb-2 mb-4">
-          Proposer 2 (Executive Member)
+          Proposer 2 (Executive Members of the Association)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <FormField
@@ -343,7 +343,7 @@ export default function Step5ProposerDeclaration() {
                   data-required={false}
                   data-tooltip="This field is optional. Select an executive member if available."
                 >
-                  Select Executive Member
+                 Select Executive member of the association
                 </FormLabel>
                 <Select
                   onValueChange={(value) => {
@@ -358,7 +358,7 @@ export default function Step5ProposerDeclaration() {
                         placeholder={
                           !isLoading && proposer2Name && proposer2firm
                             ? `${proposer2Name} - ${proposer2firm}`
-                            : "Select an executive member (Optional)"
+                            : "Select Executive member of the association"
                         }
                       />
                     </SelectTrigger>

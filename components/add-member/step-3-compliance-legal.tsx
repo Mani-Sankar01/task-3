@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   FormControl,
   FormField,
   FormItem,
@@ -708,6 +715,7 @@ export default function Step3ComplianceLegal({
             size="sm"
             onClick={() =>
               partnerArray.append({
+                type: "",
                 name: "",
                 contactNo: "",
                 aadharNo: "",
@@ -725,6 +733,31 @@ export default function Step3ComplianceLegal({
             <Card key={field.id}>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={control}
+                    name={`representativeDetails.partners.${index}.type`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="Partner">Partner</SelectItem>
+                            <SelectItem value="Representative">Representative</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <FormField
                     control={control}
                     name={`representativeDetails.partners.${index}.name`}

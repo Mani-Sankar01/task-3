@@ -161,60 +161,6 @@ export default function Step4MembershipDocs({ isEditMode }: Step4MembershipDocsP
               )}
             />
           )}
-
-          <FormField
-            control={control}
-            name="membershipDetails.isValidMember"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Is this a valid Advisory Body member?</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-row space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="valid-yes" />
-                      <Label htmlFor="valid-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="valid-no" />
-                      <Label htmlFor="valid-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={control}
-            name="membershipDetails.isExecutiveMember"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel>Is this an Executive member?</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="flex flex-row space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="yes" id="executive-yes" />
-                      <Label htmlFor="executive-yes">Yes</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="no" id="executive-no" />
-                      <Label htmlFor="executive-no">No</Label>
-                    </div>
-                  </RadioGroup>
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
         </div>
       </div>
 

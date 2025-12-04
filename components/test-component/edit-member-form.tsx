@@ -37,16 +37,22 @@ import { useToast } from "@/hooks/use-toast";
 
 // Define the form schema
 const formSchema = z.object({
+  membershipId: z.string().min(1, "Membership ID is required"),
   membershipType: z.enum(["TSMWA", "TQMWA"]).default("TSMWA"),
   applicationDetails: z.object({
     electricalUscNumber: z.string().min(4, "USC Number must be minimum 4 digits"),
     dateOfApplication: z.string().min(1, "Date is required"),
+    dateOfApplicationApproved: z.string().optional(),
+    yearOfJoining: z.string().optional(),
     scNumber: z.string().min(4, "SC Number must be minimum 4 digits"),
   }),
   memberDetails: z.object({
     applicantName: z.string().min(4, "Name must be minimum 4 digits"),
     relation: z.string().min(1, "Relation is required"),
     relativeName: z.string().min(4, "Name must be minimum 4 digits"),
+    aadharNo: z.string().optional(),
+    panNo: z.string().optional(),
+    emailId: z.string().email("Invalid email address").optional().or(z.literal("")),
   }),
   firmDetails: z.object({
     firmName: z.string().min(4, "Firm name must be minimum 4 digits"),
@@ -55,8 +61,9 @@ const formSchema = z.object({
     contact2: z.string().optional(),
   }),
   businessDetails: z.object({
-    surveyNumber: z.string().min(4, "Survey number must be minimum 4 digits"),
-    village: z.string().min(4, "Village must be minimum 4 digits"),
+    surveyNumber: z.string().optional(),
+    housePlotNumber: z.string().optional(),
+    village: z.string().optional(),
     zone: z.string().min(1, "Zone is required"),
     mandal: z.string().min(1, "Mandal is required"),
     district: z.string().min(1, "District is required"),
@@ -67,13 +74,30 @@ const formSchema = z.object({
   }),
   electricalDetails: z.object({
     sanctionedHP: z.string().min(1, "sanctionedHP is required"),
+    machinery: z
+      .array(
+        z.object({
+          type: z.string().min(4, "Machinery Type is required"),
+          machineName: z.string().optional(),
+          isOther: z.boolean().default(false),
+          quantity: z.string().min(1, "Machinery quantity is required"),
+        })
+      )
+      .default([]),
   }),
   branchDetails: z.object({
     branches: z
       .array(
         z.object({
           id: z.number().optional(),
-          placeOfBusiness: z.string().min(4, "Place Business must be minimum 4 digits"),
+          placeOfBusiness: z.string().min(4, "Name of the branch must be minimum 4 digits"),
+          district: z.string().min(1, "District is required"),
+          state: z.string().min(1, "State is required"),
+          mandal: z.string().min(1, "Mandal is required"),
+          zone: z.string().min(1, "Zone is required"),
+          village: z.string().optional(),
+          surveyNumber: z.string().optional(),
+          housePlotNumber: z.string().optional(),
           proprietorStatus: z.string().min(1, "Proprietor Status is required"),
           proprietorType: z.string().optional(),
           electricalUscNumber: z
@@ -193,6 +217,7 @@ const formSchema = z.object({
       .array(
         z.object({
           id: z.number().optional(),
+          type: z.string().min(1, "Type is required"),
           name: z.string().min(2, "Name must be minimum 2 digits"),
           contactNo: z.string().length(10, "Contact number must be 10 digits"),
           aadharNo: z.string().length(12, "Aadhar number must be 12 digits"),
@@ -211,10 +236,6 @@ const formSchema = z.object({
       .string()
       .min(1, "Select if you applied for membership earlier?"),
     previousApplicationDetails: z.string().optional(),
-    isValidMember: z.string().min(1, "Select is Valid member or not"),
-    isExecutiveMember: z
-      .string()
-      .min(1, "Select is an Executive member or not"),
   }),
   documentDetails: z.object({
     saleDeedElectricityBill: z
@@ -348,16 +369,22 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      membershipId: "",
       membershipType: "TSMWA",
       applicationDetails: {
         electricalUscNumber: "",
         dateOfApplication: new Date().toISOString().split("T")[0],
+        dateOfApplicationApproved: "",
+        yearOfJoining: new Date().getFullYear().toString(),
         scNumber: "",
       },
       memberDetails: {
         applicantName: "",
         relation: "",
         relativeName: "",
+        aadharNo: "",
+        panNo: "",
+        emailId: "",
       },
       firmDetails: {
         firmName: "",
@@ -367,17 +394,19 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       },
       businessDetails: {
         surveyNumber: "",
+        housePlotNumber: "",
         village: "",
         zone: "",
         mandal: "",
-        district: "",
-        state: "",
+        district: "Vikarabad",
+        state: "Telangana",
         pincode: "",
         ownershipType: "",
         ownerSubType: "",
       },
       electricalDetails: {
         sanctionedHP: "",
+        machinery: [],
       },
       branchDetails: {
         branches: [],
@@ -418,8 +447,6 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       membershipDetails: {
         isMemberOfOrg: "",
         hasAppliedEarlier: "",
-        isValidMember: "",
-        isExecutiveMember: "",
         orgDetails: "",
         previousApplicationDetails: "",
       },
@@ -466,16 +493,22 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         console.log("reponseData", JSON.stringify(reponseData));
 
         const mappedData: FormValues = {
+          membershipId: reponseData.membershipId || "",
           membershipType: (reponseData.membershipType as "TSMWA" | "TQMWA") || "TSMWA",
           applicationDetails: {
             electricalUscNumber: reponseData.electricalUscNumber,
-            dateOfApplication: reponseData.doj, // or from API if available
+            dateOfApplication: reponseData.doj || "",
+            dateOfApplicationApproved: reponseData.doa || "",
+            yearOfJoining: reponseData.yoj || "",
             scNumber: reponseData.scNumber,
           },
           memberDetails: {
             applicantName: reponseData.applicantName,
             relation: reponseData.relation,
             relativeName: reponseData.relativeName,
+            aadharNo: reponseData.aadharNo || "",
+            panNo: reponseData.panNo || "",
+            emailId: reponseData.emailId || "",
           },
           firmDetails: {
             firmName: reponseData.firmName,
@@ -484,24 +517,40 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             contact2: reponseData.phoneNumber2 || "",
           },
           businessDetails: {
-            surveyNumber: reponseData.surveyNumber,
-            village: reponseData.village,
+            surveyNumber: reponseData.surveyNumber || "",
+            housePlotNumber: reponseData.housePlotNumber || "",
+            village: reponseData.village || "",
             zone: reponseData.zone,
             mandal: reponseData.mandal,
-            district: reponseData.district,
-            state: reponseData.state,
+            district: reponseData.district || "Vikarabad",
+            state: reponseData.state || "Telangana",
             pincode: reponseData.pinCode,
             ownershipType: reponseData.proprietorStatus,
             ownerSubType: reponseData.proprietorType || "",
           },
           electricalDetails: {
             sanctionedHP: reponseData.sanctionedHP.toString(),
+            machinery: Array.isArray(reponseData.machineryInformations)
+              ? reponseData.machineryInformations.map((m: any) => ({
+                  type: m.isOther === "TRUE" ? "Others" : m.machineName || "",
+                  machineName: m.isOther === "TRUE" ? m.machineName || "" : "",
+                  isOther: m.isOther === "TRUE",
+                  quantity: m.machineCount?.toString() || "0",
+                }))
+              : [],
           },
           branchDetails: {
             branches: Array.isArray(reponseData.branches)
               ? reponseData.branches.map((b: any) => ({
                   id: b.id || "",
                   placeOfBusiness: b.placeOfBusiness || "",
+                  district: b.district || "Vikarabad",
+                  state: b.state || "Telangana",
+                  mandal: b.mandal || "",
+                  zone: b.zone || "",
+                  village: b.village || "",
+                  surveyNumber: b.surveyNumber || "",
+                  housePlotNumber: b.housePlotNumber || "",
                   proprietorStatus: b.proprietorStatus || "",
                   proprietorType: b.proprietorType || "",
                   electricalUscNumber: b.electricalUscNumber || "",
@@ -614,6 +663,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           representativeDetails: {
             partners: (reponseData.partnerDetails || []).map((p: any) => ({
               id: p.id,
+              type: p.type || "",
               name: p.partnerName,
               contactNo: p.contactNumber,
               aadharNo: p.partnerAadharNo,
@@ -629,15 +679,6 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                 : "no",
             hasAppliedEarlier:
               reponseData.similarMembershipInquiry?.has_applied_earlier ===
-              "TRUE"
-                ? "yes"
-                : "no",
-            isValidMember:
-              reponseData.similarMembershipInquiry?.is_valid_member === "TRUE"
-                ? "yes"
-                : "no",
-            isExecutiveMember:
-              reponseData.similarMembershipInquiry?.is_executive_member ===
               "TRUE"
                 ? "yes"
                 : "no",
@@ -1314,9 +1355,33 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         reqData.doj = data.applicationDetails.dateOfApplication;
         console.log("Added doj:", data.applicationDetails.dateOfApplication);
       }
+      if (changed("applicationDetails", "dateOfApplicationApproved")) {
+        reqData.doa = data.applicationDetails.dateOfApplicationApproved;
+        console.log("Added doa:", data.applicationDetails.dateOfApplicationApproved);
+      }
+      if (changed("applicationDetails", "yearOfJoining")) {
+        reqData.yoj = data.applicationDetails.yearOfJoining;
+        console.log("Added yoj:", data.applicationDetails.yearOfJoining);
+      }
+      if (changed("memberDetails", "aadharNo")) {
+        reqData.aadharNo = data.memberDetails.aadharNo;
+        console.log("Added aadharNo:", data.memberDetails.aadharNo);
+      }
+      if (changed("memberDetails", "panNo")) {
+        reqData.panNo = data.memberDetails.panNo;
+        console.log("Added panNo:", data.memberDetails.panNo);
+      }
+      if (changed("memberDetails", "emailId")) {
+        reqData.emailId = data.memberDetails.emailId;
+        console.log("Added emailId:", data.memberDetails.emailId);
+      }
       if (changed("businessDetails", "surveyNumber")) {
         reqData.surveyNumber = data.businessDetails.surveyNumber;
         console.log("Added surveyNumber:", data.businessDetails.surveyNumber);
+      }
+      if (changed("businessDetails", "housePlotNumber")) {
+        reqData.housePlotNumber = data.businessDetails.housePlotNumber;
+        console.log("Added housePlotNumber:", data.businessDetails.housePlotNumber);
       }
       if (changed("businessDetails", "village")) {
         reqData.village = data.businessDetails.village;
@@ -1540,9 +1605,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         changed("membershipDetails", "isMemberOfOrg") ||
         changed("membershipDetails", "orgDetails") ||
         changed("membershipDetails", "hasAppliedEarlier") ||
-        changed("membershipDetails", "previousApplicationDetails") ||
-        changed("membershipDetails", "isValidMember") ||
-        changed("membershipDetails", "isExecutiveMember")
+        changed("membershipDetails", "previousApplicationDetails")
       ) {
         reqData.similarMembershipInquiry = {
           is_member_of_similar_org:
@@ -1558,22 +1621,10 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               : "FALSE",
           previous_application_details:
             data.membershipDetails.previousApplicationDetails || "",
-          is_valid_member:
-            data.membershipDetails.isValidMember === "Yes" ||
-            data.membershipDetails.isValidMember === "yes"
-              ? "TRUE"
-              : "FALSE",
-          is_executive_member:
-            data.membershipDetails.isExecutiveMember === "Yes" ||
-            data.membershipDetails.isExecutiveMember === "yes"
-              ? "TRUE"
-              : "FALSE",
         };
         console.log("Membership Details:", {
           isMemberOfOrg: data.membershipDetails.isMemberOfOrg,
           hasAppliedEarlier: data.membershipDetails.hasAppliedEarlier,
-          isValidMember: data.membershipDetails.isValidMember,
-          isExecutiveMember: data.membershipDetails.isExecutiveMember,
         });
         console.log(
           "Similar Membership Inquiry:",
@@ -1588,6 +1639,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
         newPartnerDetails: newPartners
           .filter((p) => !p.id)
           .map((p) => ({
+            type: p.type || null,
             partnerName: p.name,
             partnerAadharNo: p.aadharNo,
             partnerPanNo: p.pan,
@@ -1604,11 +1656,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
                 orig.contactNo !== p.contactNo ||
                 orig.aadharNo !== p.aadharNo ||
                 orig.email !== p.email ||
-                orig.pan !== p.pan)
+                orig.pan !== p.pan ||
+                orig.type !== p.type)
             );
           })
           .map((p) => ({
             id: p.id,
+            type: p.type || null,
             partnerName: p.name,
             partnerAadharNo: p.aadharNo,
             partnerPanNo: p.pan,
@@ -1644,6 +1698,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
             sanctionedHP: parseFloat(b.sanctionedHP),
             placeOfBusiness: b.placeOfBusiness,
+            district: b.district || "Vikarabad",
+            state: b.state || "Telangana",
+            mandal: b.mandal || null,
+            zone: b.zone || null,
+            village: b.village || null,
+            surveyNumber: b.surveyNumber || null,
+            housePlotNumber: b.housePlotNumber || null,
             machineryInformations: (b.machinery || []).map((m) => ({
               machineName: m.isOther ? m.machineName || "Custom" : m.type,
               isOther: m.isOther ? "TRUE" : "FALSE",
@@ -1720,6 +1781,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
               sanctionedHP: parseFloat(b.sanctionedHP),
               placeOfBusiness: b.placeOfBusiness,
+              district: b.district || "Vikarabad",
+              state: b.state || "Telangana",
+              mandal: b.mandal || null,
+              zone: b.zone || null,
+              village: b.village || null,
+              surveyNumber: b.surveyNumber || null,
+              housePlotNumber: b.housePlotNumber || null,
               newMachineryInformations: newMachineryItems.map((m: any) => ({
                 machineName: m.isOther ? m.machineName || "Custom" : m.type,
                 isOther: m.isOther ? "TRUE" : "FALSE",
@@ -1932,6 +2000,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             <form onSubmit={methods.handleSubmit(handleSubmit)}>
               {currentStep === 1 && (
                 <Step1PersonalBusiness
+                  isEditMode={true}
                   validationErrors={validationErrors}
                   validationSuccess={validationSuccess}
                   onFieldChange={handleFieldChange}
@@ -1940,6 +2009,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               )}
               {currentStep === 2 && (
                 <Step2OperationDetails
+                  isEditMode={true}
                   validationErrors={validationErrors}
                   validationSuccess={validationSuccess}
                   onFieldChange={handleFieldChange}
