@@ -90,7 +90,7 @@ const formSchema = z.object({
       .array(
         z.object({
           id: z.number().optional(),
-          placeOfBusiness: z.string().min(4, "Name of the branch must be minimum 4 digits"),
+          nameOfBranch: z.string().min(4, "Name of the branch must be minimum 4 digits"),
           district: z.string().min(1, "District is required"),
           state: z.string().min(1, "State is required"),
           mandal: z.string().min(1, "Mandal is required"),
@@ -497,8 +497,18 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           membershipType: (reponseData.membershipType as "TSMWA" | "TQMWA") || "TSMWA",
           applicationDetails: {
             electricalUscNumber: reponseData.electricalUscNumber,
-            dateOfApplication: reponseData.doj || "",
-            dateOfApplicationApproved: reponseData.doa || "",
+            dateOfApplication: reponseData.doj
+              ? (() => {
+                  const date = new Date(reponseData.doj);
+                  return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+                })()
+              : "",
+            dateOfApplicationApproved: reponseData.doa
+              ? (() => {
+                  const date = new Date(reponseData.doa);
+                  return isNaN(date.getTime()) ? "" : date.toISOString().split("T")[0];
+                })()
+              : "",
             yearOfJoining: reponseData.yoj || "",
             scNumber: reponseData.scNumber,
           },
@@ -543,7 +553,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
             branches: Array.isArray(reponseData.branches)
               ? reponseData.branches.map((b: any) => ({
                   id: b.id || "",
-                  placeOfBusiness: b.placeOfBusiness || "",
+                  nameOfBranch: b.placeOfBusiness || "",
                   district: b.district || "Vikarabad",
                   state: b.state || "Telangana",
                   mandal: b.mandal || "",
@@ -1128,7 +1138,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
 
       // Check basic branch fields
       const branchFields = [
-        "placeOfBusiness",
+        "nameOfBranch",
         "proprietorStatus",
         "proprietorType",
         "electricalUscNumber",
@@ -1410,18 +1420,32 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
       if (changed("businessDetails", "ownershipType")) {
         reqData.proprietorStatus =
           data.businessDetails.ownershipType?.toUpperCase();
+        // When ownershipType changes, also update proprietorType conditionally
+        reqData.proprietorType =
+          data.businessDetails.ownershipType?.toUpperCase() === "OWNER"
+            ? (data.businessDetails.ownerSubType?.toUpperCase() || null)
+            : null;
         console.log(
           "Added proprietorStatus:",
           data.businessDetails.ownershipType?.toUpperCase()
         );
-      }
-      if (changed("businessDetails", "ownerSubType")) {
-        reqData.proprietorType =
-          data.businessDetails.ownerSubType?.toUpperCase();
         console.log(
           "Added proprietorType:",
-          data.businessDetails.ownerSubType?.toUpperCase()
+          data.businessDetails.ownershipType?.toUpperCase() === "OWNER"
+            ? (data.businessDetails.ownerSubType?.toUpperCase() || null)
+            : null
         );
+      }
+      if (changed("businessDetails", "ownerSubType")) {
+        // Only update proprietorType if ownershipType is OWNER
+        if (data.businessDetails.ownershipType?.toUpperCase() === "OWNER") {
+          reqData.proprietorType =
+            data.businessDetails.ownerSubType?.toUpperCase() || null;
+          console.log(
+            "Added proprietorType:",
+            data.businessDetails.ownerSubType?.toUpperCase() || null
+          );
+        }
       }
       if (changed("electricalDetails", "sanctionedHP")) {
         reqData.sanctionedHP = parseFloat(data.electricalDetails.sanctionedHP);
@@ -1694,10 +1718,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
           .map((b) => ({
             electricalUscNumber: b.electricalUscNumber,
             scNumber: b.scNumber,
-            proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
+            proprietorType:
+              b.proprietorStatus?.toUpperCase() === "OWNER"
+                ? (b.proprietorType?.toUpperCase() || null)
+                : null,
             proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
             sanctionedHP: parseFloat(b.sanctionedHP),
-            placeOfBusiness: b.placeOfBusiness,
+            nameOfBranch: b.nameOfBranch,
             district: b.district || "Vikarabad",
             state: b.state || "Telangana",
             mandal: b.mandal || null,
@@ -1718,7 +1745,7 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
 
             // Check basic branch fields
             const basicFieldsChanged =
-              orig.placeOfBusiness !== b.placeOfBusiness ||
+              orig.nameOfBranch !== b.nameOfBranch ||
               orig.proprietorStatus !== b.proprietorStatus ||
               orig.proprietorType !== b.proprietorType ||
               orig.electricalUscNumber !== b.electricalUscNumber ||
@@ -1777,10 +1804,13 @@ const EditMemberForm = ({ memberId }: { memberId: string }) => {
               id: b.id,
               electricalUscNumber: b.electricalUscNumber,
               scNumber: b.scNumber,
-              proprietorType: b.proprietorType?.toUpperCase() || "OWNED",
+              proprietorType:
+                b.proprietorStatus?.toUpperCase() === "OWNER"
+                  ? (b.proprietorType?.toUpperCase() || null)
+                  : null,
               proprietorStatus: b.proprietorStatus?.toUpperCase() || "OWNER",
               sanctionedHP: parseFloat(b.sanctionedHP),
-              placeOfBusiness: b.placeOfBusiness,
+              nameOfBranch: b.nameOfBranch,
               district: b.district || "Vikarabad",
               state: b.state || "Telangana",
               mandal: b.mandal || null,

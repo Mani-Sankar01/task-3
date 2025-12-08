@@ -749,8 +749,8 @@ export default function Step3ComplianceLegal({
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="Partner">Partner</SelectItem>
-                            <SelectItem value="Representative">Representative</SelectItem>
+                            <SelectItem value="PARTNER">Partner</SelectItem>
+                            <SelectItem value="REPRESENTATIVE">Representative</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />

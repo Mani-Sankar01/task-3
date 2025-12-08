@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   FormControl,
   FormField,
@@ -130,11 +131,9 @@ export default function Step1PersonalBusiness({
                   <Input 
                     placeholder="Enter USC number" 
                     {...field} 
-                    readOnly={isEditMode}
-                    className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
                     onChange={(e) => {
                       field.onChange(e);
-                      if (onFieldChange && !isEditMode) {
+                      if (onFieldChange) {
                         onFieldChange('electricalUscNumber', e.target.value);
                       }
                     }}
@@ -167,11 +166,9 @@ export default function Step1PersonalBusiness({
                   <Input 
                     placeholder="Enter SC number" 
                     {...field} 
-                    readOnly={isEditMode}
-                    className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
                     onChange={(e) => {
                       field.onChange(e);
-                      if (onFieldChange && !isEditMode) {
+                      if (onFieldChange) {
                         onFieldChange('scNumber', e.target.value);
                       }
                     }}
@@ -226,7 +223,6 @@ export default function Step1PersonalBusiness({
                   <Input
                     type="date"
                     {...field}
-                    max={new Date().toISOString().split("T")[0]}
                     className="w-full"
                   />
                 </FormControl>
@@ -247,7 +243,6 @@ export default function Step1PersonalBusiness({
                   <Input
                     type="date"
                     {...field}
-                    max={new Date().toISOString().split("T")[0]}
                     className="w-full"
                   />
                 </FormControl>
@@ -560,29 +555,14 @@ export default function Step1PersonalBusiness({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Zone</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select zone" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Gouthapur_Road">Gouthapur Road</SelectItem>
-                    <SelectItem value="Basaveshwar_Nagar">Basaveshwar Nagar</SelectItem>
-                    <SelectItem value="Chengole">Chengole</SelectItem>
-                    <SelectItem value="Allapur">Allapur</SelectItem>
-                    <SelectItem value="Karankote_Road">Karankote Road</SelectItem>
-                    <SelectItem value="Karankote_Village">Karankote Village</SelectItem>
-                    <SelectItem value="Chengeshpur_Road">Chengeshpur Road</SelectItem>
-                    <SelectItem value="Kodangal_Road">Kodangal Road</SelectItem>
-                    <SelectItem value="Kokat_Road">Kokat Road</SelectItem>
-                    <SelectItem value="Hyderabad_Road">Hyderabad Road</SelectItem>
-                    <SelectItem value="Local">Local</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchableSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select zone"
+                    type="zone"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -596,23 +576,14 @@ export default function Step1PersonalBusiness({
                 <FormLabel data-tooltip="Select the mandal in which the unit operates.">
                   Mandal
                 </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mandal" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Tandur_town">Tandur town</SelectItem>
-                    <SelectItem value="Tandur_Mandal">Tandur Mandal</SelectItem>
-                    <SelectItem value="Yalal_Mandal">Yalal Mandal</SelectItem>
-                    <SelectItem value="Peddamul_Mandal">Peddamul Mandal</SelectItem>
-                    <SelectItem value="Basheerabad_Mandal">Basheerabad Mandal</SelectItem>
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <SearchableSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    placeholder="Select mandal"
+                    type="mandal"
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -712,7 +683,7 @@ export default function Step1PersonalBusiness({
                     data-required="false"
                     data-tooltip="Optional: refine the ownership classification."
                   >
-                    Factory type
+                    Factory Type
                   </FormLabel>
                   <Select
                     onValueChange={field.onChange}
@@ -725,10 +696,8 @@ export default function Step1PersonalBusiness({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="OWNED">Owned</SelectItem>
-                      <SelectItem value="RENTED">Rented</SelectItem>
-                      <SelectItem value="FACTORY_ON_LEASE">
-                        Factory given on lease
-                      </SelectItem>
+                      <SelectItem value="RENTED_LEASE">Rented/Leased</SelectItem>
+                      
                     </SelectContent>
                   </Select>
                   <FormMessage />

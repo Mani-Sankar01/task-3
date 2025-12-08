@@ -29,6 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { SearchableSelect } from "../ui/searchable-select";
 
 interface Step2OperationDetailsProps {
   isEditMode?: boolean;
@@ -42,8 +43,8 @@ interface Step2OperationDetailsProps {
   isValidating?: boolean;
 }
 
-export default function Step2OperationDetails({ 
-  isEditMode = false, 
+export default function Step2OperationDetails({
+  isEditMode = false,
   validationErrors = {},
   validationSuccess = {},
   onFieldChange,
@@ -236,23 +237,23 @@ export default function Step2OperationDetails({
                   {watch(
                     `electricalDetails.machinery.${machineryIndex}.type`
                   ) === "Others" && (
-                    <FormField
-                      control={control}
-                      name={`electricalDetails.machinery.${machineryIndex}.machineName`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Machine Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter machine name"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
+                      <FormField
+                        control={control}
+                        name={`electricalDetails.machinery.${machineryIndex}.machineName`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Machine Name</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter machine name"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                   <FormField
                     control={control}
@@ -304,7 +305,7 @@ export default function Step2OperationDetails({
             size="sm"
             onClick={() =>
               branchArray.append({
-                placeOfBusiness: "",
+                nameOfBranch: "",
                 district: "Vikarabad",
                 state: "Telangana",
                 mandal: "",
@@ -334,16 +335,18 @@ export default function Step2OperationDetails({
                   <h4 className="text-base font-medium">
                     Branch {branchIndex + 1}:{" "}
                     {watch(
-                      `branchDetails.branches.${branchIndex}.placeOfBusiness`
+                      `branchDetails.branches.${branchIndex}.nameOfBranch`
                     ) || "New Branch"}
                   </h4>
                 </div>
 
                 <div className="p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+
                     <FormField
                       control={control}
-                      name={`branchDetails.branches.${branchIndex}.placeOfBusiness`}
+                      name={`branchDetails.branches.${branchIndex}.nameOfBranch`}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Name of the branch</FormLabel>
@@ -360,35 +363,16 @@ export default function Step2OperationDetails({
 
                     <FormField
                       control={control}
-                      name={`branchDetails.branches.${branchIndex}.district`}
+                      name={`branchDetails.branches.${branchIndex}.zone`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>District</FormLabel>
+                          <FormLabel>Zone</FormLabel>
                           <FormControl>
-                            <Input
-                              value={field.value || "Vikarabad"}
-                              disabled
-                              readOnly
-                              className="bg-gray-100 cursor-not-allowed"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={control}
-                      name={`branchDetails.branches.${branchIndex}.state`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input
-                              value={field.value || "Telangana"}
-                              disabled
-                              readOnly
-                              className="bg-gray-100 cursor-not-allowed"
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select zone"
+                              type="zone"
                             />
                           </FormControl>
                           <FormMessage />
@@ -403,9 +387,11 @@ export default function Step2OperationDetails({
                         <FormItem>
                           <FormLabel>Mandal</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Enter mandal"
-                              {...field}
+                            <SearchableSelect
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              placeholder="Select mandal"
+                              type="mandal"
                             />
                           </FormControl>
                           <FormMessage />
@@ -413,32 +399,83 @@ export default function Step2OperationDetails({
                       )}
                     />
 
+
                     <FormField
                       control={control}
-                      name={`branchDetails.branches.${branchIndex}.zone`}
+                      name={`branchDetails.branches.${branchIndex}.electricalUscNumber`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Zone</FormLabel>
+                          <FormLabel>Electrical USC Number</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter zone"
+                              placeholder="Enter USC number"
                               {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (onFieldChange) {
+                                  onFieldChange(`branch_${branchIndex}_electricalUscNumber`, e.target.value);
+                                }
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
+                          {validationErrors[`branch_${branchIndex}_electricalUscNumber`] && (
+                            <p className="text-sm text-destructive">
+                              {validationErrors[`branch_${branchIndex}_electricalUscNumber`]}
+                            </p>
+                          )}
+                          {validationSuccess[`branch_${branchIndex}_electricalUscNumber`] && (
+                            <p className="text-sm text-green-600">
+                              {validationSuccess[`branch_${branchIndex}_electricalUscNumber`]}
+                            </p>
+                          )}
                         </FormItem>
                       )}
                     />
 
                     <FormField
                       control={control}
-                      name={`branchDetails.branches.${branchIndex}.village`}
+                      name={`branchDetails.branches.${branchIndex}.scNumber`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel data-required="false">Village</FormLabel>
+                          <FormLabel>SC Number</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder="Enter village"
+                              placeholder="Enter SC number"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (onFieldChange) {
+                                  onFieldChange(`branch_${branchIndex}_scNumber`, e.target.value);
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          {validationErrors[`branch_${branchIndex}_scNumber`] && (
+                            <p className="text-sm text-destructive">
+                              {validationErrors[`branch_${branchIndex}_scNumber`]}
+                            </p>
+                          )}
+                          {validationSuccess[`branch_${branchIndex}_scNumber`] && (
+                            <p className="text-sm text-green-600">
+                              {validationSuccess[`branch_${branchIndex}_scNumber`]}
+                            </p>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.sanctionedHP`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sanctioned HP</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              placeholder="Enter sanctioned HP"
                               {...field}
                             />
                           </FormControl>
@@ -483,6 +520,63 @@ export default function Step2OperationDetails({
 
                     <FormField
                       control={control}
+                      name={`branchDetails.branches.${branchIndex}.village`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel data-required="false">Village</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter village"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+<FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.district`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>District</FormLabel>
+                          <FormControl>
+                            <Input
+                              value={field.value || "Vikarabad"}
+                              disabled
+                              readOnly
+                              className="bg-gray-100 cursor-not-allowed"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={control}
+                      name={`branchDetails.branches.${branchIndex}.state`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input
+                              value={field.value || "Telangana"}
+                              disabled
+                              readOnly
+                              className="bg-gray-100 cursor-not-allowed"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+
+
+                    <FormField
+                      control={control}
                       name={`branchDetails.branches.${branchIndex}.proprietorStatus`}
                       render={({ field }) => (
                         <FormItem>
@@ -510,132 +604,44 @@ export default function Step2OperationDetails({
                     {watch(
                       `branchDetails.branches.${branchIndex}.proprietorStatus`
                     ) === "OWNER" && (
-                      <FormField
-                        control={control}
-                        name={`branchDetails.branches.${branchIndex}.proprietorType`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Proprietor Type</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select proprietor type" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="OWNED">Owned</SelectItem>
-                                <SelectItem value="RENTED">
-                                  Rented/Tenant
-                                </SelectItem>
-                                <SelectItem value="TRADING">Trader</SelectItem>
-                                <SelectItem value="FACTORY_ON_LEASE">
-                                  Factory given on lease
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
+                        <FormField
+                          control={control}
+                          name={`branchDetails.branches.${branchIndex}.proprietorType`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Factory Type</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select proprietor type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="OWNED">Owned</SelectItem>
 
-                    <FormField
-                      control={control}
-                      name={`branchDetails.branches.${branchIndex}.electricalUscNumber`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Electrical USC Number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter USC number" 
-                              {...field} 
-                              readOnly={isEditMode}
-                              className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                if (onFieldChange && !isEditMode) {
-                                  onFieldChange(`branch_${branchIndex}_electricalUscNumber`, e.target.value);
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                          {validationErrors[`branch_${branchIndex}_electricalUscNumber`] && (
-                            <p className="text-sm text-destructive">
-                              {validationErrors[`branch_${branchIndex}_electricalUscNumber`]}
-                            </p>
-                          )}
-                          {validationSuccess[`branch_${branchIndex}_electricalUscNumber`] && (
-                            <p className="text-sm text-green-600">
-                              {validationSuccess[`branch_${branchIndex}_electricalUscNumber`]}
-                            </p>
-                          )}
-                        </FormItem>
-                      )}
-                    />
+                                  <SelectItem value="RENTED_LEASE">
+                                    Rented/Leased
+                                  </SelectItem>
 
-                    <FormField
-                      control={control}
-                      name={`branchDetails.branches.${branchIndex}.scNumber`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>SC Number</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Enter SC number" 
-                              {...field} 
-                              readOnly={isEditMode}
-                              className={isEditMode ? "bg-gray-100 cursor-not-allowed" : ""}
-                              onChange={(e) => {
-                                field.onChange(e);
-                                if (onFieldChange && !isEditMode) {
-                                  onFieldChange(`branch_${branchIndex}_scNumber`, e.target.value);
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                          {validationErrors[`branch_${branchIndex}_scNumber`] && (
-                            <p className="text-sm text-destructive">
-                              {validationErrors[`branch_${branchIndex}_scNumber`]}
-                            </p>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
                           )}
-                          {validationSuccess[`branch_${branchIndex}_scNumber`] && (
-                            <p className="text-sm text-green-600">
-                              {validationSuccess[`branch_${branchIndex}_scNumber`]}
-                            </p>
-                          )}
-                        </FormItem>
+                        />
                       )}
-                    />
 
-                    <FormField
-                      control={control}
-                      name={`branchDetails.branches.${branchIndex}.sanctionedHP`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sanctioned HP</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              placeholder="Enter sanctioned HP"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
                   </div>
 
                   {/* Tabs for Machinery and Labour */}
                   <Tabs defaultValue="machinery" className="mt-6">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="machinery">Machinery</TabsTrigger>
-                      <TabsTrigger value="labour">Labour</TabsTrigger>
+                      {/* <TabsTrigger value="labour">Labour</TabsTrigger> */}
                     </TabsList>
 
                     {/* Machinery Tab */}
@@ -713,27 +719,27 @@ export default function Step2OperationDetails({
 
                                 {(watch(
                                   `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.type`
-                                ) === "Others" || 
-                                getValues(
-                                  `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.isOther`
-                                )) && (
-                                  <FormField
-                                    control={control}
-                                    name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.machineName`}
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Machine Name</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            placeholder="Enter machine name"
-                                            {...field}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                )}
+                                ) === "Others" ||
+                                  getValues(
+                                    `branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.isOther`
+                                  )) && (
+                                    <FormField
+                                      control={control}
+                                      name={`branchDetails.branches.${branchIndex}.machinery.${machineryIndex}.machineName`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Machine Name</FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              placeholder="Enter machine name"
+                                              {...field}
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  )}
 
                                 <FormField
                                   control={control}
@@ -775,11 +781,11 @@ export default function Step2OperationDetails({
                           getValues(
                             `branchDetails.branches.${branchIndex}.machinery`
                           ).length === 0) && (
-                          <p className="text-sm text-muted-foreground">
-                            No machinery added yet for this branch. Click the
-                            button above to add machinery.
-                          </p>
-                        )}
+                            <p className="text-sm text-muted-foreground">
+                              No machinery added yet for this branch. Click the
+                              button above to add machinery.
+                            </p>
+                          )}
                       </div>
                     </TabsContent>
 
@@ -887,11 +893,10 @@ export default function Step2OperationDetails({
                                           <FormControl>
                                             <Button
                                               variant={"outline"}
-                                              className={`w-full pl-3 text-left font-normal ${
-                                                !field.value
-                                                  ? "text-muted-foreground"
-                                                  : ""
-                                              }`}
+                                              className={`w-full pl-3 text-left font-normal ${!field.value
+                                                ? "text-muted-foreground"
+                                                : ""
+                                                }`}
                                             >
                                               {field.value ? (
                                                 format(
@@ -949,11 +954,10 @@ export default function Step2OperationDetails({
                                           <FormControl>
                                             <Button
                                               variant={"outline"}
-                                              className={`w-full pl-3 text-left font-normal ${
-                                                !field.value
-                                                  ? "text-muted-foreground"
-                                                  : ""
-                                              }`}
+                                              className={`w-full pl-3 text-left font-normal ${!field.value
+                                                ? "text-muted-foreground"
+                                                : ""
+                                                }`}
                                             >
                                               {field.value ? (
                                                 format(
@@ -1048,11 +1052,11 @@ export default function Step2OperationDetails({
                           getValues(
                             `branchDetails.branches.${branchIndex}.labour`
                           ).length === 0) && (
-                          <p className="text-sm text-muted-foreground">
-                            No labour added yet for this branch. Click the
-                            button above to add labour details.
-                          </p>
-                        )}
+                            <p className="text-sm text-muted-foreground">
+                              No labour added yet for this branch. Click the
+                              button above to add labour details.
+                            </p>
+                          )}
                       </div>
                     </TabsContent>
                   </Tabs>

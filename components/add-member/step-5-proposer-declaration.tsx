@@ -12,7 +12,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useEffect, useState } from "react";
-import { getAllMembers } from "@/data/members";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { FileUpload } from "@/components/ui/file-upload";
@@ -29,29 +44,14 @@ export default function Step5ProposerDeclaration() {
   const { control, setValue, watch } = useFormContext();
   const [validMembers, setValidMembers] = useState<any[]>([]);
   const [executiveMembers, setExecutiveMembers] = useState<any[]>([]);
+  const [proposer1Open, setProposer1Open] = useState(false);
+  const [proposer2Open, setProposer2Open] = useState(false);
   const proposer1Id = watch("proposer1.membershipId");
   const proposer2Id = watch("proposer2.membershipId");
   const proposer1Name = watch("proposer1.name");
   const proposer1firm = watch("proposer1.firmName");
   const proposer2Name = watch("proposer2.name");
   const proposer2firm = watch("proposer2.firmName");
-
-  // Fetch members on component mount
-  useEffect(() => {
-    const allMembers = getAllMembers();
-
-    // Filter valid members
-    const validMembersList = allMembers.filter(
-      (member) => member.membershipDetails?.isValidMember === "yes"
-    );
-    setValidMembers(validMembersList);
-
-    // Filter executive members
-    const executiveMembersList = allMembers.filter(
-      (member) => member.membershipDetails?.isExecutiveMember === "yes"
-    );
-    setExecutiveMembers(executiveMembersList);
-  }, []);
 
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
@@ -61,24 +61,35 @@ export default function Step5ProposerDeclaration() {
     const fetchData = async () => {
       if (status === "authenticated" && session?.user?.token) {
         try {
+          // Fetch all members for valid members dropdown
           const response1 = await axios.get(
-            `${process.env.BACKEND_API_URL}/api/member/get_valid_members`,
+            `${process.env.BACKEND_API_URL}/api/member/get_members`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
               },
             }
           );
+          
+          // Fetch executive members from reference data
           const response2 = await axios.get(
-            `${process.env.BACKEND_API_URL}/api/member/get_executive_members`,
+            `${process.env.BACKEND_API_URL}/api/referenceData/getExecutive`,
             {
               headers: {
                 Authorization: `Bearer ${session.user.token}`,
               },
             }
           );
-          setValidMembers(response1.data);
-          setExecutiveMembers(response2.data);
+          
+          // Handle response - get_members returns array directly
+          const membersData = Array.isArray(response1.data) 
+            ? response1.data 
+            : response1.data?.data || response1.data?.members || [];
+          setValidMembers(membersData);
+          
+          // Handle executive response - has result array
+          const executiveData = response2.data?.result || [];
+          setExecutiveMembers(executiveData);
         } catch (err: any) {
           console.error("Error fetching member data:", err);
           setError("Failed to load member data");
@@ -95,11 +106,13 @@ export default function Step5ProposerDeclaration() {
     if (!isLoading && validMembers.length > 0 && proposer1Id) {
       handleProposer1Select(proposer1Id);
     }
+  }, [isLoading, validMembers, proposer1Id]);
 
+  useEffect(() => {
     if (!isLoading && executiveMembers.length > 0 && proposer2Id) {
       handleProposer2Select(proposer2Id);
     }
-  }, [isLoading, validMembers, executiveMembers, proposer1Id, proposer2Id]);
+  }, [isLoading, executiveMembers, proposer2Id]);
 
   const getMemberSignature = (member: any) => {
     // Prioritize declarations.applicationSignaturePath as this is the standard signature path
@@ -128,6 +141,7 @@ export default function Step5ProposerDeclaration() {
       setValue("proposer1.membershipId", memberId);
       setValue("proposer1.name", selectedMember.applicantName);
       setValue("proposer1.firmName", selectedMember.firmName);
+      setValue("proposer1.phoneNumber", selectedMember.phoneNumber1 || "");
       setValue(
         "proposer1.address",
         selectedMember.complianceDetails?.fullAddress || ""
@@ -141,23 +155,19 @@ export default function Step5ProposerDeclaration() {
   };
 
   // Handle proposer 2 selection
-  const handleProposer2Select = (memberId: any) => {
-    const selectedMember = executiveMembers.find(
-      (member) => member.membershipId === memberId
+  const handleProposer2Select = (executiveId: any) => {
+    const selectedExecutive = executiveMembers.find(
+      (executive) => executive.id === executiveId || executive.id?.toString() === executiveId
     );
-    if (selectedMember) {
-      setValue("proposer2.name", selectedMember.applicantName);
-      setValue("proposer2.firmName", selectedMember.firmName);
-      setValue(
-        "proposer2.address",
-        selectedMember.complianceDetails?.fullAddress || ""
-      );
-      setValue("proposer2.membershipId", memberId);
-      // Set signature path from declarations.applicationSignaturePath (or fallback)
-      const signaturePath = getMemberSignature(selectedMember);
-      if (signaturePath) {
-        setValue("proposer2.signaturePath", signaturePath);
-      }
+    if (selectedExecutive) {
+      setValue("proposer2.name", selectedExecutive.name || "");
+      setValue("proposer2.firmName", selectedExecutive.firmName || "");
+      setValue("proposer2.phoneNumber", selectedExecutive.phone || "");
+      setValue("proposer2.address", selectedExecutive.address || "");
+      // For executives, we use id as membershipId (or could be a separate field)
+      setValue("proposer2.membershipId", selectedExecutive.id?.toString() || executiveId);
+      // Executive members from reference data don't have signature paths
+      // So we don't set signature path for executives
     }
   };
 
@@ -205,35 +215,56 @@ export default function Step5ProposerDeclaration() {
                 >
                   Select valid Members of the Association
                 </FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    handleProposer1Select(value);
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          !isLoading && proposer1Id
-                            ? `${proposer1Name} - ${proposer1firm}`
-                            : "Select valid Members of the Association"
-                        }
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {validMembers.map((member) => (
-                      <SelectItem
-                        key={member.membershipId}
-                        value={member.membershipId}
+                <Popover open={proposer1Open} onOpenChange={setProposer1Open}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value && "text-muted-foreground"
+                        )}
                       >
-                        {member.applicantName} - {member.firmName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        {field.value && proposer1Id && proposer1Name && proposer1firm
+                          ? `${proposer1Name} - ${proposer1firm}`
+                          : "Select valid Members of the Association"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+                    <Command>
+                      <CommandInput placeholder="Search members..." />
+                      <CommandList>
+                        <CommandEmpty>No members found.</CommandEmpty>
+                        <CommandGroup>
+                          {validMembers.map((member) => (
+                            <CommandItem
+                              value={`${member.applicantName} ${member.firmName} ${member.membershipId}`}
+                              key={member.membershipId}
+                              onSelect={() => {
+                                field.onChange(member.membershipId);
+                                handleProposer1Select(member.membershipId);
+                                setProposer1Open(false);
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value === member.membershipId
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                )}
+                              />
+                              {member.applicantName} - {member.firmName}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -305,6 +336,29 @@ export default function Step5ProposerDeclaration() {
 
           <FormField
             control={control}
+            name="proposer1.phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when a valid member is selected."
+                >
+                  Phone Number
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Phone number will be auto-filled"
+                    {...field}
+                    readOnly
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
             name="proposer1.address"
             render={({ field }) => (
               <FormItem>
@@ -345,35 +399,59 @@ export default function Step5ProposerDeclaration() {
                 >
                  Select Executive member of the association
                 </FormLabel>
-                <Select
-                  onValueChange={(value) => {
-                    field.onChange(value);
-                    handleProposer2Select(value);
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue
-                        placeholder={
-                          !isLoading && proposer2Name && proposer2firm
-                            ? `${proposer2Name} - ${proposer2firm}`
-                            : "Select Executive member of the association"
-                        }
-                      />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {executiveMembers.map((member) => (
-                      <SelectItem
-                        key={member.membershipId}
-                        value={member.membershipId}
+                <Popover open={proposer2Open} onOpenChange={setProposer2Open}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value && "text-muted-foreground"
+                        )}
                       >
-                        {member.applicantName} - {member.firmName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        {field.value && proposer2Name && proposer2firm
+                          ? `${proposer2Name} - ${proposer2firm}`
+                          : "Select Executive member of the association"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+                    <Command>
+                      <CommandInput placeholder="Search executives..." />
+                      <CommandList>
+                        <CommandEmpty>No executives found.</CommandEmpty>
+                        <CommandGroup>
+                          {executiveMembers.map((executive) => {
+                            const executiveId = executive.id?.toString() || String(executive.id) || "";
+                            return (
+                              <CommandItem
+                                value={`${executive.name} ${executive.firmName} ${executiveId}`}
+                                key={executiveId}
+                                onSelect={() => {
+                                  field.onChange(executiveId);
+                                  handleProposer2Select(executiveId);
+                                  setProposer2Open(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    field.value === executiveId
+                                      ? "opacity-100"
+                                      : "opacity-0"
+                                  )}
+                                />
+                                {executive.name} - {executive.firmName}
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
               </FormItem>
             )}
@@ -434,6 +512,29 @@ export default function Step5ProposerDeclaration() {
                 <FormControl>
                   <Input
                     placeholder="Firm name will be auto-filled"
+                    {...field}
+                    readOnly
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={control}
+            name="proposer2.phoneNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel 
+                  data-required={false}
+                  data-tooltip="This field is optional and will be auto-filled when an executive member is selected."
+                >
+                  Phone Number
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Phone number will be auto-filled"
                     {...field}
                     readOnly
                   />

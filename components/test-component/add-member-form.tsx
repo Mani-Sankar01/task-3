@@ -101,7 +101,7 @@ const formSchema = z.object({
     branches: z
       .array(
         z.object({
-          placeOfBusiness: z.string().min(4, "Name of the branch must be minimum 4 digits"),
+          nameOfBranch: z.string().min(4, "Name of the branch must be minimum 4 digits"),
           district: z.string().min(1, "District is required"),
           state: z.string().min(1, "State is required"),
           mandal: z.string().min(1, "Mandal is required"),
@@ -244,6 +244,7 @@ const formSchema = z.object({
     firmName: z.string().optional(),
     membershipId: z.string().optional(),
     address: z.string().optional(),
+    phoneNumber: z.string().optional(),
     signaturePath: z.string().optional(),
   }),
   proposer2: z.object({
@@ -251,6 +252,7 @@ const formSchema = z.object({
     firmName: z.string().optional(),
     membershipId: z.string().optional(),
     address: z.string().optional(),
+    phoneNumber: z.string().optional(),
     signaturePath: z.string().optional(),
   }),
   declaration: z.object({
@@ -810,7 +812,9 @@ const AddMemberForm = () => {
         proprietorStatus:
           data.businessDetails.ownershipType?.toUpperCase() || "OWNER",
         proprietorType:
-          data.businessDetails.ownerSubType?.toUpperCase() || "",
+          data.businessDetails.ownershipType?.toUpperCase() === "OWNER"
+            ? (data.businessDetails.ownerSubType?.toUpperCase() || null)
+            : null,
 
         sanctionedHP: parseFloat(data.electricalDetails.sanctionedHP),
 
@@ -837,10 +841,13 @@ const AddMemberForm = () => {
         branches: data.branchDetails.branches.map((branch) => ({
           electricalUscNumber: branch.electricalUscNumber,
           scNumber: branch.scNumber,
-          proprietorType: branch.proprietorType?.toUpperCase() || "OWNED",
+          proprietorType:
+            branch.proprietorStatus?.toUpperCase() === "OWNER"
+              ? (branch.proprietorType?.toUpperCase() || null)
+              : null,
           proprietorStatus: branch.proprietorStatus?.toUpperCase() || "OWNER",
           sanctionedHP: parseFloat(branch.sanctionedHP),
-          placeOfBusiness: branch.placeOfBusiness,
+          nameOfBranch: branch.nameOfBranch,
           district: branch.district || "Vikarabad",
           state: branch.state || "Telangana",
           mandal: branch.mandal || null,
