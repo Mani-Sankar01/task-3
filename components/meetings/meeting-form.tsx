@@ -142,28 +142,7 @@ interface Labour {
   photoPath?: string;
 }
 
-// Zones and Mandals from member form
-const zones = [
-  { value: "Gouthapur_Road", label: "Gouthapur Road" },
-  { value: "Basaveshwar_Nagar", label: "Basaveshwar Nagar" },
-  { value: "Chengole", label: "Chengole" },
-  { value: "Allapur", label: "Allapur" },
-  { value: "Karankote_Road", label: "Karankote Road" },
-  { value: "Karankote_Village", label: "Karankote Village" },
-  { value: "Chengeshpur_Road", label: "Chengeshpur Road" },
-  { value: "Kodangal_Road", label: "Kodangal Road" },
-  { value: "Kokat_Road", label: "Kokat Road" },
-  { value: "Hyderabad_Road", label: "Hyderabad Road" },
-  { value: "Local", label: "Local" },
-];
 
-const mandals = [
-  { value: "Tandur_town", label: "Tandur town" },
-  { value: "Tandur_Mandal", label: "Tandur Mandal" },
-  { value: "Yalal_Mandal", label: "Yalal Mandal" },
-  { value: "Peddamul_Mandal", label: "Peddamul Mandal" },
-  { value: "Basheerabad_Mandal", label: "Basheerabad Mandal" },
-];
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -226,6 +205,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
   const [members, setMembers] = useState<Member[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [labour, setLabour] = useState<Labour[]>([]);
+  const [zones, setZones] = useState<{ value: string; label: string }[]>([]);
+  const [mandals, setMandals] = useState<{ value: string; label: string }[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
 
@@ -287,6 +268,30 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       });
       const labourData = labourResponse.data;
       setLabour(labourData);
+
+      // Fetch Zones
+      try {
+        const zonesResponse = await axios.get(`${process.env.BACKEND_API_URL}/api/referenceData/getZone`, {
+          headers: { Authorization: `Bearer ${session.user.token}` },
+        });
+        if (zonesResponse.data?.success && Array.isArray(zonesResponse.data?.result)) {
+          setZones(zonesResponse.data.result.map((z: any) => ({ value: z.name, label: z.name })));
+        }
+      } catch (err) {
+        console.error("Error fetching zones:", err);
+      }
+
+      // Fetch Mandals
+      try {
+        const mandalsResponse = await axios.get(`${process.env.BACKEND_API_URL}/api/referenceData/getMandal`, {
+          headers: { Authorization: `Bearer ${session.user.token}` },
+        });
+        if (mandalsResponse.data?.success && Array.isArray(mandalsResponse.data?.result)) {
+          setMandals(mandalsResponse.data.result.map((m: any) => ({ value: m.name, label: m.name })));
+        }
+      } catch (err) {
+        console.error("Error fetching mandals:", err);
+      }
 
     } catch (error) {
       console.error("Error fetching dropdown data:", error);
