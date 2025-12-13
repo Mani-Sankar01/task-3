@@ -96,7 +96,7 @@ interface Meeting {
   id?: number;
   meetId?: string;
   title: string;
-  agenda: string;
+  agenda?: string;
   notes?: string;
   startTime: string;
   location: string;
@@ -167,7 +167,7 @@ const mandals = [
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  agenda: z.string().min(1, "Agenda is required"),
+  agenda: z.string().optional(),
   date: z.date({
     required_error: "Date is required",
   }),
@@ -193,16 +193,16 @@ const formSchema = z.object({
       driver: z.boolean(),
     })).optional(),
   }).optional(),
-      labourAttendees: z.object({
-      type: z.enum(["all", "selectedLabour"]).optional(),
-      all: z.boolean().optional(),
-      custom: z.array(z.string()).optional(),
-    }).optional(),
+  labourAttendees: z.object({
+    type: z.enum(["all", "selectedLabour"]).optional(),
+    all: z.boolean().optional(),
+    custom: z.array(z.string()).optional(),
+  }).optional(),
   followUpMeeting: z.array(z.object({
-        date: z.date({
-          required_error: "Follow-up date is required",
-        }),
-        time: z.string().min(1, "Follow-up time is required"),
+    date: z.date({
+      required_error: "Follow-up date is required",
+    }),
+    time: z.string().min(1, "Follow-up time is required"),
   })).optional(),
 });
 
@@ -217,11 +217,11 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
   const router = useRouter();
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
-  
+
   // Data for dropdowns
   const [members, setMembers] = useState<Member[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -232,22 +232,22 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-          title: "",
-          agenda: "",
-          date: new Date(),
-          time: "09:00",
+      title: "",
+      agenda: "",
+      date: new Date(),
+      time: "09:00",
       status: "SCHEDULED",
-          notes: "",
+      notes: "",
       location: "",
       memberAttendees: {},
       vehicleAttendees: {},
-              labourAttendees: {
-          type: undefined,
-          all: false,
-          custom: [],
-        },
+      labourAttendees: {
+        type: undefined,
+        all: false,
+        custom: [],
+      },
       followUpMeeting: [],
-        },
+    },
   });
 
   const { fields: followUpFields, append: appendFollowUp, remove: removeFollowUp } = useFieldArray({
@@ -315,17 +315,17 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       });
       console.log("Token", session.user.token);
       console.log("Meeting data:", JSON.stringify(response.data));
-      
+
       // Extract meeting from array response
       const meetingData = Array.isArray(response.data)
         ? response.data[0]
         : response.data.data?.[0] || response.data;
       setMeeting(meetingData);
-      
+
       // Set form values
       const startDate = new Date(meetingData.startTime);
       const startTime = format(startDate, "HH:mm");
-      
+
       // Extract attendee data from the new structure
       const memberAttendeeRaw = meetingData.memberAttendees;
       const vehicleAttendeeRaw = meetingData.vehicleAttendees;
@@ -340,14 +340,14 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       const labourAttendee = Array.isArray(labourAttendeeRaw)
         ? labourAttendeeRaw[0] || {}
         : labourAttendeeRaw || {};
-      
+
       // Debug labour attendee structure
       console.log("=== FETCH MEETING LABOUR DEBUG ===");
       console.log("Labour attendee:", labourAttendee);
-      
+
       console.log("customLabours:", labourAttendee.customLabours);
       console.log("Mapped custom labours:", labourAttendee.customLabours?.map((lab: any) => lab.labourId));
-      
+
       // Debug member attendee structure
       console.log("=== FETCH MEETING MEMBER DEBUG ===");
       console.log("Member attendee:", memberAttendee);
@@ -356,21 +356,21 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       console.log("zones:", memberAttendee.zones);
       console.log("mandals:", memberAttendee.mandals);
       console.log("customMembers:", memberAttendee.customMembers);
-      
+
       // Calculate member type
       const memberType = memberAttendee.all
         ? "all"
         : memberAttendee.allExecutives
-        ? "allExecutives"
-        : memberAttendee.zones?.length
-        ? "selectedZone"
-        : memberAttendee.mandals?.length
-        ? "selectedMandal"
-        : memberAttendee.customMembers?.length
-        ? "selectedMembers"
-        : undefined;
+          ? "allExecutives"
+          : memberAttendee.zones?.length
+            ? "selectedZone"
+            : memberAttendee.mandals?.length
+              ? "selectedMandal"
+              : memberAttendee.customMembers?.length
+                ? "selectedMembers"
+                : undefined;
       console.log("Calculated member type:", memberType);
-      
+
       form.reset({
         title: meetingData.title,
         agenda: meetingData.agenda,
@@ -379,18 +379,18 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         status: meetingData.status,
         notes: meetingData.notes || "",
         location: meetingData.location,
-                memberAttendees: {
+        memberAttendees: {
           type: memberAttendee.all
             ? "all"
             : memberAttendee.allExecutives
-            ? "allExecutives"
-            : memberAttendee.zones?.length
-            ? "selectedZone"
-            : memberAttendee.mandals?.length
-            ? "selectedMandal"
-            : memberAttendee.customMembers?.length
-            ? "selectedMembers"
-            : undefined,
+              ? "allExecutives"
+              : memberAttendee.zones?.length
+                ? "selectedZone"
+                : memberAttendee.mandals?.length
+                  ? "selectedMandal"
+                  : memberAttendee.customMembers?.length
+                    ? "selectedMembers"
+                    : undefined,
           zone: (memberAttendee.zones || []).map((z: any) => z.zone ?? z),
           mandal: (memberAttendee.mandals || []).map((m: any) => m.mandal ?? m),
           all: memberAttendee.all || false,
@@ -405,19 +405,19 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             ? vehicleAttendee.owner && vehicleAttendee.driver
               ? "allDriversAndOwners"
               : vehicleAttendee.owner
-              ? "allOwners"
-              : "allDrivers"
+                ? "allOwners"
+                : "allDrivers"
             : vehicleAttendee.customVehicle?.length
-            ? vehicleAttendee.owner
-              ? "selectedOwners"
-              : "selectedDrivers"
-            : vehicleAttendee.owner || vehicleAttendee.driver
-            ? vehicleAttendee.owner && vehicleAttendee.driver
-              ? "selectedOwners" // If both are true but all is false and no customVehicle, default to selectedOwners
-              : vehicleAttendee.owner
-              ? "selectedOwners"
-              : "selectedDrivers"
-            : undefined,
+              ? vehicleAttendee.owner
+                ? "selectedOwners"
+                : "selectedDrivers"
+              : vehicleAttendee.owner || vehicleAttendee.driver
+                ? vehicleAttendee.owner && vehicleAttendee.driver
+                  ? "selectedOwners" // If both are true but all is false and no customVehicle, default to selectedOwners
+                  : vehicleAttendee.owner
+                    ? "selectedOwners"
+                    : "selectedDrivers"
+                : undefined,
           owner: vehicleAttendee.owner || false,
           driver: vehicleAttendee.driver || false,
           custom:
@@ -431,8 +431,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           type: labourAttendee.all
             ? "all"
             : labourAttendee.customLabours?.length
-            ? "selectedLabour"
-            : undefined,
+              ? "selectedLabour"
+              : undefined,
           all: labourAttendee.all || false,
           custom:
             (labourAttendee.customLabours || []).map(
@@ -444,7 +444,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           time: format(new Date(followUp.dateTime), "HH:mm"),
         })) || [],
       });
-      
+
 
     } catch (error) {
       console.error("Error fetching meeting:", error);
@@ -488,7 +488,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       // Process attendee data based on selection type
       const processMemberAttendees = () => {
         const memberAttendees: any = {};
-        
+
         if (data.memberAttendees?.type === "all") {
           memberAttendees.all = true;
         } else if (data.memberAttendees?.type === "allExecutives") {
@@ -501,13 +501,13 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           // Use "custom" for create/add operation (not "customMembers")
           memberAttendees.custom = data.memberAttendees.custom;
         }
-        
+
         return memberAttendees;
       };
 
       const processVehicleAttendees = () => {
         const vehicleAttendees: any = {};
-        
+
         if (data.vehicleAttendees?.type === "allOwners") {
           vehicleAttendees.owner = true;
           vehicleAttendees.driver = false;
@@ -528,7 +528,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             owner: v.owner ?? isOwnerType,
             driver: v.driver ?? !isOwnerType,
           }));
-          
+
           // Set top-level flags: true if any vehicle has that flag
           vehicleAttendees.owner = customVehicles.some((v: any) => v.owner) || isOwnerType;
           vehicleAttendees.driver = customVehicles.some((v: any) => v.driver) || !isOwnerType;
@@ -536,13 +536,13 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           // Use "custom" for create/add operation (not "customVehicle")
           vehicleAttendees.custom = customVehicles;
         }
-        
+
         return vehicleAttendees;
       };
 
       const processLabourAttendees = () => {
         const labourAttendees: any = {};
-        
+
         if (data.labourAttendees?.type === "all") {
           // 1. All Labour
           labourAttendees.all = true;
@@ -552,7 +552,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           // Use "custom" for create/add operation (not "customLabours")
           labourAttendees.custom = data.labourAttendees.custom;
         }
-        
+
         return labourAttendees;
       };
 
@@ -575,15 +575,15 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
       // Build attendees object - only include sections that have data
       const attendees: any = {};
-      
+
       if (Object.keys(memberAttendees).length > 0) {
         attendees.memberAttendees = memberAttendees;
       }
-      
+
       if (Object.keys(vehicleAttendees).length > 0) {
         attendees.vehicleAttendees = vehicleAttendees;
       }
-      
+
       if (Object.keys(labourAttendees).length > 0) {
         attendees.labourAttendees = labourAttendees;
       }
@@ -612,13 +612,13 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           const followUpDateTime = new Date(followUp.date);
           const [hours, minutes] = followUp.time.split(':');
           followUpDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-          
+
           return {
             dateTime: followUpDateTime.toISOString(),
           };
         }),
       };
-      
+
       console.log("Final meetingData payload:", JSON.stringify(meetingData, null, 2));
 
       if (isEditMode && meetingId) {
@@ -665,15 +665,15 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         const newZones = data.memberAttendees?.zone || [];
         const originalMandals = (originalMemberAttendee.mandals || []).map((m: any) => m.mandal || m);
         const newMandals = data.memberAttendees?.mandal || [];
-        
+
         // Determine original type based on original data
         const originalType = originalMemberAttendee.all ? "all" :
-                            originalMemberAttendee.allExecutives ? "allExecutives" :
-                            originalZones.length > 0 ? "selectedZone" :
-                            originalMandals.length > 0 ? "selectedMandal" :
-                            originalCustomMembers.length > 0 ? "selectedMembers" : undefined;
+          originalMemberAttendee.allExecutives ? "allExecutives" :
+            originalZones.length > 0 ? "selectedZone" :
+              originalMandals.length > 0 ? "selectedMandal" :
+                originalCustomMembers.length > 0 ? "selectedMembers" : undefined;
         const newType = data.memberAttendees?.type;
-        
+
         // Debug original structure
         console.log("=== ORIGINAL DATA STRUCTURE DEBUG ===");
         console.log("Original member attendee:", originalMemberAttendee);
@@ -682,10 +682,10 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         console.log("Original custom members:", originalMemberAttendee.customMembers);
         console.log("Original zones:", originalMemberAttendee.zones);
         console.log("Original mandals:", originalMemberAttendee.mandals);
-        
+
         // Check if type changed or if values within the same type changed
         const typeChanged = originalType !== newType;
-        const memberChanged = 
+        const memberChanged =
           typeChanged ||
           (newType === "selectedZone" && JSON.stringify(newZones) !== JSON.stringify(originalZones)) ||
           (newType === "selectedMandal" && JSON.stringify(newMandals) !== JSON.stringify(originalMandals)) ||
@@ -693,7 +693,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
         if (memberChanged) {
           updateData.attendees = updateData.attendees || {};
-          
+
           // Handle member attendee changes with proper add/delete logic
           // Determine all and allExecutives based on the current type selection
           const memberType = data.memberAttendees?.type;
@@ -701,7 +701,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             all: memberType === "all" ? true : false,
             allExecutives: memberType === "allExecutives" ? true : false,
           };
-          
+
           // If type changed, delete old selections
           if (typeChanged) {
             // Delete old zones if switching away from selectedZone
@@ -713,7 +713,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 memberUpdates.deleteZone = deletedZoneIds;
               }
             }
-            
+
             // Delete old mandals if switching away from selectedMandal
             if (originalType === "selectedMandal" && originalMandals.length > 0) {
               const deletedMandalIds = originalMemberAttendee.mandals
@@ -723,7 +723,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 memberUpdates.deleteMandal = deletedMandalIds;
               }
             }
-            
+
             // Delete old custom members if switching away from selectedMembers
             if (originalType === "selectedMembers" && originalCustomMembers.length > 0) {
               const deletedMemberIds = originalMemberAttendee.customMembers
@@ -735,7 +735,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           // Handle zone changes (only if type is selectedZone)
           if (memberType === "selectedZone") {
             if (typeChanged || JSON.stringify(newZones) !== JSON.stringify(originalZones)) {
@@ -748,7 +748,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 // If staying in selectedZone, handle additions and deletions
                 const addedZones = newZones.filter((zone: string) => !originalZones.includes(zone));
                 const deletedZones = originalZones.filter((zone: string) => !newZones.includes(zone));
-                
+
                 if (addedZones.length > 0) {
                   memberUpdates.newZone = addedZones;
                 }
@@ -764,7 +764,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           // Handle mandal changes (only if type is selectedMandal)
           if (memberType === "selectedMandal") {
             if (typeChanged || JSON.stringify(newMandals) !== JSON.stringify(originalMandals)) {
@@ -777,7 +777,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 // If staying in selectedMandal, handle additions and deletions
                 const addedMandals = newMandals.filter((mandal: string) => !originalMandals.includes(mandal));
                 const deletedMandals = originalMandals.filter((mandal: string) => !newMandals.includes(mandal));
-                
+
                 if (addedMandals.length > 0) {
                   memberUpdates.newMandal = addedMandals;
                 }
@@ -793,7 +793,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           // Handle custom member changes (only if type is selectedMembers)
           if (memberType === "selectedMembers") {
             if (typeChanged || JSON.stringify(newCustomMembers) !== JSON.stringify(originalCustomMembers)) {
@@ -807,7 +807,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 // If staying in selectedMembers, handle additions and deletions
                 const addedMembers = newCustomMembers.filter((member: string) => !originalCustomMembers.includes(member));
                 const deletedMembers = originalCustomMembers.filter((member: string) => !newCustomMembers.includes(member));
-                
+
                 if (addedMembers.length > 0) {
                   // Use "newCustom" for edit/update operation (array of membership IDs)
                   memberUpdates.newCustom = addedMembers;
@@ -825,9 +825,9 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           updateData.attendees.memberAttendees = memberUpdates;
-          
+
           // Debug member change detection
           console.log("=== MEMBER CHANGE DEBUG ===");
           console.log("Original all:", originalMemberAttendee.all);
@@ -848,33 +848,33 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
           driver: v.driver
         })) || [];
         const newCustomVehicles = data.vehicleAttendees?.custom || [];
-        
-        const vehicleChanged = 
+
+        const vehicleChanged =
           data.vehicleAttendees?.owner !== originalVehicleAttendee.owner ||
           data.vehicleAttendees?.driver !== originalVehicleAttendee.driver ||
           JSON.stringify(newCustomVehicles) !== JSON.stringify(originalCustomVehicles);
 
         if (vehicleChanged) {
           updateData.attendees = updateData.attendees || {};
-          
+
           // Determine if it's "all" based on type
           const isAllType = data.vehicleAttendees?.type === "allOwners" || data.vehicleAttendees?.type === "allDrivers" || data.vehicleAttendees?.type === "allDriversAndOwners";
-          
+
           const vehicleUpdates: any = {
             owner: data.vehicleAttendees?.owner || false,
             driver: data.vehicleAttendees?.driver || false,
             all: isAllType,
           };
-          
+
           // Handle custom vehicle changes
           if (JSON.stringify(newCustomVehicles) !== JSON.stringify(originalCustomVehicles)) {
-            const addedVehicles = newCustomVehicles.filter((vehicle: any) => 
+            const addedVehicles = newCustomVehicles.filter((vehicle: any) =>
               !originalCustomVehicles.some((orig: any) => orig.vehicleId === vehicle.vehicleId)
             );
-            const deletedVehicles = originalCustomVehicles.filter((vehicle: any) => 
+            const deletedVehicles = originalCustomVehicles.filter((vehicle: any) =>
               !newCustomVehicles.some((newV: any) => newV.vehicleId === vehicle.vehicleId)
             );
-            
+
             if (addedVehicles.length > 0) {
               // Use "newCustom" for edit/update operation
               vehicleUpdates.newCustom = addedVehicles.map((v: any) => ({
@@ -894,9 +894,9 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           updateData.attendees.vehicleAttendees = vehicleUpdates;
-          
+
           // Debug vehicle change detection
           console.log("=== VEHICLE CHANGE DEBUG ===");
           console.log("Original owner:", originalVehicleAttendee.owner);
@@ -911,7 +911,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         // Check if labour attendees changed
         const originalCustomLabours = (originalLabourAttendee.customLabours || []).map((lab: any) => lab.labourId || lab);
         const newCustomLabours = data.labourAttendees?.custom || [];
-        
+
         // Debug labour change detection
         console.log("=== LABOUR CHANGE DETECTION DEBUG ===");
         console.log("Original labour attendee:", originalLabourAttendee);
@@ -919,27 +919,27 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
         console.log("Form labour type:", data.labourAttendees?.type);
         console.log("Original custom labours:", originalCustomLabours);
         console.log("New custom labours:", newCustomLabours);
-        
-        const labourChanged = 
+
+        const labourChanged =
           data.labourAttendees?.all !== originalLabourAttendee.all ||
           JSON.stringify(newCustomLabours) !== JSON.stringify(originalCustomLabours);
 
         if (labourChanged) {
           updateData.attendees = updateData.attendees || {};
-          
+
           const labourUpdates: any = {
             all: data.labourAttendees?.all || false,
           };
-          
+
           // Handle custom labour changes
           if (JSON.stringify(newCustomLabours) !== JSON.stringify(originalCustomLabours)) {
             console.log("Custom labour change detected");
             const addedCustomLabours = newCustomLabours.filter((labour: string) => !originalCustomLabours.includes(labour));
             const deletedCustomLabours = originalCustomLabours.filter((labour: string) => !newCustomLabours.includes(labour));
-            
+
             console.log("Added custom labours:", addedCustomLabours);
             console.log("Deleted custom labours:", deletedCustomLabours);
-            
+
             if (addedCustomLabours.length > 0) {
               // Use "newCustom" for edit/update operation (array of labour IDs)
               labourUpdates.newCustom = addedCustomLabours;
@@ -956,9 +956,9 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               }
             }
           }
-          
+
           updateData.attendees.labourAttendees = labourUpdates;
-          
+
           // Debug labour change detection
           console.log("=== LABOUR CHANGE DEBUG ===");
           console.log("Original all:", originalLabourAttendee.all);
@@ -989,12 +989,12 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
               dateTime: followUpDateTime.toISOString(),
             };
           }) || [];
-          
+
           // If we have new follow-up meetings, add them
           if (newFollowUpData.length > 0) {
             updateData.newFollowUpMeeting = newFollowUpData;
           }
-          
+
           // If we had original follow-up meetings but now have none, delete them
           if (originalFollowUpIds.length > 0 && newFollowUpData.length === 0) {
             updateData.deleteFollowUpMeeting = originalFollowUpIds;
@@ -1003,11 +1003,11 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
         // Only include attendees if there are actual changes
         if (updateData.attendees) {
-          const hasAttendeeChanges = 
-            updateData.attendees.memberAttendees || 
-            updateData.attendees.vehicleAttendees || 
+          const hasAttendeeChanges =
+            updateData.attendees.memberAttendees ||
+            updateData.attendees.vehicleAttendees ||
             updateData.attendees.labourAttendees;
-          
+
           if (!hasAttendeeChanges) {
             delete updateData.attendees;
           }
@@ -1022,7 +1022,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
             'Content-Type': 'application/json',
           },
         });
-        
+
 
 
         toast({
@@ -1047,7 +1047,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
       router.push(`/${renderRoleBasedPath(session?.user?.role)}/meetings`);
     } catch (error) {
       console.error("Meeting form error:", error);
-      
+
       toast({
         title: "Error",
         description: "Failed to save meeting. Please try again.",
@@ -1075,7 +1075,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
   };
 
   if (status === "loading" || isLoading) {
-  return (
+    return (
       <div className="container mx-auto">
         <div className="flex justify-center items-center min-h-[400px]">
           <div className="text-center">
@@ -1158,8 +1158,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                           {
                             isEditMode && (
                               <>
-                              <SelectItem value="COMPLETED">Completed</SelectItem>
-                              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                                <SelectItem value="COMPLETED">Completed</SelectItem>
+                                <SelectItem value="CANCELLED">Cancelled</SelectItem>
                               </>
                             )
                           }
@@ -1240,23 +1240,28 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                 />
               </div>
 
-                <FormField
-                  control={form.control}
+              <FormField
+                control={form.control}
                 name="agenda"
-                  render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Agenda</FormLabel>
-                      <FormControl>
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel
+                      data-required="false"
+                      data-tooltip="Optional: capture the meeting agenda."
+                    >
+                      Agenda
+                    </FormLabel>
+                    <FormControl>
                       <Textarea
                         placeholder="Enter meeting agenda"
                         className="min-h-[100px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -1295,13 +1300,13 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                     <h3 className="text-lg font-medium">Member Attendees</h3>
 
                     <FormField
-                control={form.control}
+                      control={form.control}
                       name="memberAttendees.type"
-                render={({ field }) => (
-                  <FormItem>
+                      render={({ field }) => (
+                        <FormItem>
                           <FormLabel data-required="false">Member Selection Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
+                            <FormControl>
                               <SelectTrigger disabled={isEditMode}>
                                 <SelectValue placeholder="Select member type" />
                               </SelectTrigger>
@@ -1339,7 +1344,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                       ? `${field.value.length} zone(s) selected`
                                       : "Select zones..."}
                                   </Button>
-                    </FormControl>
+                                </FormControl>
                               </PopoverTrigger>
                               <PopoverContent className="w-full p-0">
                                 <Command>
@@ -1383,19 +1388,19 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                 ))}
                               </div>
                             )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
 
                     {/* Mandal Selection */}
                     {form.watch("memberAttendees.type") === "selectedMandal" && (
-                  <FormField
-                    control={form.control}
+                      <FormField
+                        control={form.control}
                         name="memberAttendees.mandal"
-                    render={({ field }) => (
-                      <FormItem>
+                        render={({ field }) => (
+                          <FormItem>
                             <FormLabel data-required="false">Select Mandals</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild disabled={isEditMode}>
@@ -1541,14 +1546,14 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                   {/* Vehicle Attendees */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Vehicle Attendees</h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="vehicleAttendees.type"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel data-required="false">Vehicle Selection Type</FormLabel>
-                          <Select 
+                          <Select
                             disabled={isEditMode}
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -1573,129 +1578,129 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                               if (value === "allOwners" || value === "allDrivers" || value === "allDriversAndOwners") {
                                 form.setValue("vehicleAttendees.custom", []);
                               }
-                            }} 
+                            }}
                             value={field.value}
                           >
-                          <FormControl>
-                            <SelectTrigger>
+                            <FormControl>
+                              <SelectTrigger>
                                 <SelectValue placeholder="Select vehicle type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
                               <SelectItem value="allOwners">All Vehicle Owners</SelectItem>
                               <SelectItem value="allDrivers">All Vehicle Drivers</SelectItem>
                               <SelectItem value="allDriversAndOwners">All Driver & Owners</SelectItem>
                               <SelectItem value="selectedOwners">Selected Vehicle Owners</SelectItem>
                               <SelectItem value="selectedDrivers">Selected Vehicle Drivers</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     {/* Individual Vehicle Selection */}
-                    {(form.watch("vehicleAttendees.type") === "selectedOwners" || 
+                    {(form.watch("vehicleAttendees.type") === "selectedOwners" ||
                       form.watch("vehicleAttendees.type") === "selectedDrivers") && (
-                  <div className="space-y-2">
-                        <FormLabel data-required="false">
-                          {form.watch("vehicleAttendees.type") === "selectedOwners" && "Select Vehicle Owners"}
-                          {form.watch("vehicleAttendees.type") === "selectedDrivers" && "Select Vehicle Drivers"}
-                        </FormLabel>
-                        <FormField
-                          control={form.control}
-                          name="vehicleAttendees.custom"
-                          render={({ field }) => (
-                            <FormItem>
-                              <Popover>
-                                <PopoverTrigger asChild disabled={isEditMode}>
-                                  <FormControl>
-                                    <Button
-                                      disabled={isEditMode}
-                                      variant="outline"
-                                      role="combobox"
-                                      className="w-full justify-between"
-                                    >
-                                      {field.value && field.value.length > 0
-                                        ? `${field.value.length} vehicle(s) selected`
-                                        : "Select vehicles..."}
-                                    </Button>
-                                  </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-full p-0">
-                                  <Command>
-                                    <CommandInput placeholder="Search vehicles..." />
-                                    <CommandList>
-                                      <CommandEmpty>No vehicles found.</CommandEmpty>
-                                      <CommandGroup>
-                                        {vehicles.map((vehicle) => (
-                                                                                  <CommandItem
-                                          key={vehicle.id}
-                                          value={`${vehicle.vehicleNumber} ${vehicle.driverName} ${vehicle.ownerName}`}
-                                          onSelect={() => {
-                                            const currentVehicles = field.value || [];
-                                            if (!currentVehicles.find(v => v.vehicleId === vehicle.vehicleId)) {
-                                              const isOwner = form.watch("vehicleAttendees.type") === "selectedOwners";
-                                              const isDriver = form.watch("vehicleAttendees.type") === "selectedDrivers";
-                                              field.onChange([
-                                                ...currentVehicles,
-                                                { vehicleId: vehicle.vehicleId, owner: isOwner, driver: isDriver }
-                                              ]);
-                                            }
-                                          }}
-                                        >
-                                            <div className="flex flex-col">
-                                              <span className="font-medium">{vehicle.vehicleNumber}</span>
-                                              <span className="text-sm text-muted-foreground">
-                                                Driver: {vehicle.driverName} | Owner: {vehicle.ownerName}
-                                              </span>
-                                            </div>
-                                          </CommandItem>
-                                        ))}
-                                      </CommandGroup>
-                                    </CommandList>
-                                  </Command>
-                                </PopoverContent>
-                              </Popover>
-                              {field.value && field.value.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {field.value.map((vehicle) => {
-                                    const vehicleData = vehicles.find(v => v.vehicleId === vehicle.vehicleId);
-                                    return (
-                                      <div key={vehicle.vehicleId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-                                        <span>{vehicleData?.vehicleNumber || `Vehicle ${vehicle.vehicleId}`}</span>
-                                        <button
-                                          disabled={isEditMode}
-                                          type="button"
-                                          onClick={() => field.onChange(field.value?.filter(v => v.vehicleId !== vehicle.vehicleId))}
-                                          className="text-blue-600 hover:text-blue-800"
-                                        >
-                                          ×
-                                        </button>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                            />
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          <FormLabel data-required="false">
+                            {form.watch("vehicleAttendees.type") === "selectedOwners" && "Select Vehicle Owners"}
+                            {form.watch("vehicleAttendees.type") === "selectedDrivers" && "Select Vehicle Drivers"}
+                          </FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="vehicleAttendees.custom"
+                            render={({ field }) => (
+                              <FormItem>
+                                <Popover>
+                                  <PopoverTrigger asChild disabled={isEditMode}>
+                                    <FormControl>
+                                      <Button
+                                        disabled={isEditMode}
+                                        variant="outline"
+                                        role="combobox"
+                                        className="w-full justify-between"
+                                      >
+                                        {field.value && field.value.length > 0
+                                          ? `${field.value.length} vehicle(s) selected`
+                                          : "Select vehicles..."}
+                                      </Button>
+                                    </FormControl>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-full p-0">
+                                    <Command>
+                                      <CommandInput placeholder="Search vehicles..." />
+                                      <CommandList>
+                                        <CommandEmpty>No vehicles found.</CommandEmpty>
+                                        <CommandGroup>
+                                          {vehicles.map((vehicle) => (
+                                            <CommandItem
+                                              key={vehicle.id}
+                                              value={`${vehicle.vehicleNumber} ${vehicle.driverName} ${vehicle.ownerName}`}
+                                              onSelect={() => {
+                                                const currentVehicles = field.value || [];
+                                                if (!currentVehicles.find(v => v.vehicleId === vehicle.vehicleId)) {
+                                                  const isOwner = form.watch("vehicleAttendees.type") === "selectedOwners";
+                                                  const isDriver = form.watch("vehicleAttendees.type") === "selectedDrivers";
+                                                  field.onChange([
+                                                    ...currentVehicles,
+                                                    { vehicleId: vehicle.vehicleId, owner: isOwner, driver: isDriver }
+                                                  ]);
+                                                }
+                                              }}
+                                            >
+                                              <div className="flex flex-col">
+                                                <span className="font-medium">{vehicle.vehicleNumber}</span>
+                                                <span className="text-sm text-muted-foreground">
+                                                  Driver: {vehicle.driverName} | Owner: {vehicle.ownerName}
+                                                </span>
+                                              </div>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                {field.value && field.value.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {field.value.map((vehicle) => {
+                                      const vehicleData = vehicles.find(v => v.vehicleId === vehicle.vehicleId);
+                                      return (
+                                        <div key={vehicle.vehicleId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                          <span>{vehicleData?.vehicleNumber || `Vehicle ${vehicle.vehicleId}`}</span>
+                                          <button
+                                            disabled={isEditMode}
+                                            type="button"
+                                            onClick={() => field.onChange(field.value?.filter(v => v.vehicleId !== vehicle.vehicleId))}
+                                            className="text-blue-600 hover:text-blue-800"
+                                          >
+                                            ×
+                                          </button>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
                   </div>
 
                   {/* Labour Attendees */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Labour Attendees</h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="labourAttendees.type"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel data-required="false">Labour Selection Type</FormLabel>
-                          <Select 
+                          <Select
                             disabled={isEditMode}
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -1705,7 +1710,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                               if (value === "all") {
                                 form.setValue("labourAttendees.custom", []);
                               }
-                            }} 
+                            }}
                             value={field.value}
                           >
                             <FormControl>
@@ -1736,7 +1741,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                             <Popover>
                               <PopoverTrigger asChild disabled={isEditMode}>
                                 <FormControl>
-                        <Button
+                                  <Button
                                     variant="outline"
                                     role="combobox"
                                     className="w-full justify-between"
@@ -1744,7 +1749,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                     {field.value && field.value.length > 0
                                       ? `${field.value.length} labour(s) selected`
                                       : "Select labour..."}
-                        </Button>
+                                  </Button>
                                 </FormControl>
                               </PopoverTrigger>
                               <PopoverContent className="w-full p-0">
@@ -1769,7 +1774,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                             <span className="text-sm text-muted-foreground">
                                               {lab.labourId} - {lab.phoneNumber}
                                             </span>
-                      </div>
+                                          </div>
                                         </CommandItem>
                                       ))}
                                     </CommandGroup>
@@ -1792,17 +1797,17 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                                       >
                                         ×
                                       </button>
-                  </div>
+                                    </div>
                                   );
                                 })}
-                </div>
+                              </div>
                             )}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
                     )}
-              </div>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -1815,91 +1820,91 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-              <div className="space-y-4">
+                  <div className="space-y-4">
                     {followUpFields.map((field, index) => (
                       <Card key={field.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-4">
-                          <div className="grid grid-cols-2 gap-4 flex-1">
-                            <FormField
-                              control={form.control}
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <div className="grid grid-cols-2 gap-4 flex-1">
+                              <FormField
+                                control={form.control}
                                 name={`followUpMeeting.${index}.date`}
-                              render={({ field }) => (
-                                <FormItem className="">
-                                  <FormLabel>Follow-up Date</FormLabel>
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <FormControl>
-                                        <Button
-                                          variant={"outline"}
+                                render={({ field }) => (
+                                  <FormItem className="">
+                                    <FormLabel>Follow-up Date</FormLabel>
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <FormControl>
+                                          <Button
+                                            variant={"outline"}
                                             className={"w-full pl-3 text-left font-normal"}
-                                        >
-                                          {field.value ? (
-                                            format(field.value, "PPP")
-                                          ) : (
-                                            <span>Pick a date</span>
-                                          )}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                        </Button>
-                                      </FormControl>
-                                    </PopoverTrigger>
+                                          >
+                                            {field.value ? (
+                                              format(field.value, "PPP")
+                                            ) : (
+                                              <span>Pick a date</span>
+                                            )}
+                                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                        </FormControl>
+                                      </PopoverTrigger>
                                       <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar
-                                        mode="single"
-                                        selected={field.value}
-                                        onSelect={field.onChange}
-                                        disabled={(date) =>
+                                        <Calendar
+                                          mode="single"
+                                          selected={field.value}
+                                          onSelect={field.onChange}
+                                          disabled={(date) =>
                                             date < new Date(new Date().setHours(0, 0, 0, 0))
-                                        }
-                                        initialFocus
-                                      />
-                                    </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                                          }
+                                          initialFocus
+                                        />
+                                      </PopoverContent>
+                                    </Popover>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
 
-                            <FormField
-                              control={form.control}
+                              <FormField
+                                control={form.control}
                                 name={`followUpMeeting.${index}.time`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Follow-up Time</FormLabel>
-                                  <FormControl>
-                                    <Input type="time" {...field} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Follow-up Time</FormLabel>
+                                    <FormControl>
+                                      <Input type="time" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
 
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="mt-8"
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="mt-8"
                               onClick={() => removeFollowUp(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Remove follow-up</span>
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Remove follow-up</span>
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
                       onClick={addFollowUpMeeting}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Follow-up Meeting
-                  </Button>
-                </div>
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Follow-up Meeting
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 

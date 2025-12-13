@@ -55,7 +55,7 @@ interface Meeting {
   id: number;
   meetId: string;
   title: string;
-  agenda: string;
+  agenda?: string;
   notes?: string;
   startTime: string;
   location: string;
@@ -80,7 +80,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  
+
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -106,10 +106,10 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
       });
 
       console.log("Response:", response.data);
-      
+
       // Extract the first meeting from the array
       const meetingData = Array.isArray(response.data) ? response.data[0] : response.data.data?.[0] || response.data;
-      
+
       // Ensure the meeting object has the required arrays even if API doesn't return them
       const normalizeToArray = <T,>(value: T | T[] | null | undefined): T[] => {
         if (!value) return [];
@@ -122,7 +122,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         vehicleAttendees: normalizeToArray<VehicleAttendeePayload>(meetingData.vehicleAttendees),
         labourAttendees: normalizeToArray<LabourAttendeePayload>(meetingData.labourAttendees),
       };
-      
+
       setMeeting(processedMeetingData);
       console.log("Meeting data:", processedMeetingData);
     } catch (error) {
@@ -153,7 +153,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
 
   const getAttendeeTypeLabel = (meeting: Meeting) => {
     const types = [];
- 
+
     const memberAttendee = Array.isArray(meeting.memberAttendees)
       ? meeting.memberAttendees[0]
       : undefined;
@@ -183,7 +183,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
           const customCount = (memberAttendee.customMembers as any[]).length;
           memberDetails.push(`${customCount} Custom Member(s)`);
         }
-        
+
         // Show selected type even if arrays are empty (when switching types)
         if (memberDetails.length > 0) {
           types.push(`Selected Members (${memberDetails.join(", ")})`);
@@ -198,7 +198,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         }
       }
     }
- 
+
     if (vehicleAttendee) {
       if (vehicleAttendee.all) {
         // All vehicles
@@ -228,7 +228,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         }
       }
     }
- 
+
     if (labourAttendee) {
       if (labourAttendee.all) {
         types.push("All Labour");
@@ -249,7 +249,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         }
       }
     }
-    
+
     return types.join(", ") || "No attendees";
   };
 
@@ -289,7 +289,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Meetings
         </Button>
-        
+
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-3xl font-bold">{meeting.title}</h1>
@@ -298,10 +298,10 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
           {(session?.user?.role === "ADMIN" ||
             session?.user?.role === "TQMA_EDITOR" ||
             session?.user?.role === "TSMWA_EDITOR") &&
-          <Button onClick={handleEdit}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Meeting
-          </Button>
+            <Button onClick={handleEdit}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Meeting
+            </Button>
           }
         </div>
       </div>
@@ -310,19 +310,19 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
         {/* Meeting Information */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between"> 
-            <CardTitle>Meeting Information</CardTitle>
-            <Badge
+            <div className="flex items-center justify-between">
+              <CardTitle>Meeting Information</CardTitle>
+              <Badge
                 variant={
                   meeting.status === "COMPLETED"
                     ? "default"
                     : meeting.status === "SCHEDULED"
-                    ? "secondary"
-                    : "destructive"
+                      ? "secondary"
+                      : "destructive"
                 }
               >
-                {meeting.status ? 
-                  meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1).toLowerCase() 
+                {meeting.status ?
+                  meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1).toLowerCase()
                   : "Unknown"
                 }
               </Badge>
@@ -334,7 +334,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
               <div>
                 <p className="font-medium">Date & Time</p>
                 <p className="text-sm text-muted-foreground">
-                  {meeting.startTime && !isNaN(new Date(meeting.startTime).getTime()) 
+                  {meeting.startTime && !isNaN(new Date(meeting.startTime).getTime())
                     ? format(new Date(meeting.startTime), "EEEE, MMMM dd, yyyy 'at' HH:mm")
                     : "Invalid Date"
                   }
@@ -350,7 +350,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
               </div>
             </div>
 
-          
+
           </CardContent>
         </Card>
 
@@ -397,7 +397,7 @@ export default function MeetingDetails({ meetingId }: MeetingDetailsProps) {
                     <div>
                       <p className="font-medium">Follow-up {index + 1}</p>
                       <p className="text-sm text-muted-foreground">
-                        {followUp.dateTime && !isNaN(new Date(followUp.dateTime).getTime()) 
+                        {followUp.dateTime && !isNaN(new Date(followUp.dateTime).getTime())
                           ? format(new Date(followUp.dateTime), "EEEE, MMMM dd, yyyy 'at' HH:mm")
                           : "Invalid Date"
                         }
