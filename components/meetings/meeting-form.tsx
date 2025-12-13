@@ -487,16 +487,24 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
       // Process attendee data based on selection type
       const processMemberAttendees = () => {
-        const memberAttendees: any = {};
+        if (!data.memberAttendees?.type) return {};
+
+        const memberAttendees: any = {
+          zone: [],
+          mandal: [],
+          all: false,
+          allExecutives: false,
+          custom: []
+        };
 
         if (data.memberAttendees?.type === "all") {
           memberAttendees.all = true;
         } else if (data.memberAttendees?.type === "allExecutives") {
           memberAttendees.allExecutives = true;
         } else if (data.memberAttendees?.type === "selectedZone" && data.memberAttendees.zone && data.memberAttendees.zone.length > 0) {
-          memberAttendees.zones = data.memberAttendees.zone;
+          memberAttendees.zone = data.memberAttendees.zone;
         } else if (data.memberAttendees?.type === "selectedMandal" && data.memberAttendees.mandal && data.memberAttendees.mandal.length > 0) {
-          memberAttendees.mandals = data.memberAttendees.mandal;
+          memberAttendees.mandal = data.memberAttendees.mandal;
         } else if (data.memberAttendees?.type === "selectedMembers" && data.memberAttendees.custom && data.memberAttendees.custom.length > 0) {
           // Use "custom" for create/add operation (not "customMembers")
           memberAttendees.custom = data.memberAttendees.custom;
@@ -1105,7 +1113,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
     <div className="">
       <div className="mb-6 flex items-center">
         <Button variant="outline" onClick={handleCancel} className="mr-4">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Cancel
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <h1 className="text-2xl font-bold">
           {isEditMode ? "Edit Meeting" : "Schedule New Meeting"}
@@ -1295,35 +1303,247 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Member Attendees */}
+                  {/* Unified Attendee Selection */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Member Attendees</h3>
+                    {isEditMode && (
+                      <div className="rounded-md bg-yellow-50 p-4 border border-yellow-200">
+                        <div className="flex">
+                          <div className="ml-3">
+                            <h3 className="text-sm font-medium text-yellow-800">Attendee editing disabled</h3>
+                            <div className="mt-2 text-sm text-yellow-700">
+                              <p>To change attendees, please cancel this meeting and schedule a new one.</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <FormLabel
+                      data-tooltip="Please choose carefully the attendees as you won't be able to edit the Attendeed."
+                    >
+                      Attendees
+                    </FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={isEditMode}
+                        >
+                          <span>Select attendees...</span>
+                          <Plus className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search attendee types..." />
+                          <CommandList>
+                            <CommandEmpty>No attendee type found.</CommandEmpty>
 
-                    <FormField
-                      control={form.control}
-                      name="memberAttendees.type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel data-required="false">Member Selection Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger disabled={isEditMode}>
-                                <SelectValue placeholder="Select member type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="all">All Members</SelectItem>
-                              <SelectItem value="allExecutives">All Executives</SelectItem>
-                              <SelectItem value="selectedZone">Selected Zone</SelectItem>
-                              <SelectItem value="selectedMandal">Selected Mandal</SelectItem>
-                              <SelectItem value="selectedMembers">Selected Members</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
+                            <CommandGroup heading="Member Attendees">
+                              {[
+                                { value: "all", label: "All Members" },
+                                { value: "allExecutives", label: "All Executives" },
+                                { value: "selectedZone", label: "Selected Zone" },
+                                { value: "selectedMandal", label: "Selected Mandal" },
+                                { value: "selectedMembers", label: "Selected Members" },
+                              ].map((option) => {
+                                const isSelected = form.watch("memberAttendees.type") === option.value;
+                                return (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.label}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        form.setValue("memberAttendees.type", undefined);
+                                        // Clear dependent fields
+                                        form.setValue("memberAttendees.zone", []);
+                                        form.setValue("memberAttendees.mandal", []);
+                                        form.setValue("memberAttendees.custom", []);
+                                      } else {
+                                        form.setValue("memberAttendees.type", option.value as any);
+                                        // Clear Dependent fields when switching type
+                                        form.setValue("memberAttendees.zone", []);
+                                        form.setValue("memberAttendees.mandal", []);
+                                        form.setValue("memberAttendees.custom", []);
+                                      }
+                                    }}
+                                  >
+                                    <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}>
+                                      <Plus className="h-4 w-4" />
+                                    </div>
+                                    {option.label}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+
+                            <CommandGroup heading="Vehicle Attendees">
+                              {[
+                                { value: "allOwners", label: "All Vehicle Owners" },
+                                { value: "allDrivers", label: "All Vehicle Drivers" },
+                                { value: "allDriversAndOwners", label: "All Driver & Owners" },
+                                { value: "selectedOwners", label: "Selected Vehicle Owners" },
+                                { value: "selectedDrivers", label: "Selected Vehicle Drivers" },
+                              ].map((option) => {
+                                const isSelected = form.watch("vehicleAttendees.type") === option.value;
+                                return (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.label}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        form.setValue("vehicleAttendees.type", undefined);
+                                        form.setValue("vehicleAttendees.custom", []);
+                                      } else {
+                                        form.setValue("vehicleAttendees.type", option.value as any);
+
+                                        // Update owner/driver flags based on selection
+                                        if (option.value === "allOwners") {
+                                          form.setValue("vehicleAttendees.owner", true);
+                                          form.setValue("vehicleAttendees.driver", false);
+                                        } else if (option.value === "allDrivers") {
+                                          form.setValue("vehicleAttendees.owner", false);
+                                          form.setValue("vehicleAttendees.driver", true);
+                                        } else if (option.value === "allDriversAndOwners") {
+                                          form.setValue("vehicleAttendees.owner", true);
+                                          form.setValue("vehicleAttendees.driver", true);
+                                        } else if (option.value === "selectedOwners") {
+                                          form.setValue("vehicleAttendees.owner", true);
+                                          form.setValue("vehicleAttendees.driver", false);
+                                        } else if (option.value === "selectedDrivers") {
+                                          form.setValue("vehicleAttendees.owner", false);
+                                          form.setValue("vehicleAttendees.driver", true);
+                                        }
+
+                                        // Clear dependent fields
+                                        form.setValue("vehicleAttendees.custom", []);
+                                      }
+                                    }}
+                                  >
+                                    <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}>
+                                      <Plus className="h-4 w-4" />
+                                    </div>
+                                    {option.label}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+
+                            <CommandGroup heading="Labour Attendees">
+                              {[
+                                { value: "all", label: "All Labour" },
+                                { value: "selectedLabour", label: "Selected Labour" },
+                              ].map((option) => {
+                                const isSelected = form.watch("labourAttendees.type") === option.value;
+                                return (
+                                  <CommandItem
+                                    key={option.value}
+                                    value={option.label}
+                                    onSelect={() => {
+                                      if (isSelected) {
+                                        form.setValue("labourAttendees.type", undefined);
+                                        form.setValue("labourAttendees.custom", []);
+                                      } else {
+                                        form.setValue("labourAttendees.type", option.value as any);
+                                        form.setValue("labourAttendees.all", option.value === "all");
+                                        form.setValue("labourAttendees.custom", []);
+                                      }
+                                    }}
+                                  >
+                                    <div className={`mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary ${isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"}`}>
+                                      <Plus className="h-4 w-4" />
+                                    </div>
+                                    {option.label}
+                                  </CommandItem>
+                                );
+                              })}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+
+                    {/* Active Selections display tags */}
+                    <div className="flex flex-wrap gap-2" {...(isEditMode && { disabled: true })}>
+                      {/* Member Tag */}
+                      {form.watch("memberAttendees.type") && (
+                        <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm border border-primary/20">
+                          <span className="font-medium">Members:</span>
+                          <span>
+                            {form.watch("memberAttendees.type") === "all" && "All Members"}
+                            {form.watch("memberAttendees.type") === "allExecutives" && "All Executives"}
+                            {form.watch("memberAttendees.type") === "selectedZone" && "Selected Zone"}
+                            {form.watch("memberAttendees.type") === "selectedMandal" && "Selected Mandal"}
+                            {form.watch("memberAttendees.type") === "selectedMembers" && "Selected Members"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue("memberAttendees.type", undefined);
+                              form.setValue("memberAttendees.zone", []);
+                              form.setValue("memberAttendees.mandal", []);
+                              form.setValue("memberAttendees.custom", []);
+                            }}
+                            className="ml-1 hover:text-destructive"
+                            disabled={isEditMode}
+                          >
+                            ×
+                          </button>
+                        </div>
                       )}
-                    />
 
+                      {/* Vehicle Tag */}
+                      {form.watch("vehicleAttendees.type") && (
+                        <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm border border-primary/20">
+                          <span className="font-medium">Vehicles:</span>
+                          <span>
+                            {form.watch("vehicleAttendees.type") === "allOwners" && "All Owners"}
+                            {form.watch("vehicleAttendees.type") === "allDrivers" && "All Drivers"}
+                            {form.watch("vehicleAttendees.type") === "allDriversAndOwners" && "All Drivers & Owners"}
+                            {form.watch("vehicleAttendees.type") === "selectedOwners" && "Selected Owners"}
+                            {form.watch("vehicleAttendees.type") === "selectedDrivers" && "Selected Drivers"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue("vehicleAttendees.type", undefined);
+                              form.setValue("vehicleAttendees.custom", []);
+                            }}
+                            className="ml-1 hover:text-destructive"
+                            disabled={isEditMode}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Labour Tag */}
+                      {form.watch("labourAttendees.type") && (
+                        <div className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm border border-primary/20">
+                          <span className="font-medium">Labour:</span>
+                          <span>
+                            {form.watch("labourAttendees.type") === "all" && "All Labour"}
+                            {form.watch("labourAttendees.type") === "selectedLabour" && "Selected Labour"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              form.setValue("labourAttendees.type", undefined);
+                              form.setValue("labourAttendees.custom", []);
+                            }}
+                            className="ml-1 hover:text-destructive"
+                            disabled={isEditMode}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Member Attendees Sub-selection */}
+                  <div className="space-y-4">
                     {/* Zone Selection */}
                     {form.watch("memberAttendees.type") === "selectedZone" && (
                       <FormField
@@ -1543,62 +1763,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                     )}
                   </div>
 
-                  {/* Vehicle Attendees */}
+                  {/* Vehicle Attendees Sub-selection */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Vehicle Attendees</h3>
-
-                    <FormField
-                      control={form.control}
-                      name="vehicleAttendees.type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel data-required="false">Vehicle Selection Type</FormLabel>
-                          <Select
-                            disabled={isEditMode}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              // Update owner, driver, and all fields based on the type
-                              if (value === "allOwners") {
-                                form.setValue("vehicleAttendees.owner", true);
-                                form.setValue("vehicleAttendees.driver", false);
-                              } else if (value === "allDrivers") {
-                                form.setValue("vehicleAttendees.owner", false);
-                                form.setValue("vehicleAttendees.driver", true);
-                              } else if (value === "allDriversAndOwners") {
-                                form.setValue("vehicleAttendees.owner", true);
-                                form.setValue("vehicleAttendees.driver", true);
-                              } else if (value === "selectedOwners") {
-                                form.setValue("vehicleAttendees.owner", true);
-                                form.setValue("vehicleAttendees.driver", false);
-                              } else if (value === "selectedDrivers") {
-                                form.setValue("vehicleAttendees.owner", false);
-                                form.setValue("vehicleAttendees.driver", true);
-                              }
-                              // Clear custom selections when switching to "all"
-                              if (value === "allOwners" || value === "allDrivers" || value === "allDriversAndOwners") {
-                                form.setValue("vehicleAttendees.custom", []);
-                              }
-                            }}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select vehicle type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="allOwners">All Vehicle Owners</SelectItem>
-                              <SelectItem value="allDrivers">All Vehicle Drivers</SelectItem>
-                              <SelectItem value="allDriversAndOwners">All Driver & Owners</SelectItem>
-                              <SelectItem value="selectedOwners">Selected Vehicle Owners</SelectItem>
-                              <SelectItem value="selectedDrivers">Selected Vehicle Drivers</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
                     {/* Individual Vehicle Selection */}
                     {(form.watch("vehicleAttendees.type") === "selectedOwners" ||
                       form.watch("vehicleAttendees.type") === "selectedDrivers") && (
@@ -1690,46 +1856,8 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
                       )}
                   </div>
 
-                  {/* Labour Attendees */}
+                  {/* Labour Attendees Sub-selection */}
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Labour Attendees</h3>
-
-                    <FormField
-                      control={form.control}
-                      name="labourAttendees.type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel data-required="false">Labour Selection Type</FormLabel>
-                          <Select
-                            disabled={isEditMode}
-                            onValueChange={(value) => {
-                              field.onChange(value);
-                              // Update the 'all' field based on the type
-                              form.setValue("labourAttendees.all", value === "all");
-                              // Clear custom selections when switching to "all"
-                              if (value === "all") {
-                                form.setValue("labourAttendees.custom", []);
-                              }
-                            }}
-                            value={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select labour type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="all">All Labour</SelectItem>
-                              <SelectItem value="selectedLabour">Selected Labour</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-
-
                     {/* Selected Labour Selection */}
                     {form.watch("labourAttendees.type") === "selectedLabour" && (
                       <FormField
@@ -1910,7 +2038,7 @@ export default function MeetingForm({ meetingId, isEditMode }: MeetingFormProps)
 
               <div className="flex justify-end space-x-4">
                 <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
+                  Back
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
